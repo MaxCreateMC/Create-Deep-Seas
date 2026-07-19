@@ -40,7 +40,7 @@ public class BallastTankBlockEntity extends BlockEntity
         implements IHaveGoggleInformation, dev.ryanhcode.sable.api.block.BlockEntitySubLevelActor {
     private static final int CAPACITY = 8000;
     private static final Map<UUID, Double> TICK_TOTAL_FORCE = new HashMap<>();
-    private static long lastClearTick = -1;
+    private static double lastTimeStep = -1;
 
     // Updated by the normal server tick and consumed by the physics tick.
     private volatile boolean cachedUnderwater;
@@ -405,10 +405,10 @@ public class BallastTankBlockEntity extends BlockEntity
         if (this != getMaster() || handle == null || !handle.isValid())
             return;
 
-        long gameTick = level.getGameTime();
-        if (gameTick != lastClearTick) {
+
+        if (timeStep != lastTimeStep) {
             TICK_TOTAL_FORCE.clear();
-            lastClearTick = gameTick;
+            lastTimeStep = timeStep;
         }
 
         List<BallastTankBlockEntity> cluster = getCluster();
