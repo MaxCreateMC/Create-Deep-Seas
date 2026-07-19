@@ -27,15 +27,20 @@ import net.neoforged.neoforge.fluids.capability.templates.FluidTank;
 import org.jetbrains.annotations.NotNull;
 import org.joml.Vector3d;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
+import java.util.UUID;
 
 public class BallastTankBlockEntity extends BlockEntity
         implements IHaveGoggleInformation, dev.ryanhcode.sable.api.block.BlockEntitySubLevelActor {
     private static final int CAPACITY = 8000;
+    private static final Map<UUID, Double> TICK_TOTAL_FORCE = new HashMap<>();
+    private static long lastClearTick = -1;
 
     // Updated by the normal server tick and consumed by the physics tick.
     private volatile boolean cachedUnderwater;
@@ -283,8 +288,10 @@ public class BallastTankBlockEntity extends BlockEntity
 
         BlockPos parentPos = BlockPos.containing(worldPos.x, worldPos.y, worldPos.z);
         double waterSurfaceY = WaterUtil.findWaterSurface(parentLevel, parentPos);
-        if (!Double.isFinite(waterSurfaceY))
+        if (!Double.isFinite(waterSurfaceY)) {
+            be.clearCachedWaterState();
             return;
+        }
 
         double depth = waterSurfaceY - (worldPos.y - 0.5);
         if (depth <= 0.0)
@@ -398,6 +405,12 @@ public class BallastTankBlockEntity extends BlockEntity
         if (this != getMaster() || handle == null || !handle.isValid())
             return;
 
+        long gameTick = level.getGameTime();
+        if (gameTick != lastClearTick) {
+            TICK_TOTAL_FORCE.clear();
+            lastClearTick = gameTick;
+        }
+
         List<BallastTankBlockEntity> cluster = getCluster();
         Vector3d velocity = handle.getLinearVelocity(new Vector3d());
         dev.ryanhcode.sable.api.physics.force.QueuedForceGroup forceGroup =
@@ -432,7 +445,12 @@ public class BallastTankBlockEntity extends BlockEntity
             return;
 
         clusterCenter.div(cluster.size());
-        applyHorizontalDrag(sub, forceGroup, clusterCenter, velocity, timeStep);
+
+        UUID subId = sub.getUniqueId();
+        if (subId != null && !TICK_TOTAL_FORCE.containsKey(subId)) {
+            TICK_TOTAL_FORCE.put(subId, 1.0);
+            applyHorizontalDrag(sub, forceGroup, clusterCenter, velocity, timeStep);
+        }
     }
 
     private static double calculateBallastImpulseY(

@@ -38,8 +38,6 @@ public class FloaterBlockEntity extends BlockEntity implements dev.ryanhcode.sab
         if (level.isClientSide())
             return;
 
-        be.getCluster();
-
         SubLevelAccess sub = SableCompanion.INSTANCE.getContaining(level, pos);
         boolean sealed = sub != null
                 && com.maxenonyme.createsubmarine.submarine.compartment.CompartmentTracker
@@ -77,7 +75,7 @@ public class FloaterBlockEntity extends BlockEntity implements dev.ryanhcode.sab
         }
 
         if (sub == null) {
-            be.clearCachedEnvironment();
+            be.clearCachedWaterState();
             return;
         }
 
@@ -92,14 +90,16 @@ public class FloaterBlockEntity extends BlockEntity implements dev.ryanhcode.sab
             parentLevel = sl.getLevel();
 
         if (parentLevel == null) {
-            be.clearCachedEnvironment();
+            be.clearCachedWaterState();
             return;
         }
 
         BlockPos parentPos = BlockPos.containing(worldPos.x, worldPos.y, worldPos.z);
         double localWaterSurfaceY = WaterUtil.findWaterSurface(parentLevel, parentPos);
-        if (!Double.isFinite(localWaterSurfaceY))
+        if (!Double.isFinite(localWaterSurfaceY)) {
+            be.clearCachedWaterState();
             return;
+        }
 
         double depth = localWaterSurfaceY - (worldPos.y - 0.5);
 
@@ -112,7 +112,7 @@ public class FloaterBlockEntity extends BlockEntity implements dev.ryanhcode.sab
             checkCrash(level, pos, parentLevel, parentPos, vel);
     }
 
-    private void clearCachedEnvironment() {
+    private void clearCachedWaterState() {
         cachedUnderwater = false;
         cachedSubmergedRatio = 0.0;
         cachedDistanceToSurface = 0.0;

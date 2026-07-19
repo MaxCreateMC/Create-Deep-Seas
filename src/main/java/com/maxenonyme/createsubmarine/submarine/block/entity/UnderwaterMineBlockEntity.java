@@ -231,8 +231,10 @@ public class UnderwaterMineBlockEntity extends BlockEntity
 
         BlockPos parentPos = BlockPos.containing(worldPos.x, worldPos.y, worldPos.z);
         double localWaterSurfaceY = WaterUtil.findWaterSurface(parentLevel, parentPos);
-        if (!Double.isFinite(localWaterSurfaceY))
+        if (!Double.isFinite(localWaterSurfaceY)) {
+            be.clearCachedWaterState();
             return;
+        }
 
         double depth = localWaterSurfaceY - (worldPos.y - 0.5);
         if (depth <= 0.0) {

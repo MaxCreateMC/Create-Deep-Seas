@@ -37,7 +37,7 @@ public class WaterUtil {
     public static int countWaterAbove(Level level, BlockPos pos) {
         int depth = 0;
         BlockPos.MutableBlockPos m = new BlockPos.MutableBlockPos();
-        for (int y = pos.getY() + 1; y < pos.getY() + 1 + 200; y++) {
+        for (int y = pos.getY() + 1; y < pos.getY() + 1 + level.getMaxBuildHeight(); y++) {
             m.set(pos.getX(), y, pos.getZ());
             if (com.maxenonyme.createsubmarine.submarine.compartment.CompartmentTracker.realFluidState(level, m)
                     .is(net.minecraft.tags.FluidTags.WATER)) {
