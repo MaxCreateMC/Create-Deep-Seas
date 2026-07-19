@@ -3,6 +3,8 @@ package com.maxenonyme.createsubmarine.submarine.block.entity;
 import com.maxenonyme.createsubmarine.CreateSubmarine;
 import com.maxenonyme.createsubmarine.submarine.system.MineOwnershipRegistry;
 import com.maxenonyme.createsubmarine.submarine.util.SubLevelRegistry;
+import com.maxenonyme.createsubmarine.submarine.util.WaterUtil;
+
 import dev.ryanhcode.sable.companion.SableCompanion;
 import dev.ryanhcode.sable.companion.SubLevelAccess;
 import dev.ryanhcode.sable.api.physics.force.QueuedForceGroup;
@@ -44,10 +46,9 @@ public class UnderwaterMineBlockEntity extends BlockEntity
     private boolean exceedsLimitCached = false;
     private long lastLimitCheckTick = -1;
 
-    // Updated by serverTick and consumed by the physics callback.
-    private volatile boolean cachedUnderwater = false;
-    private volatile double cachedSubmergedRatio = 0.0;
-    private volatile double cachedDistanceToSurface = 0.0;
+    private volatile boolean cachedUnderwater;
+    private volatile double cachedSubmergedRatio;
+    private volatile double cachedDistanceToSurface;
 
     public UnderwaterMineBlockEntity(BlockPos pos, BlockState state) {
         super(CreateSubmarine.UNDERWATER_MINE_BE.get(), pos, state);
@@ -229,7 +230,9 @@ public class UnderwaterMineBlockEntity extends BlockEntity
         }
 
         BlockPos parentPos = BlockPos.containing(worldPos.x, worldPos.y, worldPos.z);
-        double localWaterSurfaceY = findWaterSurface(parentLevel, parentPos);
+        double localWaterSurfaceY = WaterUtil.findWaterSurface(parentLevel, parentPos);
+        if (!Double.isFinite(localWaterSurfaceY))
+            return;
 
         double depth = localWaterSurfaceY - (worldPos.y - 0.5);
         if (depth <= 0.0) {
@@ -240,31 +243,6 @@ public class UnderwaterMineBlockEntity extends BlockEntity
         be.cachedUnderwater = true;
         be.cachedSubmergedRatio = Math.clamp(depth, 0.0, 1.0);
         be.cachedDistanceToSurface = localWaterSurfaceY - worldPos.y;
-    }
-
-    private static double findWaterSurface(Level level, BlockPos pos) {
-        net.minecraft.world.level.material.FluidState fluidState =
-                com.maxenonyme.createsubmarine.submarine.compartment.CompartmentTracker
-                        .realFluidState(level, pos);
-
-        if (fluidState.is(FluidTags.WATER)) {
-            return pos.getY()
-                    + fluidState.getHeight(level, pos)
-                    + countWaterAbove(level, pos);
-        }
-
-        BlockPos belowPos = pos.below();
-        net.minecraft.world.level.material.FluidState belowFluid =
-                com.maxenonyme.createsubmarine.submarine.compartment.CompartmentTracker
-                        .realFluidState(level, belowPos);
-
-        if (belowFluid.is(FluidTags.WATER)) {
-            return belowPos.getY()
-                    + belowFluid.getHeight(level, belowPos)
-                    + countWaterAbove(level, belowPos);
-        }
-
-        return Double.NEGATIVE_INFINITY;
     }
 
     private void clearCachedWaterState() {
@@ -310,7 +288,7 @@ public class UnderwaterMineBlockEntity extends BlockEntity
 
         double impulseScale = 20.0 * timeStep;
         Vector3d worldImpulse = new Vector3d(0.0, forceY * impulseScale, 0.0);
-        Vector3d localImpulse = worldToLocal(sub, worldImpulse);
+        Vector3d localImpulse = WaterUtil.worldToLocal(sub, worldImpulse);
 
         Vector3d localPoint = new Vector3d(
                 worldPosition.getX() + 0.5,
@@ -322,13 +300,6 @@ public class UnderwaterMineBlockEntity extends BlockEntity
         QueuedForceGroup forceGroup = sub.getOrCreateQueuedForceGroup(
                 CreateSubmarine.FLOATER_FORCE_GROUP.get());
         forceGroup.applyAndRecordPointForce(localPoint, localImpulse);
-    }
-
-    private static Vector3d worldToLocal(SubLevelAccess sub, Vector3d vector) {
-        return sub.logicalPose()
-                .orientation()
-                .conjugate(new org.joml.Quaterniond())
-                .transform(vector);
     }
 
     private void explode(Level level, BlockPos pos, ServerLevel parentLevel, Vector3d worldPos, SubLevelAccess sub) {
@@ -517,20 +488,6 @@ public class UnderwaterMineBlockEntity extends BlockEntity
             return true;
         }
         return false;
-    }
-
-    private static int countWaterAbove(Level level, BlockPos pos) {
-        int depth = 0;
-        BlockPos.MutableBlockPos m = new BlockPos.MutableBlockPos();
-        for (int y = pos.getY() + 1; y < pos.getY() + 1 + MAX_WATER_SCAN; y++) {
-            m.set(pos.getX(), y, pos.getZ());
-            if (com.maxenonyme.createsubmarine.submarine.compartment.CompartmentTracker.realFluidState(level, m).is(FluidTags.WATER)) {
-                depth++;
-            } else {
-                break;
-            }
-        }
-        return depth;
     }
 
 }

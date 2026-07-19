@@ -2,6 +2,8 @@ package com.maxenonyme.createsubmarine.submarine.block.entity;
 
 import com.maxenonyme.createsubmarine.CreateSubmarine;
 import com.maxenonyme.createsubmarine.submarine.util.SubLevelRegistry;
+import com.maxenonyme.createsubmarine.submarine.util.WaterUtil;
+
 import dev.ryanhcode.sable.api.physics.force.QueuedForceGroup;
 import dev.ryanhcode.sable.api.physics.handle.RigidBodyHandle;
 import dev.ryanhcode.sable.companion.SableCompanion;
@@ -23,11 +25,10 @@ public class FloaterBlockEntity extends BlockEntity implements dev.ryanhcode.sab
     private static final int MAX_WATER_SCAN = 200;
 
     private int pressureTickCounter = 0;
-    private boolean cachedUnderwater;
-    private double cachedSubmergedRatio;
-    private double cachedDistanceToSurface;
-    private final Vector3d cachedVelocity = new Vector3d();
-    private boolean hasCachedVelocity;
+    private volatile boolean cachedUnderwater;
+    private volatile double cachedSubmergedRatio;
+    private volatile double cachedDistanceToSurface;
+    private volatile Vector3d cachedVelocity = null;
 
     public FloaterBlockEntity(BlockPos pos, BlockState state) {
         super(CreateSubmarine.FLOATER_BE.get(), pos, state);
@@ -36,6 +37,8 @@ public class FloaterBlockEntity extends BlockEntity implements dev.ryanhcode.sab
     public static void serverTick(Level level, BlockPos pos, FloaterBlockEntity be) {
         if (level.isClientSide())
             return;
+
+        be.getCluster();
 
         SubLevelAccess sub = SableCompanion.INSTANCE.getContaining(level, pos);
         boolean sealed = sub != null
@@ -67,7 +70,7 @@ public class FloaterBlockEntity extends BlockEntity implements dev.ryanhcode.sab
             if (propOpt.isPresent())
                 threshold = propOpt.get().maxWaterDepth();
 
-            if (sealed && countWaterAbove(worldLevel, worldPos) > threshold) {
+            if (sealed && WaterUtil.countWaterAbove(worldLevel, worldPos) > threshold) {
                 burst(level, pos);
                 return;
             }
@@ -94,7 +97,9 @@ public class FloaterBlockEntity extends BlockEntity implements dev.ryanhcode.sab
         }
 
         BlockPos parentPos = BlockPos.containing(worldPos.x, worldPos.y, worldPos.z);
-        double localWaterSurfaceY = findWaterSurface(parentLevel, parentPos);
+        double localWaterSurfaceY = WaterUtil.findWaterSurface(parentLevel, parentPos);
+        if (!Double.isFinite(localWaterSurfaceY))
+            return;
 
         double depth = localWaterSurfaceY - (worldPos.y - 0.5);
 
@@ -102,51 +107,15 @@ public class FloaterBlockEntity extends BlockEntity implements dev.ryanhcode.sab
         be.cachedSubmergedRatio = Math.max(0.0, Math.min(1.0, depth));
         be.cachedDistanceToSurface = localWaterSurfaceY - worldPos.y;
 
-        if (sealed && be.hasCachedVelocity)
-            checkCrash(level, pos, parentLevel, parentPos, be.cachedVelocity);
+        Vector3d vel = be.cachedVelocity;
+        if (sealed && vel != null)
+            checkCrash(level, pos, parentLevel, parentPos, vel);
     }
 
     private void clearCachedEnvironment() {
         cachedUnderwater = false;
         cachedSubmergedRatio = 0.0;
         cachedDistanceToSurface = 0.0;
-    }
-
-    private static double findWaterSurface(Level parentLevel, BlockPos parentPos) {
-        net.minecraft.world.level.material.FluidState fluidState =
-                com.maxenonyme.createsubmarine.submarine.compartment.CompartmentTracker
-                        .realFluidState(parentLevel, parentPos);
-
-        if (fluidState.is(FluidTags.WATER)) {
-            float height = fluidState.getHeight(parentLevel, parentPos);
-            return parentPos.getY() + height + countWaterAbove(parentLevel, parentPos);
-        }
-
-        BlockPos belowPos = parentPos.below();
-        net.minecraft.world.level.material.FluidState belowFluid =
-                com.maxenonyme.createsubmarine.submarine.compartment.CompartmentTracker
-                        .realFluidState(parentLevel, belowPos);
-
-        if (belowFluid.is(FluidTags.WATER)) {
-            float height = belowFluid.getHeight(parentLevel, belowPos);
-            return belowPos.getY() + height + countWaterAbove(parentLevel, belowPos);
-        }
-
-        return Double.NEGATIVE_INFINITY;
-    }
-
-    private static int countWaterAbove(Level level, BlockPos pos) {
-        int depth = 0;
-        BlockPos.MutableBlockPos m = new BlockPos.MutableBlockPos();
-        for (int y = pos.getY() + 1; y < pos.getY() + 1 + MAX_WATER_SCAN; y++) {
-            m.set(pos.getX(), y, pos.getZ());
-            if (com.maxenonyme.createsubmarine.submarine.compartment.CompartmentTracker.realFluidState(level, m).is(FluidTags.WATER)) {
-                depth++;
-            } else {
-                break;
-            }
-        }
-        return depth;
     }
 
     private static void burst(Level level, BlockPos pos) {
@@ -225,12 +194,15 @@ public class FloaterBlockEntity extends BlockEntity implements dev.ryanhcode.sab
             dev.ryanhcode.sable.sublevel.ServerSubLevel sub,
             RigidBodyHandle handle,
             double timeStep) {
-        if (handle == null || !handle.isValid())
+        if (handle == null || !handle.isValid()) {
+            cachedVelocity = null;
             return;
+        }
 
-        Vector3d currentVelocity = handle.getLinearVelocity(new Vector3d());
-        cachedVelocity.set(currentVelocity);
-        hasCachedVelocity = true;
+        
+        Vector3d currentVelocity = new Vector3d();
+        handle.getLinearVelocity(currentVelocity);
+        cachedVelocity = currentVelocity;
 
         if (this != getMaster())
             return;
@@ -269,7 +241,7 @@ public class FloaterBlockEntity extends BlockEntity implements dev.ryanhcode.sab
                             ? forceY * 0.1
                             : forceY;
 
-            Vector3d localImpulse = worldToLocal(
+            Vector3d localImpulse = WaterUtil.worldToLocal(
                     sub,
                     new Vector3d(0.0, finalForceY * impulseScale, 0.0));
             Vector3d localPoint = new Vector3d(
@@ -279,13 +251,6 @@ public class FloaterBlockEntity extends BlockEntity implements dev.ryanhcode.sab
 
             forceGroup.applyAndRecordPointForce(localPoint, localImpulse);
         }
-    }
-
-    private static Vector3d worldToLocal(SubLevelAccess sub, Vector3d vector) {
-        return sub.logicalPose()
-                .orientation()
-                .conjugate(new org.joml.Quaterniond())
-                .transform(vector);
     }
 
 }

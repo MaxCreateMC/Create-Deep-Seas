@@ -1,6 +1,7 @@
 package com.maxenonyme.createsubmarine.submarine.block.entity;
 
 import com.maxenonyme.createsubmarine.CreateSubmarine;
+import com.maxenonyme.createsubmarine.submarine.util.WaterUtil;
 import com.simibubi.create.api.equipment.goggles.IHaveGoggleInformation;
 
 import dev.ryanhcode.sable.api.physics.handle.RigidBodyHandle;
@@ -37,9 +38,9 @@ public class BallastTankBlockEntity extends BlockEntity
     private static final int CAPACITY = 8000;
 
     // Updated by the normal server tick and consumed by the physics tick.
-    private boolean cachedUnderwater;
-    private double cachedSubmergedRatio;
-    private double cachedDistanceToSurface;
+    private volatile boolean cachedUnderwater;
+    private volatile double cachedSubmergedRatio;
+    private volatile double cachedDistanceToSurface;
     public final FluidTank tank = new FluidTank(CAPACITY) {
         @Override
         protected void onContentsChanged() {
@@ -281,7 +282,7 @@ public class BallastTankBlockEntity extends BlockEntity
             return;
 
         BlockPos parentPos = BlockPos.containing(worldPos.x, worldPos.y, worldPos.z);
-        double waterSurfaceY = findWaterSurface(parentLevel, parentPos);
+        double waterSurfaceY = WaterUtil.findWaterSurface(parentLevel, parentPos);
         if (!Double.isFinite(waterSurfaceY))
             return;
 
@@ -298,26 +299,6 @@ public class BallastTankBlockEntity extends BlockEntity
         cachedUnderwater = false;
         cachedSubmergedRatio = 0.0;
         cachedDistanceToSurface = 0.0;
-    }
-
-    private static double findWaterSurface(Level level, BlockPos pos) {
-        net.minecraft.world.level.material.FluidState fluidState =
-                com.maxenonyme.createsubmarine.submarine.compartment.CompartmentTracker
-                        .realFluidState(level, pos);
-        if (fluidState.is(net.minecraft.tags.FluidTags.WATER)) {
-            return pos.getY() + fluidState.getHeight(level, pos) + countWaterAbove(level, pos);
-        }
-
-        BlockPos belowPos = pos.below();
-        net.minecraft.world.level.material.FluidState belowFluid =
-                com.maxenonyme.createsubmarine.submarine.compartment.CompartmentTracker
-                        .realFluidState(level, belowPos);
-        if (belowFluid.is(net.minecraft.tags.FluidTags.WATER)) {
-            return belowPos.getY() + belowFluid.getHeight(level, belowPos)
-                    + countWaterAbove(level, belowPos);
-        }
-
-        return Double.NaN;
     }
 
     private void shareFluidWithNeighbors() {
@@ -368,28 +349,6 @@ public class BallastTankBlockEntity extends BlockEntity
                     .append(Component.literal(": " + cluster.size()).withStyle(ChatFormatting.GRAY)));
         }
         return true;
-    }
-
-    private static int countWaterAbove(Level level, BlockPos pos) {
-        int depth = 0;
-        BlockPos.MutableBlockPos m = new BlockPos.MutableBlockPos();
-        for (int y = pos.getY() + 1; y < pos.getY() + 1 + 200; y++) {
-            m.set(pos.getX(), y, pos.getZ());
-            if (com.maxenonyme.createsubmarine.submarine.compartment.CompartmentTracker.realFluidState(level, m)
-                    .is(net.minecraft.tags.FluidTags.WATER)) {
-                depth++;
-            } else {
-                break;
-            }
-        }
-        return depth;
-    }
-
-    private static Vector3d worldToLocal(SubLevelAccess sub, Vector3d vector) {
-        return sub.logicalPose()
-                .orientation()
-                .conjugate(new org.joml.Quaterniond())
-                .transform(vector);
     }
 
     @Override
@@ -465,7 +424,7 @@ public class BallastTankBlockEntity extends BlockEntity
                     tankEntity.worldPosition.getX() + 0.5,
                     tankEntity.worldPosition.getY() + 0.5,
                     tankEntity.worldPosition.getZ() + 0.5);
-            Vector3d localImpulse = worldToLocal(sub, new Vector3d(0.0, impulseY, 0.0));
+            Vector3d localImpulse = WaterUtil.worldToLocal(sub, new Vector3d(0.0, impulseY, 0.0));
             forceGroup.applyAndRecordPointForce(localPoint, localImpulse);
         }
 
@@ -521,7 +480,7 @@ public class BallastTankBlockEntity extends BlockEntity
         if (Math.abs(impulseX) <= 0.01 && Math.abs(impulseZ) <= 0.01)
             return;
 
-        Vector3d localImpulse = worldToLocal(sub, new Vector3d(impulseX, 0.0, impulseZ));
+        Vector3d localImpulse = WaterUtil.worldToLocal(sub, new Vector3d(impulseX, 0.0, impulseZ));
         forceGroup.applyAndRecordPointForce(localPoint, localImpulse);
     }
 
