@@ -4,6 +4,7 @@ import com.maxenonyme.createsubmarine.submarine.block.entity.renderer.Electrolyz
 import com.maxenonyme.createsubmarine.submarine.client.RotatedHitboxDebugRenderer;
 import com.maxenonyme.createsubmarine.submarine.client.ShapeVizRenderer;
 import com.maxenonyme.createsubmarine.submarine.client.SubLevelCrackRenderer;
+import com.maxenonyme.createsubmarine.submarine.client.PlateDebugOverlay;
 import com.maxenonyme.createsubmarine.submarine.client.SubmarineFogHandler;
 import com.maxenonyme.createsubmarine.submarine.client.WatermarkOverlay;
 import com.maxenonyme.createsubmarine.submarine.client.renderer.AllPartialModels;
@@ -45,6 +46,7 @@ public final class CreateSubmarineClient {
         modEventBus.addListener(CreateSubmarineClient::onClientSetup);
         modEventBus.addListener(CreateSubmarineClient::onRegisterRenderers);
         modEventBus.addListener(CreateSubmarineClient::onRegisterScreens);
+        modEventBus.addListener(CreateSubmarineClient::onRegisterLayers);
         modEventBus.addListener(CreateSubmarineClient::onRegisterClientExtensions);
         com.maxenonyme.createsubmarine.submarine.util.CrackUtil.setChecker(SubLevelCrackRenderer::hasCrack);
 
@@ -57,6 +59,7 @@ public final class CreateSubmarineClient {
         NeoForge.EVENT_BUS.addListener(
                 com.maxenonyme.createsubmarine.submarine.client.DeepSeasUpdateScreen::onScreenOpening);
 
+        NeoForge.EVENT_BUS.register(PlateDebugOverlay.class);
         NeoForge.EVENT_BUS.register(SubmarineFogHandler.class);
         NeoForge.EVENT_BUS.register(SubLevelCrackRenderer.class);
         NeoForge.EVENT_BUS.register(ShapeVizRenderer.class);
@@ -88,6 +91,9 @@ public final class CreateSubmarineClient {
         event.registerEntityRenderer(
                 CreateSubmarine.SONAR_PINGER_ENTITY.get(),
                 ctx -> new SonarPingerRenderer(ctx));
+        event.registerEntityRenderer(
+                CreateSubmarine.HARPOON_ENTITY.get(),
+                com.maxenonyme.createsubmarine.submarine.client.renderer.HarpoonEntityRenderer::new);
         event.registerBlockEntityRenderer(
                 CreateSubmarine.PULLEY_BE.get(),
                 com.maxenonyme.createsubmarine.submarine.block.entity.renderer.PulleyBlockEntityRenderer::new);
@@ -100,6 +106,13 @@ public final class CreateSubmarineClient {
         event.registerBlockEntityRenderer(
                 CreateSubmarine.BAROMETER_BE.get(),
                 com.maxenonyme.createsubmarine.submarine.block.entity.renderer.BarometerBlockEntityRenderer::new);
+    }
+
+    private static void onRegisterLayers(
+            net.neoforged.neoforge.client.event.EntityRenderersEvent.RegisterLayerDefinitions event) {
+        event.registerLayerDefinition(
+                com.maxenonyme.createsubmarine.submarine.client.model.HarpoonModel.LAYER_LOCATION,
+                com.maxenonyme.createsubmarine.submarine.client.model.HarpoonModel::createBodyLayer);
     }
 
     private static void onRegisterClientExtensions(

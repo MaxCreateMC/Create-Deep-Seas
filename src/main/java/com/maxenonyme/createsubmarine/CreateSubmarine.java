@@ -287,6 +287,15 @@ public class CreateSubmarine {
                         () -> new com.maxenonyme.createsubmarine.submarine.sonar.SonarPingerItem(
                                         new Item.Properties().rarity(net.minecraft.world.item.Rarity.UNCOMMON)));
 
+        public static final Supplier<EntityType<com.maxenonyme.createsubmarine.submarine.item.harpoon_gun.HarpoonEntity>> HARPOON_ENTITY = ENTITY_TYPES
+                        .register("harpoon", () -> EntityType.Builder
+                                        .<com.maxenonyme.createsubmarine.submarine.item.harpoon_gun.HarpoonEntity>of(
+                                                        com.maxenonyme.createsubmarine.submarine.item.harpoon_gun.HarpoonEntity::new,
+                                                        net.minecraft.world.entity.MobCategory.MISC)
+                                        .sized(0.25F, 0.25F)
+                                        .clientTrackingRange(8)
+                                        .build(CreateSubmarine.MOD_ID + ":harpoon"));
+
         public static final Supplier<Item> LEAK_DETECTOR = ITEMS.register("leak_detector",
                         () -> new com.maxenonyme.createsubmarine.submarine.item.leak_detector.LeakDetectorItem(
                                         new Item.Properties().rarity(net.minecraft.world.item.Rarity.EPIC).stacksTo(1)));
@@ -294,6 +303,10 @@ public class CreateSubmarine {
         public static final Supplier<Item> WARDING_STAFF = ITEMS.register("warding_staff",
                         () -> new com.maxenonyme.createsubmarine.submarine.item.warding_staff.WardingStaffItem(
                                         new Item.Properties().rarity(net.minecraft.world.item.Rarity.EPIC).stacksTo(1)));
+
+        public static final Supplier<Item> HARPOON_GUN = ITEMS.register("harpoon_gun",
+                        () -> new com.maxenonyme.createsubmarine.submarine.item.harpoon_gun.HarpoonGunItem(
+                                        new Item.Properties().stacksTo(1).rarity(net.minecraft.world.item.Rarity.UNCOMMON)));
 
         public static final Supplier<Item> PURGE_STAFF = ITEMS.register("purge_staff",
                         () -> new com.maxenonyme.createsubmarine.submarine.item.purge_staff.PurgeStaffItem(
@@ -402,6 +415,7 @@ public class CreateSubmarine {
                 NeoForge.EVENT_BUS.addListener(com.maxenonyme.AbyssDimension.system.LianaLODOptimizer::onServerTick);
                 NeoForge.EVENT_BUS.addListener(com.maxenonyme.AbyssDimension.system.SubmarineLianaCommand::onServerTick);
                 NeoForge.EVENT_BUS.addListener(com.maxenonyme.AbyssDimension.worldgen.WorldgenLianaHandler::onChunkLoad);
+                NeoForge.EVENT_BUS.addListener(com.maxenonyme.createsubmarine.worldgen.BoundaryBlockHandler::onChunkLoad);
                 NeoForge.EVENT_BUS.addListener(com.maxenonyme.AbyssDimension.worldgen.WorldgenLianaHandler::onChunkUnload);
                 NeoForge.EVENT_BUS.addListener(
                                 com.maxenonyme.AbyssDimension.worldgen.WorldgenLianaHandler::onServerTick);
@@ -413,6 +427,7 @@ public class CreateSubmarine {
                                 com.maxenonyme.AbyssDimension.system.SubmarineLianaCommand::register);
                 NeoForge.EVENT_BUS.addListener(com.maxenonyme.createsubmarine.submarine.system.SteelCablePhysicsSystem::onServerTick);
                 NeoForge.EVENT_BUS.addListener(com.maxenonyme.createsubmarine.submarine.system.CableElectrificationSystem::onServerTick);
+                NeoForge.EVENT_BUS.addListener(com.maxenonyme.createsubmarine.submarine.util.HarpoonRopeHandler::onServerTick);
                 NeoForge.EVENT_BUS.addListener(
                                 com.maxenonyme.createsubmarine.submarine.system.WrenchRepairHandler::onRightClickBlock);
                 NeoForge.EVENT_BUS.addListener(this::onBlockPlaceAboveSensor);
@@ -630,6 +645,8 @@ public class CreateSubmarine {
                         itemToSection.put(ResourceLocation.fromNamespaceAndPath(MOD_ID, "barometer"), subSection);
                         tabItems.add(ARRESTING_HOOK_ITEM::get);
                         itemToSection.put(ResourceLocation.fromNamespaceAndPath(MOD_ID, "arresting_hook"), subSection);
+                        tabItems.add(HARPOON_GUN::get);
+                        itemToSection.put(ResourceLocation.fromNamespaceAndPath(MOD_ID, "harpoon_gun"), subSection);
                 } catch (Exception ignored) {
                 }
         }

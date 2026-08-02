@@ -1,0 +1,6 @@
+{
+  "parent": "create_submarine:item/custom_rendered",
+  "textures": {
+    "particle": "create_submarine:item/harpoon_gun_cannon"
+  }
+}

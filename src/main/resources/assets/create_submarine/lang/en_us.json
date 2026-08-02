@@ -156,6 +156,8 @@
   "item.create_submarine.purge_staff": "Purge Staff",
   "item.create_submarine.leak_detector": "Leak Detector",
   "item.create_submarine.steel_cable": "Steel Cable",
+  "item.create_submarine.harpoon_gun": "Harpoon Gun",
+  "entity.create_submarine.harpoon": "Harpoon",
   "itemGroup.create_submarine": "Create Deep Seas",
   "item.create_submarine.underwater_mine.tooltip.summary": "When attached to a Create Aeronautics contraption,\nthis mine will detonate if entities or\nboats get too close.",
   "create_submarine.configuration.submarinePropellerPowerMultiplier": "Submarine Propeller Power",

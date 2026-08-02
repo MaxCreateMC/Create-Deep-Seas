@@ -1,15 +1,9 @@
 {
-  "neoforge:conditions": [
-    {
-      "type": "create_submarine:config_enabled",
-      "config_key": "enableAbyssDimension"
-    }
-  ],
   "firstOctave": -4,
   "amplitudes": [
-    1.0,
-    1.0,
-    1.0,
-    1.0
+    0.125,
+    0.125,
+    0.125,
+    0.125
   ]
 }

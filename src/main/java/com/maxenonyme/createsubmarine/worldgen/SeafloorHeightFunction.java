@@ -24,7 +24,7 @@ public class SeafloorHeightFunction implements DensityFunction {
         short[] tile = SeafloorGenerator.getOrGenerateTile((int) tileX, (int) tileZ);
         int lx = x - (int) (tileX * TILE_SIZE);
         int lz = z - (int) (tileZ * TILE_SIZE);
-        return tile[lz * TILE_SIZE + lx] & 0xFFFF;
+        return tile[lz * TILE_SIZE + lx];
     }
 
     @Override
@@ -39,12 +39,12 @@ public class SeafloorHeightFunction implements DensityFunction {
 
     @Override
     public double minValue() {
-        return -700.0;
+        return -2048.0;
     }
 
     @Override
     public double maxValue() {
-        return 700.0;
+        return 2048.0;
     }
 
     @Override

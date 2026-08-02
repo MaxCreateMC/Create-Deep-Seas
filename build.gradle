@@ -85,6 +85,7 @@ neoForge {
             programArguments.addAll '--mod', project.mod_id, '--all', '--output', file('src/generated/resources/').getAbsolutePath(), '--existing', file('src/main/resources/').getAbsolutePath()
         }
 
+
         configureEach {
             systemProperty 'forge.logging.markers', 'REGISTRIES'
             logLevel = org.slf4j.event.Level.DEBUG
@@ -186,6 +187,12 @@ task runStressTest(type: JavaExec) {
 task runCalibration(type: JavaExec) {
     classpath = sourceSets.main.runtimeClasspath
     mainClass = 'com.maxenonyme.createsubmarine.submarine.stress.CalibrationRunner'
+    systemProperty 'neoforge.enableModLoading', 'false'
+}
+
+task runWorldgenPreview(type: JavaExec) {
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'com.maxenonyme.createsubmarine.worldgen.WorldgenPreview'
     systemProperty 'neoforge.enableModLoading', 'false'
 }
 

@@ -1,17 +1,48 @@
 {
-  "neoforge:conditions": [
-    {
-      "type": "create_submarine:config_enabled",
-      "config_key": "enableAbyssDimension"
-    }
-  ],
   "type": "create_abyss:abyss",
   "generator": {
     "type": "minecraft:noise",
     "settings": "create_abyss:abyss",
     "biome_source": {
-      "type": "minecraft:fixed",
-      "biome": "create_abyss:abyss"
+      "type": "minecraft:multi_noise",
+      "biomes": [
+        {
+          "biome": "create_abyss:abyss_shallows",
+          "parameters": {
+            "temperature": 0.0,
+            "humidity": 0.0,
+            "continentalness": 0.0,
+            "erosion": 0.0,
+            "depth": 0.0,
+            "weirdness": 0.0,
+            "offset": 0.0
+          }
+        },
+        {
+          "biome": "create_abyss:abyss_continental_shelf",
+          "parameters": {
+            "temperature": 0.0,
+            "humidity": 0.0,
+            "continentalness": -0.15,
+            "erosion": 0.0,
+            "depth": 0.0,
+            "weirdness": 0.0,
+            "offset": 0.0
+          }
+        },
+        {
+          "biome": "create_abyss:abyss_plains",
+          "parameters": {
+            "temperature": 0.0,
+            "humidity": 0.0,
+            "continentalness": -0.5,
+            "erosion": 0.0,
+            "depth": 0.0,
+            "weirdness": 0.0,
+            "offset": 0.0
+          }
+        }
+      ]
     }
   }
 }

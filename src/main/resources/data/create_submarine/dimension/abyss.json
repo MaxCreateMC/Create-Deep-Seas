@@ -7,19 +7,7 @@
       "type": "minecraft:multi_noise",
       "biomes": [
         {
-          "biome": "create_submarine:abyss_plains",
-          "parameters": {
-            "temperature": 0.0,
-            "humidity": 0.0,
-            "continentalness": -0.30,
-            "erosion": 0.0,
-            "depth": 0.0,
-            "weirdness": 0.0,
-            "offset": 0.0
-          }
-        },
-        {
-          "biome": "create_submarine:abyss_continental_shelf",
+          "biome": "create_submarine:abyss_shallows",
           "parameters": {
             "temperature": 0.0,
             "humidity": 0.0,
@@ -31,11 +19,23 @@
           }
         },
         {
-          "biome": "create_submarine:abyss_shallows",
+          "biome": "create_submarine:abyss_continental_shelf",
           "parameters": {
             "temperature": 0.0,
             "humidity": 0.0,
-            "continentalness": 0.30,
+            "continentalness": 0.20,
+            "erosion": 0.0,
+            "depth": 0.0,
+            "weirdness": 0.0,
+            "offset": 0.0
+          }
+        },
+        {
+          "biome": "create_submarine:abyss_plains",
+          "parameters": {
+            "temperature": 0.0,
+            "humidity": 0.0,
+            "continentalness": 0.40,
             "erosion": 0.0,
             "depth": 0.0,
             "weirdness": 0.0,

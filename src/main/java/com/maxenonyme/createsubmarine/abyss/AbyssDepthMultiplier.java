@@ -64,9 +64,9 @@ public record AbyssDepthMultiplier(Holder<DensityFunction> input, Holder<Density
 
         t = t * S;
 
-        double oMin = -0.95 - 0.50 * t;
-        double oNew = oOrig - 2.5 * S;
-        double clampMin = -64.0 * (1 - S) + oMin * S;
+        double oMin = -1.35 - 0.70 * t;
+        double oNew = oOrig - 3.5 * S;
+        double clampMin = -90.0 * (1 - S) + oMin * S;
 
         return Math.max(oNew, clampMin);
     }
@@ -85,12 +85,12 @@ public record AbyssDepthMultiplier(Holder<DensityFunction> input, Holder<Density
 
     @Override
     public double minValue() {
-        return -1.45;
+        return -2.0;
     }
 
     @Override
     public double maxValue() {
-        return 64.0;
+        return 90.0;
     }
 
     @Override

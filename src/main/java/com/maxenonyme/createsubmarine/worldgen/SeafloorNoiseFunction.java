@@ -12,7 +12,9 @@ public class SeafloorNoiseFunction implements DensityFunction {
 
     @Override
     public double compute(FunctionContext ctx) {
-        return SeafloorGenerator.getNoiseAt(ctx.blockX(), ctx.blockZ());
+        // Return negative absolute value so continentalness is in [-1, 0] (ocean-like).
+        // Matches biome source params: shallows=0.0, shelf=-0.15, plains=-0.5
+        return -Math.abs(SeafloorGenerator.getNoiseAt(ctx.blockX(), ctx.blockZ()));
     }
 
     @Override
@@ -32,7 +34,7 @@ public class SeafloorNoiseFunction implements DensityFunction {
 
     @Override
     public double maxValue() {
-        return 1.0;
+        return 0.0;
     }
 
     @Override
