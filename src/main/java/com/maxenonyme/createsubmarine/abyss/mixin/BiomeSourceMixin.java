@@ -30,7 +30,7 @@ public class BiomeSourceMixin {
             }
         } else if (!createsubmarine$abyssWarned) {
             createsubmarine$abyssWarned = true;
-            com.maxenonyme.createsubmarine.CreateSubmarine.LOGGER.warn("[Abyss] Could not find abyss biome holder in registry! Check that create_submarine:abyss biome JSON is loaded.");
+            com.maxenonyme.createsubmarine.CreateSubmarine.LOGGER.warn("[Abyss] Could not find abyss biome holder in registry! Check that create_abyss:abyss biome JSON is loaded.");
         }
     }
 
@@ -53,7 +53,7 @@ public class BiomeSourceMixin {
             var registry = registryAccess.registry(Registries.BIOME);
             if (registry.isPresent()) {
                 var key = ResourceKey.create(Registries.BIOME,
-                        ResourceLocation.fromNamespaceAndPath("create_submarine", "abyss"));
+                        ResourceLocation.fromNamespaceAndPath("create_abyss", "abyss"));
                 var holderOpt = registry.get().getHolder(key);
                 if (holderOpt.isPresent()) {
                     return holderOpt.get();

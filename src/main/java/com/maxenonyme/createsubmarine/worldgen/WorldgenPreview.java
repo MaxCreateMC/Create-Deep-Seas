@@ -245,6 +245,9 @@ public class WorldgenPreview {
         write(iso, "isometric3d_" + REGION_SIZE + (vanilla ? "_vanilla" : ""));
         System.out.println();
 
+        renderLayers(ox, oz, vanilla);
+        exportProfiles(ox, oz, vanilla);
+
         exportAnalysisNormal(heights, biomes, plateIds, minH, maxH, sumH, ox, oz, vanilla);
         System.out.println("Done. All outputs saved to worldgen_preview/");
     }
@@ -905,6 +908,228 @@ public class WorldgenPreview {
             System.err.println("  Failed to write analysis: " + e.getMessage());
         }
         System.out.println("  wrote analysis_" + regionSize + (vanilla ? "_vanilla" : "") + ".txt");
+    }
+
+    // ─── Feature-layer analysis maps (step=8) ───────────────────────────────
+
+    private static void renderLayers(int ox, int oz, boolean vanilla) {
+        int step = 8;
+        int n = REGION_SIZE / step;
+        String suffix = "_" + REGION_SIZE + (vanilla ? "_vanilla" : "");
+
+        System.out.print("Rendering analysis layers ");
+        long t0 = System.nanoTime();
+
+        short[] pidGrid = new short[n * n];
+        byte[] bTypeGrid = new byte[n * n];
+        double[][] layers = new double[5][n * n];
+
+        double[] minV = new double[5];
+        double[] maxV = new double[5];
+        double[] sumV = new double[5];
+        java.util.Arrays.fill(minV, Double.MAX_VALUE);
+        java.util.Arrays.fill(maxV, Double.MIN_VALUE);
+
+        long[] bTypeCount = new long[6];
+        HashMap<Integer, Long> plateCount = new HashMap<>();
+
+        for (int pz = 0; pz < n; pz++) {
+            int wz = oz + pz * step;
+            for (int px = 0; px < n; px++) {
+                int wx = ox + px * step;
+                int idx = pz * n + px;
+
+                short pid = (short) SeafloorGenerator.getPlateAt(wx, wz).hashCode();
+                pidGrid[idx] = pid;
+                plateCount.merge((int) pid, 1L, Long::sum);
+
+                int bType = SeafloorGenerator.getBoundaryTypeAt(wx, wz);
+                bTypeGrid[idx] = (byte) bType;
+                bTypeCount[bType]++;
+
+                double[] vals = {
+                    SeafloorGenerator.getCanyonDepthAt(wx, wz),
+                    SeafloorGenerator.getVentHeightAt(wx, wz),
+                    SeafloorGenerator.getHotspotHeightAt(wx, wz),
+                    SeafloorGenerator.getAbyssalHillsAt(wx, wz),
+                    SeafloorGenerator.getPlateauHeightAt(wx, wz)
+                };
+                for (int i = 0; i < 5; i++) {
+                    layers[i][idx] = vals[i];
+                    if (vals[i] < minV[i]) minV[i] = vals[i];
+                    if (vals[i] > maxV[i]) maxV[i] = vals[i];
+                    sumV[i] += vals[i];
+                }
+            }
+        }
+
+        BufferedImage plateMap = new BufferedImage(n, n, BufferedImage.TYPE_INT_ARGB);
+        BufferedImage boundaryMap = new BufferedImage(n, n, BufferedImage.TYPE_INT_ARGB);
+        BufferedImage tectonicMap = new BufferedImage(n, n, BufferedImage.TYPE_INT_ARGB);
+        BufferedImage canyonMap = new BufferedImage(n, n, BufferedImage.TYPE_INT_ARGB);
+        BufferedImage ventMap = new BufferedImage(n, n, BufferedImage.TYPE_INT_ARGB);
+        BufferedImage hotspotMap = new BufferedImage(n, n, BufferedImage.TYPE_INT_ARGB);
+        BufferedImage hillsMap = new BufferedImage(n, n, BufferedImage.TYPE_INT_ARGB);
+        BufferedImage plateauMap = new BufferedImage(n, n, BufferedImage.TYPE_INT_ARGB);
+        BufferedImage biomeMap = new BufferedImage(n, n, BufferedImage.TYPE_INT_ARGB);
+
+        int lastPct = -1;
+        for (int pz = 0; pz < n; pz++) {
+            int wz = oz + pz * step;
+            for (int px = 0; px < n; px++) {
+                int wx = ox + px * step;
+                int idx = pz * n + px;
+                short pid = pidGrid[idx];
+
+                plateMap.setRGB(px, pz, plateColor(pid));
+                boundaryMap.setRGB(px, pz, boundaryColor(bTypeGrid[idx]));
+
+                double tectonic = SeafloorGenerator.getTectonicModifierAt(wx, wz);
+                tectonicMap.setRGB(px, pz, heat((tectonic + 300.0) / 600.0));
+
+                canyonMap.setRGB(px, pz, heat(layers[0][idx] / 40.0));
+                ventMap.setRGB(px, pz, heat(layers[1][idx] / 23.0));
+                hotspotMap.setRGB(px, pz, heat(layers[2][idx] / 200.0));
+                hillsMap.setRGB(px, pz, heat(layers[3][idx] / 30.0));
+                plateauMap.setRGB(px, pz, heat(layers[4][idx] / 340.0));
+
+                double c = Math.abs(SeafloorGenerator.getContinentAt(wx, wz));
+                int biome = c < 0.10 ? 0 : c < 0.50 ? 1 : 2;
+                biomeMap.setRGB(px, pz, biome == 0 ? 0xFF2F6FB0 : biome == 1 ? 0xFFB09040 : 0xFF304060);
+            }
+            int pct = (pz + 1) * 100 / n;
+            if (pct > lastPct) {
+                System.out.print("." + pct + "%");
+                lastPct = pct;
+            }
+        }
+        System.out.println(" done (" + (System.nanoTime() - t0) / 1_000_000 + " ms)");
+
+        write(plateMap, "plates" + suffix);
+        write(boundaryMap, "boundaries" + suffix);
+        write(tectonicMap, "tectonic" + suffix);
+        write(canyonMap, "canyons" + suffix);
+        write(ventMap, "vents" + suffix);
+        write(hotspotMap, "hotspots" + suffix);
+        write(hillsMap, "abyssal_hills" + suffix);
+        write(plateauMap, "plateaus" + suffix);
+        write(biomeMap, "biomes" + suffix);
+
+        long total = (long) n * n;
+        try (PrintWriter pw = new PrintWriter(new File("worldgen_preview", "layers" + suffix + ".txt"), StandardCharsets.UTF_8)) {
+            pw.println("=== Analysis Layers ===");
+            pw.println("Sampled every " + step + " blocks over " + REGION_SIZE + "x" + REGION_SIZE);
+            pw.println();
+            pw.println("--- Boundary types (samples near each type) ---");
+            String[] bNames = {"none", "convergent", "transpressional", "transform", "transtensional", "divergent"};
+            for (int i = 1; i <= 5; i++) {
+                pw.printf("  %-16s %10d  (%.2f%%)%n", bNames[i], bTypeCount[i], 100.0 * bTypeCount[i] / total);
+            }
+            pw.println();
+            pw.println("--- Feature layers (blocks) ---");
+            String[] names = {"canyon depth", "vent height", "hotspot height", "abyssal hills", "plateau height"};
+            for (int i = 0; i < 5; i++) {
+                pw.printf("  %-14s min=%7.1f  mean=%7.1f  max=%7.1f%n", names[i], minV[i], sumV[i] / total, maxV[i]);
+            }
+            pw.println();
+            pw.println("--- Plate coverage ---");
+            plateCount.entrySet().stream()
+                .sorted((a, b) -> Long.compare(b.getValue(), a.getValue()))
+                .forEach(e -> pw.printf("  Plate %-8d %6.2f%%%n", e.getKey(), 100.0 * e.getValue() / total));
+            pw.println();
+            pw.println("--- Tectonic modifier distribution (samples, 25-block bins) ---");
+            int[] tHist = new int[41];
+            for (int pz = 0; pz < n; pz++) {
+                int wz = oz + pz * step;
+                for (int px = 0; px < n; px++) {
+                    double t = SeafloorGenerator.getTectonicModifierAt(ox + px * step, wz);
+                    int bin = (int) Math.floor((t + 500.0) / 25.0);
+                    tHist[Math.max(0, Math.min(40, bin))]++;
+                }
+            }
+            for (int i = 0; i < 41; i++) {
+                int lo = -500 + i * 25;
+                pw.printf("  [%5d, %5d): %10d%n", lo, lo + 25, tHist[i]);
+            }
+            pw.close();
+        } catch (Exception e) {
+            System.err.println("  Failed to write layers: " + e.getMessage());
+        }
+        System.out.println("  wrote layers" + suffix + ".txt");
+    }
+
+    // ─── Cross-section profiles ─────────────────────────────────────────────
+
+    private static void exportProfiles(int ox, int oz, boolean vanilla) {
+        String suffix = "_" + REGION_SIZE + (vanilla ? "_vanilla" : "");
+        try (PrintWriter pw = new PrintWriter(new File("worldgen_preview", "profiles" + suffix + ".txt"), StandardCharsets.UTF_8)) {
+            pw.println("=== Cross-section profiles (64-block steps) ===");
+            pw.println("cols: x z height biome(0=shal 1=shelf 2=plains) bType(0=none 1=conv 2=transpress 3=transform 4=transtens 5=div)");
+            pw.println("      tectonic canyon vent hotspot hills plateau");
+            int mid = REGION_SIZE / 2;
+            exportProfileLine(pw, ox, oz, 0, mid, 1, 0, "X-axis at Z=" + mid);
+            exportProfileLine(pw, ox, oz, mid, 0, 0, 1, "Z-axis at X=" + mid);
+            exportProfileLine(pw, ox, oz, 0, 0, 1, 1, "Diagonal X=Z");
+            pw.close();
+        } catch (Exception e) {
+            System.err.println("  Failed to write profiles: " + e.getMessage());
+        }
+        System.out.println("  wrote profiles" + suffix + ".txt");
+    }
+
+    private static void exportProfileLine(PrintWriter pw, int ox, int oz, int sx, int sz, int dx, int dz, String title) {
+        pw.println();
+        pw.println("--- " + title + " ---");
+        for (int i = 0; i <= REGION_SIZE; i += 64) {
+            int wx = ox + sx + i * dx;
+            int wz = oz + sz + i * dz;
+            int h = SeafloorGenerator.getHeightAt(wx, wz);
+            double c = Math.abs(SeafloorGenerator.getContinentAt(wx, wz));
+            int biome = c < 0.10 ? 0 : c < 0.50 ? 1 : 2;
+            int bType = SeafloorGenerator.getBoundaryTypeAt(wx, wz);
+            double tectonic = SeafloorGenerator.getTectonicModifierAt(wx, wz);
+            double canyon = SeafloorGenerator.getCanyonDepthAt(wx, wz);
+            double vent = SeafloorGenerator.getVentHeightAt(wx, wz);
+            double hotspot = SeafloorGenerator.getHotspotHeightAt(wx, wz);
+            double hills = SeafloorGenerator.getAbyssalHillsAt(wx, wz);
+            double plateau = SeafloorGenerator.getPlateauHeightAt(wx, wz);
+            pw.printf("  %6d %6d %5d %d %d %7.1f %5.1f %5.1f %6.1f %5.1f %6.1f%n",
+                wx, wz, h, biome, bType, tectonic, canyon, vent, hotspot, hills, plateau);
+        }
+    }
+
+    private static int plateColor(int pid) {
+        long h = (pid * 2654435761L) & 0x7FFFFFFF;
+        float hue = (h % 10000) / 10000.0f;
+        return java.awt.Color.HSBtoRGB(hue, 0.55f, 0.85f);
+    }
+
+    private static int boundaryColor(int t) {
+        switch (t) {
+            case 1: return 0xFFFF4444;  // convergent
+            case 2: return 0xFFFF8C2E;  // transpressional
+            case 3: return 0xFFE8E8E8;  // transform
+            case 4: return 0xFFFF3DFF;  // transtensional
+            case 5: return 0xFF2EF4FF;  // divergent
+            default: return 0xFF101418; // none
+        }
+    }
+
+    private static int heat(double t) {
+        t = Math.max(0, Math.min(1, t));
+        int r, g, b;
+        if (t < 0.5) {
+            double u = t * 2;
+            r = (int) (20 + u * 40);
+            g = (int) (20 + u * 170);
+            b = (int) (120 + u * 135);
+        } else {
+            double u = (t - 0.5) * 2;
+            r = (int) (60 + u * 195);
+            g = (int) (190 - u * 100);
+            b = (int) (255 - u * 145);
+        }
+        return 0xFF000000 | (r << 16) | (g << 8) | b;
     }
 
     // ─── Color helpers ─────────────────────────────────────────────────────

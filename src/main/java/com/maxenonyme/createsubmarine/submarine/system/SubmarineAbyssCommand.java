@@ -31,7 +31,7 @@ public final class SubmarineAbyssCommand {
 
     private static final ResourceKey<Level> ABYSS_KEY = ResourceKey.create(
             net.minecraft.core.registries.Registries.DIMENSION,
-            ResourceLocation.fromNamespaceAndPath("create_submarine", "abyss"));
+            ResourceLocation.fromNamespaceAndPath("create_abyss", "abyss"));
 
     private static final SuggestionProvider<CommandSourceStack> PLATE_SUGGESTER =
         (ctx, builder) -> suggestPlateNames(builder);

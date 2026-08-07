@@ -11,7 +11,7 @@ import net.neoforged.neoforge.client.event.ViewportEvent;
 
 @EventBusSubscriber(modid = "create_submarine", bus = EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
 public class AbyssDimensionClient {
-    private static final ResourceLocation ABYSS_DIM = ResourceLocation.fromNamespaceAndPath("create_submarine", "abyss");
+    private static final ResourceLocation ABYSS_DIM = ResourceLocation.fromNamespaceAndPath("create_abyss", "abyss");
 
     @SubscribeEvent
     public static void onRegisterDimensionEffects(RegisterDimensionSpecialEffectsEvent event) {
@@ -29,8 +29,13 @@ public class AbyssDimensionClient {
             Minecraft mc = Minecraft.getInstance();
             if (mc.level != null && mc.level.dimension().location().equals(ABYSS_DIM)) {
                 if (event.getCamera().getFluidInCamera() == net.minecraft.world.level.material.FogType.WATER) {
-                    event.setNearPlaneDistance(-4.0F);
-                    event.setFarPlaneDistance(32.0F);
+                    if (mc.player != null && mc.player.hasEffect(net.minecraft.world.effect.MobEffects.NIGHT_VISION)) {
+                        event.setNearPlaneDistance(-1.0E5F);
+                        event.setFarPlaneDistance(1.0E6F);
+                    } else {
+                        event.setNearPlaneDistance(-4.0F);
+                        event.setFarPlaneDistance(32.0F);
+                    }
                     event.setCanceled(true);
                 } else {
                     event.setNearPlaneDistance(0.0F);

@@ -94,7 +94,7 @@ public class MultiNoiseBiomeSourceMixin {
             var registry = registryAccess.registry(Registries.BIOME);
             if (registry.isPresent()) {
                 var key = ResourceKey.create(Registries.BIOME,
-                        ResourceLocation.fromNamespaceAndPath("create_submarine", "abyss"));
+                        ResourceLocation.fromNamespaceAndPath("create_abyss", "abyss"));
                 var holderOpt = registry.get().getHolder(key);
                 if (holderOpt.isPresent()) {
                     return holderOpt.get();

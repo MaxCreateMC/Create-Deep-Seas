@@ -30,6 +30,21 @@ public class CreateAbyss {
     public static final DeferredRegister<CreativeModeTab> CREATIVE_MODE_TABS = DeferredRegister
             .create(Registries.CREATIVE_MODE_TAB, MOD_ID);
 
+    public static final DeferredRegister<com.mojang.serialization.MapCodec<? extends net.minecraft.world.level.levelgen.DensityFunction>> DENSITY_FUNCTIONS = DeferredRegister
+            .create(net.minecraft.core.registries.BuiltInRegistries.DENSITY_FUNCTION_TYPE, MOD_ID);
+
+    public static final Supplier<com.mojang.serialization.MapCodec<com.maxenonyme.createsubmarine.abyss.AbyssDepthMultiplier>> ABYSS_DEPTH_MULTIPLIER = DENSITY_FUNCTIONS
+            .register("abyss_depth_multiplier",
+                    () -> com.maxenonyme.createsubmarine.abyss.AbyssDepthMultiplier.CODEC);
+
+    public static final Supplier<com.mojang.serialization.MapCodec<com.maxenonyme.createsubmarine.worldgen.SeafloorHeightFunction>> SEAFLOOR_HEIGHT = DENSITY_FUNCTIONS
+            .register("seafloor_height",
+                    () -> com.maxenonyme.createsubmarine.worldgen.SeafloorHeightFunction.CODEC);
+
+    public static final Supplier<com.mojang.serialization.MapCodec<com.maxenonyme.createsubmarine.worldgen.SeafloorNoiseFunction>> SEAFLOOR_NOISE = DENSITY_FUNCTIONS
+            .register("seafloor_noise",
+                    () -> com.maxenonyme.createsubmarine.worldgen.SeafloorNoiseFunction.CODEC);
+
     public static final Supplier<CreativeModeTab> ABYSS_TAB = CREATIVE_MODE_TABS.register("abyss_tab",
             () -> CreativeModeTab.builder()
                     .title(Component.translatable("itemGroup.create_abyss.abyss_tab"))
@@ -58,6 +73,7 @@ public class CreateAbyss {
         BLOCKS.register(modEventBus);
         ITEMS.register(modEventBus);
         BLOCK_ENTITIES.register(modEventBus);
+        DENSITY_FUNCTIONS.register(modEventBus);
         CREATIVE_MODE_TABS.register(modEventBus);
         modEventBus.addListener(this::registerPayloads);
         NeoForge.EVENT_BUS.addListener(com.maxenonyme.AbyssDimension.system.LianaLODOptimizer::onServerTick);

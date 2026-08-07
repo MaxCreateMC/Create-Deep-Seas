@@ -1,0 +1,1 @@
+{   "type": "lithostitched:wrap_density_function",   "target_function": "minecraft:overworld/offset",   "wrapper_function": {     "type": "create_abyss:abyss_depth_multiplier",     "input": "minecraft:overworld/offset",     "continents": "minecraft:overworld/continents"   } }

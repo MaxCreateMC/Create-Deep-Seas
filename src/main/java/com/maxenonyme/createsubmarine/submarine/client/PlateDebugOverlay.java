@@ -15,7 +15,7 @@ public class PlateDebugOverlay {
 
     private static final ResourceKey<Level> ABYSS_KEY = ResourceKey.create(
             net.minecraft.core.registries.Registries.DIMENSION,
-            ResourceLocation.fromNamespaceAndPath("create_submarine", "abyss"));
+            ResourceLocation.fromNamespaceAndPath("create_abyss", "abyss"));
 
     @SubscribeEvent
     public static void onDebugText(CustomizeGuiOverlayEvent.DebugText event) {

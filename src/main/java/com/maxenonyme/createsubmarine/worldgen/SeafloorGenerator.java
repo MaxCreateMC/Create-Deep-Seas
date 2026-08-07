@@ -27,6 +27,8 @@ public class SeafloorGenerator {
 
     // --- Plate Tectonics Constants ---
     public static final int PLATE_CELL_SIZE = 5000;
+    private static final double PLATE_WARP_SCALE = 1.0 / 6000.0;
+    private static final double PLATE_WARP_AMP = 800.0;
     private static final double ISLAND_ARC_OFFSET = 400.0;
     private static final int CANYON_CELL_SIZE = 120;
     private static final double CANYON_MAX_DEPTH = 40.0;
@@ -49,7 +51,7 @@ public class SeafloorGenerator {
             return;
         }
         try {
-            InputStream is = SeafloorGenerator.class.getResourceAsStream("/data/create_submarine/tectonic_plates/default.json");
+            InputStream is = SeafloorGenerator.class.getResourceAsStream("/data/create_abyss/tectonic_plates/default.json");
             if (is != null) {
                 String json = new String(is.readAllBytes(), StandardCharsets.UTF_8);
                 config = PlateTectonicsConfig.CODEC.parse(JsonOps.INSTANCE, new Gson().fromJson(json, JsonElement.class)).result().orElse(null);
@@ -120,6 +122,66 @@ public class SeafloorGenerator {
         return n;
     }
 
+    private static PerlinNoise plateWarpNoise;
+
+    private static PerlinNoise getPlateWarpNoise() {
+        PerlinNoise n = plateWarpNoise;
+        if (n == null) {
+            synchronized (SeafloorGenerator.class) {
+                n = plateWarpNoise;
+                if (n == null) {
+                    n = new PerlinNoise(activeSeed + 37, 2, 2.0, 0.5);
+                    plateWarpNoise = n;
+                }
+            }
+        }
+        return n;
+    }
+
+    private static PerlinNoise abyssalNoise;
+
+    private static PerlinNoise getAbyssalNoise() {
+        PerlinNoise n = abyssalNoise;
+        if (n == null) {
+            synchronized (SeafloorGenerator.class) {
+                n = abyssalNoise;
+                if (n == null) {
+                    n = new PerlinNoise(activeSeed + 61, 3, 2.0, 0.5);
+                    abyssalNoise = n;
+                }
+            }
+        }
+        return n;
+    }
+
+    private static PerlinNoise plateauNoise;
+
+    private static PerlinNoise getPlateauNoise() {
+        PerlinNoise n = plateauNoise;
+        if (n == null) {
+            synchronized (SeafloorGenerator.class) {
+                n = plateauNoise;
+                if (n == null) {
+                    n = new PerlinNoise(activeSeed + 71, 3, 2.0, 0.5);
+                    plateauNoise = n;
+                }
+            }
+        }
+        return n;
+    }
+
+    // Domain-warped query point for plate Voronoi (same warp applied to all seeds,
+    // so cell boundaries become sinuous instead of straight bisectors).
+    private static double[] plateWarp(int wx, int wz) {
+        PerlinNoise n = getPlateWarpNoise();
+        double sx = wx * PLATE_WARP_SCALE;
+        double sz = wz * PLATE_WARP_SCALE;
+        return new double[]{
+            wx + n.fbm(sx, sz) * PLATE_WARP_AMP,
+            wz + n.fbm(sx + 1000, sz + 1000) * PLATE_WARP_AMP
+        };
+    }
+
     private static long tileKey(int tileX, int tileZ) {
         return ((long) tileX << 32) | (tileZ & 0xFFFFFFFFL);
     }
@@ -163,6 +225,7 @@ public class SeafloorGenerator {
     private static PlateInfo getPlateInfo(int wx, int wz) {
         int cellX = Math.floorDiv(wx, PLATE_CELL_SIZE);
         int cellZ = Math.floorDiv(wz, PLATE_CELL_SIZE);
+        double[] w = plateWarp(wx, wz);
         double nearestDist2 = Double.MAX_VALUE;
         PlateInfo nearest = null;
         for (int dx = -1; dx <= 1; dx++) {
@@ -170,7 +233,7 @@ public class SeafloorGenerator {
                 int cx = cellX + dx;
                 int cz = cellZ + dz;
                 PlateInfo info = buildPlateInfo(cx, cz);
-                double d2 = (wx - info.seedX()) * (wx - info.seedX()) + (wz - info.seedZ()) * (wz - info.seedZ());
+                double d2 = (w[0] - info.seedX()) * (w[0] - info.seedX()) + (w[1] - info.seedZ()) * (w[1] - info.seedZ());
                 if (d2 < nearestDist2) {
                     nearestDist2 = d2;
                     nearest = info;
@@ -183,11 +246,13 @@ public class SeafloorGenerator {
     private static record PairData(double convergence, double shear, double dist, double nx, double nz,
                                     PlateInfo a, PlateInfo b) {}
 
-    // Signed distance from boundary bisector (positive toward plate A, negative toward B)
+    // Signed distance from boundary bisector (positive toward plate A, negative toward B),
+    // measured in warped space so it stays consistent with the warped Voronoi assignment.
     private static double signedBoundaryDist(int wx, int wz, PlateInfo a, PlateInfo b, double nx, double nz) {
+        double[] w = plateWarp(wx, wz);
         double mx = (a.seedX() + b.seedX()) * 0.5;
         double mz = (a.seedZ() + b.seedZ()) * 0.5;
-        return (wx - mx) * nx + (wz - mz) * nz;
+        return (w[0] - mx) * nx + (w[1] - mz) * nz;
     }
 
     private static record NearestPlates(PairData[] pairs, PlateInfo p1, PlateInfo p2, PlateInfo p3) {}
@@ -213,13 +278,14 @@ public class SeafloorGenerator {
     private static NearestPlates findNearestPlates(int wx, int wz) {
         int cellX = Math.floorDiv(wx, PLATE_CELL_SIZE);
         int cellZ = Math.floorDiv(wz, PLATE_CELL_SIZE);
+        double[] w = plateWarp(wx, wz);
         PlateInfo[] infos = new PlateInfo[3];
         double[] dist2 = new double[]{Double.MAX_VALUE, Double.MAX_VALUE, Double.MAX_VALUE};
 
         for (int dx = -1; dx <= 1; dx++) {
             for (int dz = -1; dz <= 1; dz++) {
                 PlateInfo info = buildPlateInfo(cellX + dx, cellZ + dz);
-                double d2 = (wx - info.seedX()) * (wx - info.seedX()) + (wz - info.seedZ()) * (wz - info.seedZ());
+                double d2 = (w[0] - info.seedX()) * (w[0] - info.seedX()) + (w[1] - info.seedZ()) * (w[1] - info.seedZ());
                 for (int i = 0; i < 3; i++) {
                     if (d2 < dist2[i]) {
                         for (int j = 2; j > i; j--) {
@@ -281,8 +347,10 @@ public class SeafloorGenerator {
         // Obliquity: 0 = pure convergence/divergence, π/2 = pure strike-slip
         double obliquity = Math.atan2(shear, Math.max(absConv, 1e-10));
 
-        // Strength scaling (convergence 0-15 cm/yr maps to 0-1)
-        double strength = Math.min(absConv, 15.0) / 15.0;
+        // Strength scaling. Config velocities are in units where 1.0 ≈ 10 cm/yr,
+        // so the relative convergence/shear must be scaled up to cm/yr before
+        // mapping 0-15 cm/yr onto 0-1.
+        double strength = Math.min(Math.abs(convergence) * 10.0, 15.0) / 15.0;
 
         boolean aOc = pd.a.oceanic(), bOc = pd.b.oceanic();
         boolean bothContinental = !aOc && !bOc;
@@ -315,7 +383,7 @@ public class SeafloorGenerator {
                 }
             } else if (obliquity < Math.PI / 3) { // 30°-60° — oblique convergence
                 // TRANSPRESSIONAL
-                double tgSpeed = Math.abs(shear);
+                double tgSpeed = Math.abs(shear) * 10.0;
                 double transpress = 250.0 * Math.exp(-d*d/(2.0*3025.0)) * Math.min(tgSpeed / 50.0, 2.0);
                 if (transpress > modifier) modifier = transpress;
             } else { // ≥ 60° — strike-slip dominated
@@ -365,7 +433,9 @@ public class SeafloorGenerator {
 
                 double mx = (a.seedX() + b.seedX()) * 0.5;
                 double mz = (a.seedZ() + b.seedZ()) * 0.5;
-                double signedDist = (wx - mx) * nx + (wz - mz) * nz;
+                // Warped signed distance so weights stay centered on the same
+                // (warped) boundary the modifier profiles use
+                double signedDist = signedBoundaryDist(wx, wz, a, b, nx, nz);
                 double d = Math.abs(signedDist);
                 if (d > 1200) continue;
 
@@ -387,6 +457,59 @@ public class SeafloorGenerator {
     // Legacy entry-point for backward compat (computes plates per call)
     public static double computeTectonicModifier(int wx, int wz) {
         return computeTectonicModifier(wx, wz, computeUniquePlates(wx, wz));
+    }
+
+    // --- Public analysis accessors (used by the worldgen preview / overlays) ---
+
+    public static double getTectonicModifierAt(int wx, int wz) {
+        return computeTectonicModifier(wx, wz);
+    }
+
+    public static double getCanyonDepthAt(int wx, int wz) {
+        return computeCanyonDepth(wx, wz, getNoiseAt(wx, wz));
+    }
+
+    public static double getVentHeightAt(int wx, int wz) {
+        NearestPlates np = findNearestPlates(wx, wz);
+        PairData pd = np != null && np.pairs() != null && np.pairs().length > 0 ? np.pairs()[0] : null;
+        return computeVentHeight(wx, wz, pd);
+    }
+
+    public static double getHotspotHeightAt(int wx, int wz) {
+        return computeHotspotHeight(wx, wz);
+    }
+
+    public static double getAbyssalHillsAt(int wx, int wz) {
+        return computeAbyssalHills(wx, wz, Math.abs(getNoiseAt(wx, wz)));
+    }
+
+    public static double getPlateauHeightAt(int wx, int wz) {
+        return computePlateauHeight(wx, wz, Math.abs(getNoiseAt(wx, wz)));
+    }
+
+    public static double getContinentAt(int wx, int wz) {
+        return getNoiseAt(wx, wz);
+    }
+
+    // Boundary classification for the two nearest plates.
+    // 0 = none, 1 = convergent, 2 = transpressional, 3 = transform,
+    // 4 = transtensional, 5 = divergent (same classes as the tectonic simulator)
+    public static int getBoundaryTypeAt(int wx, int wz) {
+        NearestPlates np = findNearestPlates(wx, wz);
+        if (np == null) return 0;
+        PairData[] pairs = np.pairs();
+        if (pairs == null || pairs.length == 0) return 0;
+        PairData p = pairs[0];
+        if (p == null) return 0;
+        double bdDist = Math.abs(signedBoundaryDist(wx, wz, p.a(), p.b(), p.nx(), p.nz()));
+        if (bdDist > 150) return 0;
+        double absConv = Math.abs(p.convergence());
+        if (absConv < 0.001) return 3;
+        double obliq = Math.toDegrees(Math.atan2(p.shear(), absConv));
+        if (p.convergence() > 0) {
+            return obliq < 20 ? 1 : (obliq < 65 ? 2 : 3);
+        }
+        return obliq < 20 ? 5 : (obliq < 65 ? 4 : 3);
     }
 
     // --- Submarine Canyons (purely noise-based, no grid cells) ---
@@ -421,8 +544,9 @@ public class SeafloorGenerator {
 
     private static double computeVentHeight(int wx, int wz, PairData bd) {
         if (bd == null || bd.convergence >= -0.1) return 0;
-        // Only at divergent boundaries near ridge crest
-        if (bd.dist > 300) return 0;
+        // Only at divergent boundaries near the ridge crest (warped distance to the boundary)
+        double bdDist = Math.abs(signedBoundaryDist(wx, wz, bd.a(), bd.b(), bd.nx(), bd.nz()));
+        if (bdDist > 40) return 0;
 
         int cellX = (int) Math.floor(wx / VENT_CELL_SIZE);
         int cellZ = (int) Math.floor(wz / VENT_CELL_SIZE);
@@ -473,14 +597,56 @@ public class SeafloorGenerator {
                 double chainWidth = 80 + speed * 20;
                 double chainLen = 2000 + speed * 500;
 
-                double widthFactor = Math.exp(-(along * along) / (chainWidth * chainWidth));
-                double lenFactor = Math.exp(-(across * across) / (chainLen * chainLen));
-                double height = 60 + rng.nextDouble() * 140;
-                double h = height * widthFactor * lenFactor * (1.0 - plumeDist / (chainLen * 2));
-                if (h > maxHeight) maxHeight = h;
+        double widthFactor = Math.exp(-(along * along) / (chainWidth * chainWidth));
+        double lenFactor = Math.exp(-(across * across) / (chainLen * chainLen));
+        double height = 60 + rng.nextDouble() * 140;
+        double h = height * widthFactor * lenFactor * (1.0 - plumeDist / (chainLen * 2));
+        if (h > maxHeight) maxHeight = h;
             }
         }
         return maxHeight;
+    }
+
+    // --- Abyssal Hills (ridge-parallel striations on the deep floor) ---
+
+    // Deep oceanic crust is covered in elongated hills running parallel to the
+    // spreading ridge (perpendicular to plate motion). Anisotropic noise with the
+    // across-motion frequency much higher than the along-motion frequency creates
+    // grooved fabric, domain-warped so the ridges meander. Amplitude grows with
+    // depth (older, deeper crust has the fullest fabric).
+    private static double computeAbyssalHills(int wx, int wz, double absC) {
+        double deep = Math.max(0.0, Math.min(1.0, (absC - 0.15) / 0.35));
+        if (deep <= 0.01) return 0;
+        PerlinNoise an = getAbyssalNoise();
+        PlateInfo plate = getPlateInfo(wx, wz);
+        double spd = Math.hypot(plate.vx(), plate.vz());
+        double dirX = spd > 1e-6 ? plate.vx() / spd : 1;
+        double dirZ = spd > 1e-6 ? plate.vz() / spd : 0;
+        double along = (wx * dirX + wz * dirZ) * 0.0022;
+        double across = (-wx * dirZ + wz * dirX) * 0.009;
+        double warp = an.noise(along * 0.7, across * 0.4) * 1.2;
+        double v = an.noise(along * 0.5 + warp, across + warp * 0.5);
+        double ridge = Math.max(0.0, Math.abs(v) - 0.35) / 0.65;
+        double amp = (6.0 + 30.0 * deep) * (0.6 + 0.4 * Math.abs(an.noise(along * 0.15, across * 0.15)));
+        return ridge * amp;
+    }
+
+    // --- Oceanic Plateaus (Large Igneous Provinces) ---
+
+    // Broad, steep-edged, flat-crowned rises on oceanic crust (Ontong Java,
+    // Shatsky, Kerguelen style). Thresholded low-frequency noise picks out
+    // large blobs; the crown is compressed so plateaus read as flat-topped.
+    private static double computePlateauHeight(int wx, int wz, double absC) {
+        PlateInfo plate = getPlateInfo(wx, wz);
+        if (!plate.oceanic()) return 0;
+        PerlinNoise pn = getPlateauNoise();
+        double n = pn.fbm(wx * 0.00042, wz * 0.00042);
+        double t = (n - 0.30) / 0.15;
+        if (t <= 0) return 0;
+        t = Math.min(1, t);
+        double edge = t * t * (3 - 2 * t);
+        double flat = edge * 340.0;
+        return flat < 40 ? 0 : 40 + (flat - 40) * 0.55;
     }
 
     // --- Coarse Grid Helpers ---
@@ -558,6 +724,18 @@ public class SeafloorGenerator {
             computeHotspotHeight(wx, wz)
         );
 
+        // Precompute abyssal hills at coarse resolution
+        double[][] hillsGrid = computeCoarseGrid(baseX, baseZ, TILE_SIZE, (wx, wz) -> {
+            double cc = terrain.fbm(wx * NOISE_SCALE, wz * NOISE_SCALE);
+            return computeAbyssalHills(wx, wz, Math.abs(cc));
+        });
+
+        // Precompute oceanic plateaus at coarse resolution
+        double[][] plateauGrid = computeCoarseGrid(baseX, baseZ, TILE_SIZE, (wx, wz) -> {
+            double cc = terrain.fbm(wx * NOISE_SCALE, wz * NOISE_SCALE);
+            return computePlateauHeight(wx, wz, Math.abs(cc));
+        });
+
         // Precompute boundary proximity [0, 1] for noise amping
         double[][] boundaryProxGrid = computeCoarseGrid(baseX, baseZ, TILE_SIZE, (wx, wz) -> {
             double mod = Math.abs(computeTectonicModifier(wx, wz, tilePlates));
@@ -632,6 +810,21 @@ public class SeafloorGenerator {
                 double hotspotMod = interpGrid(hotspotGrid, baseX, baseZ, wx, wz);
                 height += hotspotMod;
 
+                // --- Guyot caps: eroded seamount crowns flatten near the cap depth ---
+                if (hotspotMod > 120) {
+                    double wave = Math.abs(getAbyssalNoise().noise(wx * 0.001, wz * 0.001));
+                    double cap = 120 + wave * 40;
+                    if (hotspotMod > cap) height -= (hotspotMod - cap) * 0.88;
+                }
+
+                // --- Abyssal hills (ridge-parallel fabric on deep floor) ---
+                double hillsMod = interpGrid(hillsGrid, baseX, baseZ, wx, wz);
+                height += hillsMod;
+
+                // --- Oceanic plateaus (large igneous provinces) ---
+                double plateauMod = interpGrid(plateauGrid, baseX, baseZ, wx, wz);
+                height += plateauMod;
+
                 int finalHeight = (int) Math.round(height);
                 finalHeight = Math.max(MIN_FLOOR_HEIGHT, Math.min(finalHeight, 1024));
                 heights[lz * TILE_SIZE + lx] = (short) finalHeight;
@@ -674,7 +867,8 @@ public class SeafloorGenerator {
     public static TectonicPlate getPlateAt(int wx, int wz) {
         int cellX = Math.floorDiv(wx, PLATE_CELL_SIZE);
         int cellZ = Math.floorDiv(wz, PLATE_CELL_SIZE);
-        // Find the nearest cell center (Voronoi) for organic boundaries
+        double[] w = plateWarp(wx, wz);
+        // Find the nearest cell center (warped Voronoi) for organic boundaries
         double nearestDist2 = Double.MAX_VALUE;
         int nearestCX = cellX, nearestCZ = cellZ;
         for (int dx = -1; dx <= 1; dx++) {
@@ -689,7 +883,7 @@ public class SeafloorGenerator {
                     double sz = cz * PLATE_CELL_SIZE + rng.nextDouble() * PLATE_CELL_SIZE;
                     return new double[]{sx, sz};
                 });
-                double d2 = (wx - center[0]) * (wx - center[0]) + (wz - center[1]) * (wz - center[1]);
+                double d2 = (w[0] - center[0]) * (w[0] - center[0]) + (w[1] - center[1]) * (w[1] - center[1]);
                 if (d2 < nearestDist2) {
                     nearestDist2 = d2;
                     nearestCX = cx;

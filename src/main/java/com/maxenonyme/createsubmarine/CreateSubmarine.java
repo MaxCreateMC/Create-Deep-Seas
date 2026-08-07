@@ -86,17 +86,6 @@ public class CreateSubmarine {
         public static final Supplier<com.mojang.serialization.MapCodec<com.maxenonyme.createsubmarine.worldgen.OceanDepthOffset>> OCEAN_DEPTH_OFFSET = DENSITY_FUNCTIONS
                         .register("ocean_depth_offset",
                                         () -> com.maxenonyme.createsubmarine.worldgen.OceanDepthOffset.CODEC);
-        public static final Supplier<com.mojang.serialization.MapCodec<com.maxenonyme.createsubmarine.abyss.AbyssDepthMultiplier>> ABYSS_DEPTH_MULTIPLIER = DENSITY_FUNCTIONS
-                        .register("abyss_depth_multiplier",
-                                        () -> com.maxenonyme.createsubmarine.abyss.AbyssDepthMultiplier.CODEC);
-
-        public static final Supplier<com.mojang.serialization.MapCodec<com.maxenonyme.createsubmarine.worldgen.SeafloorHeightFunction>> SEAFLOOR_HEIGHT = DENSITY_FUNCTIONS
-                        .register("seafloor_height",
-                                        () -> com.maxenonyme.createsubmarine.worldgen.SeafloorHeightFunction.CODEC);
-
-        public static final Supplier<com.mojang.serialization.MapCodec<com.maxenonyme.createsubmarine.worldgen.SeafloorNoiseFunction>> SEAFLOOR_NOISE = DENSITY_FUNCTIONS
-                        .register("seafloor_noise",
-                                        () -> com.maxenonyme.createsubmarine.worldgen.SeafloorNoiseFunction.CODEC);
 
         public static final net.neoforged.neoforge.registries.DeferredHolder<FluidType, FluidType> OXYGEN_TYPE = FLUID_TYPES
                         .register("oxygen",

@@ -18,7 +18,7 @@ public class BoundaryBlockHandler {
 
     private static final ResourceKey<Level> ABYSS_KEY = ResourceKey.create(
             net.minecraft.core.registries.Registries.DIMENSION,
-            ResourceLocation.fromNamespaceAndPath("create_submarine", "abyss"));
+            ResourceLocation.fromNamespaceAndPath("create_abyss", "abyss"));
 
     private static final int GRADIENT_BLOCKS = 16;
     private static final Set<Long> processed = new HashSet<>();
