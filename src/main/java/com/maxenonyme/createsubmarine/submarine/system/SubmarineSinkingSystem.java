@@ -4,7 +4,10 @@ import com.maxenonyme.createsubmarine.CreateSubmarine;
 import com.maxenonyme.createsubmarine.submarine.compartment.CompartmentDetector;
 import com.maxenonyme.createsubmarine.submarine.compartment.CompartmentTracker;
 import com.maxenonyme.createsubmarine.submarine.util.SubLevelRegistry;
+
+import dev.ryanhcode.sable.api.physics.handle.RigidBodyHandle;
 import dev.ryanhcode.sable.companion.SubLevelAccess;
+import dev.ryanhcode.sable.sublevel.ServerSubLevel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.particles.ParticleTypes;
@@ -186,18 +189,29 @@ public class SubmarineSinkingSystem {
     }
 
     private static void applySinkingForce(SubLevelAccess sub) {
-        Object handle = com.maxenonyme.createsubmarine.submarine.util.SablePhysicsHelper.getHandle(sub);
+        if (!(sub instanceof ServerSubLevel serverSubLevel))
+            return;
+
+        RigidBodyHandle handle = RigidBodyHandle.of(serverSubLevel);
         if (handle == null) return;
-        double mass = com.maxenonyme.createsubmarine.submarine.util.SablePhysicsHelper.readMass(sub);
+
+        double mass = serverSubLevel.getMassTracker().getMass();
         double force = Math.max(mass * 18.0, 3000.0);
-        com.maxenonyme.createsubmarine.submarine.util.SablePhysicsHelper.applyLinearImpulse(handle, new Vector3d(
+        double spin = mass * 8.0;
+
+        // This can be changed to a forceGroup if it needs to be shown;
+
+        handle.applyLinearAndAngularImpulse(
+            new Vector3d(
                 (RAND.nextDouble() - 0.5) * force * 0.6,
                 -force,
-                (RAND.nextDouble() - 0.5) * force * 0.6));
-        double spin = mass * 8.0;
-        com.maxenonyme.createsubmarine.submarine.util.SablePhysicsHelper.applyAngularImpulse(handle, new Vector3d(
+                (RAND.nextDouble() - 0.5) * force * 0.6
+            ), 
+            new Vector3d(
                 (RAND.nextDouble() - 0.5) * spin,
                 (RAND.nextDouble() - 0.5) * spin * 0.3,
-                (RAND.nextDouble() - 0.5) * spin));
+                (RAND.nextDouble() - 0.5) * spin
+            )
+        );
     }
 }

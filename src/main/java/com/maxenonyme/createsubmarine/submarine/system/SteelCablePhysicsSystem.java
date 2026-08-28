@@ -1,7 +1,5 @@
 package com.maxenonyme.createsubmarine.submarine.system;
 
-import com.maxenonyme.createsubmarine.submarine.math.OrientedBoundingBox3d;
-import com.maxenonyme.createsubmarine.submarine.util.SablePhysicsHelper;
 import com.maxenonyme.createsubmarine.submarine.util.SubLevelRegistry;
 import dev.ryanhcode.sable.companion.SubLevelAccess;
 import dev.simulated_team.simulated.content.blocks.rope.strand.server.ServerLevelRopeManager;
@@ -9,7 +7,6 @@ import dev.simulated_team.simulated.content.blocks.rope.strand.server.ServerRope
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import org.joml.Quaterniond;
@@ -23,7 +20,6 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import com.simibubi.create.foundation.blockEntity.SmartBlockEntity;
 
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 public class SteelCablePhysicsSystem {
