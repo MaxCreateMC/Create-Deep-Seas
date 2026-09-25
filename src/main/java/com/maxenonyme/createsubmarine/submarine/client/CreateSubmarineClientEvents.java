@@ -13,6 +13,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.ChatFormatting;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.client.Minecraft;
 import com.simibubi.create.content.equipment.goggles.GogglesItem;
 
 @EventBusSubscriber(modid = CreateSubmarine.MOD_ID, value = Dist.CLIENT)
@@ -22,8 +23,8 @@ public class CreateSubmarineClientEvents {
     public static void onTooltip(ItemTooltipEvent event) {
         if (event.getEntity() == null)
             return;
-
-        if (!GogglesItem.isWearingGoggles(event.getEntity()))
+        if (!(event.getEntity() instanceof Player player) || !GogglesItem.isWearingGoggles(player))
+            return;
             return;
 
         if (event.getItemStack().getItem() instanceof BlockItem blockItem) {
