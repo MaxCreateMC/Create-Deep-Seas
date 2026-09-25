@@ -1,0 +1,20 @@
+{
+  "boat_engine_idle": {
+    "category": "block",
+    "sounds": [
+      {
+        "name": "create_high_seas:boat_engine_idle",
+        "stream": false
+      }
+    ]
+  },
+  "boat_engine_running": {
+    "category": "block",
+    "sounds": [
+      {
+        "name": "create_high_seas:boat_engine_running",
+        "stream": false
+      }
+    ]
+  }
+}

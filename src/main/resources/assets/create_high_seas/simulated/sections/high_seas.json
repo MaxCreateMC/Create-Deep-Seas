@@ -1,0 +1,9 @@
+{
+  "priority": 2500,
+  "title": {
+    "text": { "translate": "create_high_seas.simulated_section.high_seas" },
+    "background": "#bb001e3c"
+  },
+  "sprite": "create_high_seas:banner",
+  "only_animate_on_hover": true
+}

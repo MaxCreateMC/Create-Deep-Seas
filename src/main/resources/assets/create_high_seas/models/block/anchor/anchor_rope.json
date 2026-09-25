@@ -1,0 +1,8 @@
+{
+	"loader": "neoforge:obj",
+	"model": "create_high_seas:models/block/anchor/anchor_rope.obj",
+	"textures": {
+		"particle": "create_high_seas:block/anchor/anchor_rope",
+		"m_77183fd3-dae6-55c3-05b7-dba18b1d0d60": "create_high_seas:block/anchor/anchor_rope"
+	}
+}

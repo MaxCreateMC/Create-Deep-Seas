@@ -4,13 +4,18 @@
   "package": "com.maxenonyme.highseas.mixin",
   "compatibilityLevel": "JAVA_21",
   "mixins": [
-    "SymmetricSailCollisionMixin"
+    "RopeTrackingSubLevelMixin"
   ],
   "client": [
     "ChunkRenderTypeSetAccessor",
+    "ContraptionSailBakeMixin",
+    "ContraptionVisualSailBakeMixin",
+    "HumanoidModelPoseMixin",
     "IrisSailPhaseMixin",
     "SailRenderLayerMixin",
-    "SailSubLevelRenderMixin"
+    "SailSodiumMaterialMixin",
+    "SailSubLevelRenderMixin",
+    "RopeDataSubLevelMixin"
   ],
   "injectors": {
     "defaultRequire": 1

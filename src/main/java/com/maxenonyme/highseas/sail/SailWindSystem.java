@@ -6,7 +6,6 @@ import com.maxenonyme.highseas.wind.WindManager;
 import com.maxenonyme.highseas.wind.WindSample;
 import dev.ryanhcode.sable.api.sublevel.ServerSubLevelContainer;
 import dev.ryanhcode.sable.api.sublevel.SubLevelContainer;
-import dev.ryanhcode.sable.companion.math.BoundingBox3ic;
 import dev.ryanhcode.sable.companion.math.Pose3dc;
 import dev.ryanhcode.sable.sublevel.ServerSubLevel;
 import dev.ryanhcode.sable.sublevel.SubLevel;
@@ -21,10 +20,17 @@ import org.joml.Vector3d;
 import org.joml.Vector3dc;
 
 import java.util.List;
+import java.util.UUID;
+import com.maxenonyme.highseas.config.HighSeasConfig;
+import dev.eriksonn.aeronautics.content.particle.GustParticleData;
+import org.joml.Quaternionf;
+import org.joml.Vector3f;
 
 public final class SailWindSystem {
     private SailWindSystem() {
     }
+
+    private static final double SERVER_STEP = 0.05;
 
     public static void onServerTick(ServerTickEvent.Post event) {
         long gameTime = event.getServer().getTickCount();
@@ -44,6 +50,55 @@ public final class SailWindSystem {
         }
     }
 
+    private static Vector3d neutral(SailGroup group, Quaterniondc rootOrient) {
+        Vec3 ln = group.localNormal();
+        Vector3d rest = new Vector3d(ln.x, ln.y, ln.z);
+        rootOrient.transform(rest);
+        rest.y = 0.0;
+        if (rest.lengthSquared() < 1.0e-9) {
+            return new Vector3d();
+        }
+        return rest.normalize();
+    }
+
+    private static double bulgeSide(SailGroup group, Vec3 wind, Vector3d worldNormal) {
+        if (group.supportSign() != 0) {
+            return -group.supportSign();
+        }
+        double windDotN = wind.x * worldNormal.x + wind.y * worldNormal.y + wind.z * worldNormal.z;
+        return windDotN >= 0 ? 1.0 : -1.0;
+    }
+
+    private static double pull(ServerLevel level, ServerSubLevel source, Pose3dc sailPose, Quaterniondc rootOrient,
+            SailGroup group, double factor, double speedRatio, Vector3d windForward) {
+        if (!BoatClassifier.inAir(level, source, group.localCenter()))
+            return 0.0;
+        Vec3 c = group.localCenter();
+        Vector3d worldCenter = sailPose.transformPosition(new Vector3d(c.x, c.y, c.z));
+        Vec3 ln = group.localNormal();
+        Vector3d worldNormal = sailPose.orientation().transform(new Vector3d(ln.x, ln.y, ln.z));
+        if (worldNormal.lengthSquared() < 1.0e-9)
+            return 0.0;
+        worldNormal.normalize();
+        Vec3 wind = WindManager.getWind(level, worldCenter.x, worldCenter.y, worldCenter.z).vector();
+        Vector3d rest = neutral(group, rootOrient);
+        double side = bulgeSide(group, wind, worldNormal);
+        double swing = rest.x * worldNormal.x + rest.z * worldNormal.z;
+        double sailPower = SailForce.power(wind, worldNormal.x, worldNormal.y, worldNormal.z,
+                rest.x * side, rest.y * side, rest.z * side, group.area());
+        windForward.fma(side * group.area() * factor * swing, rest);
+        if (Math.abs(sailPower) > 0.1 && speedRatio > 0.05 && level.random.nextFloat() < 0.4f * speedRatio) {
+            Vector3f dir = new Vector3f((float) wind.x, (float) wind.y, (float) wind.z);
+            if (dir.lengthSquared() > 1.0e-6f) {
+                dir.normalize();
+                Quaternionf gust = new Quaternionf().rotationTo(new Vector3f(0.0f, 1.0f, 0.0f), dir);
+                level.sendParticles(new GustParticleData(gust), worldCenter.x, worldCenter.y, worldCenter.z,
+                        (int) Math.ceil(4 * speedRatio), 3.0, 3.0, 3.0, 0.0);
+            }
+        }
+        return sailPower * factor * Math.abs(swing);
+    }
+
     private static void applyWind(ServerLevel parentLevel, ServerSubLevel sailSource, SubLevel root, long gameTime) {
         if (sailSource.getPlot() == null || root.getPlot() == null) {
             return;
@@ -58,11 +113,7 @@ public final class SailWindSystem {
 
         Pose3dc rootPose = root.logicalPose();
         Quaterniondc rootOrient = rootPose.orientation();
-        BoundingBox3ic rbb = root.getPlot().getBoundingBox();
-        List<SailGroup> rootSails = SailWindRegistry.getSails(root, gameTime);
-        Vec3 rudder = SailWindRegistry.getRudder(root.getUniqueId());
-        Vec3 center = new Vec3((rbb.minX() + rbb.maxX()) * 0.5, (rbb.minY() + rbb.maxY()) * 0.5, (rbb.minZ() + rbb.maxZ()) * 0.5);
-        Vector3d forward = SailForce.forward(rootOrient, rudder, center, rbb.maxX() - rbb.minX(), rbb.maxZ() - rbb.minZ(), rootSails);
+        Vector3d forward = SailForce.sailForward(sailOrient, sails);
         if (forward == null) {
             return;
         }
@@ -76,91 +127,39 @@ public final class SailWindSystem {
         if (velocity != null) {
             forwardSpeed = velocity.x() * forward.x + velocity.y() * forward.y + velocity.z() * forward.z;
         }
-        double speedRatio = Mth.clamp(forwardSpeed / WindConfig.SAIL_MAX_SPEED, 0.0, 1.0);
+        double hullMass = Math.max(1.0, SablePhysicsHelper.readMass(root));
+        double section = Math.cbrt(hullMass * hullMass);
+        double speedRatio = Mth.clamp(Math.abs(forwardSpeed) / WindConfig.SAIL_SPEED_REFERENCE, 0.0, 1.0);
 
         double power = 0;
+        Vector3d windForward = new Vector3d();
+        UUID sourceId = sailSource.getUniqueId();
         for (SailGroup group : sails) {
-            if (group.axis() == Direction.Axis.Y) {
+            if (group.axis() == Direction.Axis.Y || FurlState.isFurled(sourceId, group.min()))
                 continue;
-            }
-            if (!BoatClassifier.inAir(parentLevel, sailSource, group.localCenter())) {
-                continue;
-            }
-            Vector3d worldCenter = new Vector3d(group.localCenter().x, group.localCenter().y, group.localCenter().z);
-            sailPose.transformPosition(worldCenter);
-
-            Vec3 ln = group.localNormal();
-            Vector3d worldNormal = new Vector3d(ln.x, ln.y, ln.z);
-            sailOrient.transform(worldNormal);
-            if (worldNormal.lengthSquared() < 1.0e-9) {
-                continue;
-            }
-            worldNormal.normalize();
-
-            WindSample wind = WindManager.getWind(parentLevel, worldCenter.x, worldCenter.y, worldCenter.z);
-            double sailPower = SailForce.power(wind.vector(), worldNormal.x, worldNormal.y, worldNormal.z,
-                    forward.x, forward.y, forward.z, group.area());
-            
-            long age = gameTime - group.startTick();
-            double factor = Math.min(1.0, age / 60.0);
-            
-            power += sailPower * factor;
-
-            if (sailPower > 0.1 && speedRatio > 0.05 && parentLevel.random.nextFloat() < (0.4f * speedRatio)) {
-                org.joml.Vector3f dir = new org.joml.Vector3f((float) wind.vector().x, (float) wind.vector().y, (float) wind.vector().z);
-                if (dir.lengthSquared() > 1.0e-6f) {
-                    dir.normalize();
-                    org.joml.Quaternionf particleOrientation = new org.joml.Quaternionf().rotationTo(new org.joml.Vector3f(0.0f, 1.0f, 0.0f), dir);
-                    int particleCount = (int) Math.ceil(4 * speedRatio);
-                    parentLevel.sendParticles(new dev.eriksonn.aeronautics.content.particle.GustParticleData(particleOrientation), worldCenter.x, worldCenter.y, worldCenter.z, particleCount, 3.0, 3.0, 3.0, 0.0);
-                }
-            }
+            double factor = Math.min(1.0, (gameTime - group.startTick()) / 60.0);
+            power += pull(parentLevel, sailSource, sailPose, rootOrient, group, factor, speedRatio, windForward);
         }
-
-        List<DecayingSail> decaying = SailWindRegistry.getDecayingSails(sailSource.getUniqueId(), gameTime);
-        for (DecayingSail ds : decaying) {
-            SailGroup group = ds.group();
-            if (group.axis() == Direction.Axis.Y) {
+        for (DecayingSail ds : SailWindRegistry.getDecayingSails(sourceId, gameTime)) {
+            if (ds.group().axis() == Direction.Axis.Y)
                 continue;
-            }
-            if (!BoatClassifier.inAir(parentLevel, sailSource, group.localCenter())) {
-                continue;
-            }
-            Vector3d worldCenter = new Vector3d(group.localCenter().x, group.localCenter().y, group.localCenter().z);
-            sailPose.transformPosition(worldCenter);
-
-            Vec3 ln = group.localNormal();
-            Vector3d worldNormal = new Vector3d(ln.x, ln.y, ln.z);
-            sailOrient.transform(worldNormal);
-            if (worldNormal.lengthSquared() < 1.0e-9) {
-                continue;
-            }
-            worldNormal.normalize();
-
-            WindSample wind = WindManager.getWind(parentLevel, worldCenter.x, worldCenter.y, worldCenter.z);
-            double sailPower = SailForce.power(wind.vector(), worldNormal.x, worldNormal.y, worldNormal.z,
-                    forward.x, forward.y, forward.z, group.area());
-
-            long age = gameTime - ds.startTick();
-            double factor = Math.max(0.0, (60.0 - age) / 60.0);
-            power += sailPower * factor;
+            double factor = Math.max(0.0, (60.0 - (gameTime - ds.startTick())) / 60.0);
+            power += pull(parentLevel, sailSource, sailPose, rootOrient, ds.group(), factor, 0.0, windForward);
         }
-
-        if (power < 1.0e-9) {
+        if (Math.abs(power) < 1.0e-9) {
             return;
         }
 
-        double total = power * WindConfig.SAIL_FORCE_K;
+        windForward.y = 0.0;
+        Vector3d dir = windForward.lengthSquared() > 1.0e-9 ? windForward.normalize() : forward;
 
-        if (velocity != null) {
-            double speedFactor = Mth.clamp((WindConfig.SAIL_MAX_SPEED - forwardSpeed) / WindConfig.SAIL_SPEED_RAMP, 0.0, 1.0);
-            total *= speedFactor;
-        }
-        if (total < 1.0e-9) {
+        double accel = power * HighSeasConfig.sailThrust / section;
+        double total = accel * hullMass * SERVER_STEP;
+        if (Math.abs(total) < 1.0e-9) {
             return;
         }
 
-        Vector3d forceWorld = new Vector3d(forward.x * total, 0.0, forward.z * total);
+        Vector3d forceWorld = new Vector3d(dir.x * total, 0.0, dir.z * total);
         rootOrient.conjugate(new Quaterniond()).transform(forceWorld);
         SablePhysicsHelper.applyLinearImpulse(handle, forceWorld);
     }

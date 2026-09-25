@@ -37,8 +37,12 @@ public final class BoatClassifier {
         Map<UUID, SubLevel> map = new HashMap<>();
         for (SubLevel s : all) {
             if (isInWater(parent, s)) {
-                for (SubLevel c : SubLevelHelper.getConnectedChain(s)) {
-                    map.putIfAbsent(c.getUniqueId(), s);
+                try {
+                    for (SubLevel c : SubLevelHelper.getConnectedChain(s)) {
+                        map.putIfAbsent(c.getUniqueId(), s);
+                    }
+                } catch (Exception e) {
+                    map.putIfAbsent(s.getUniqueId(), s);
                 }
             }
         }

@@ -1,0 +1,6 @@
+{
+  "variants": {
+    "roped=false": { "model": "create_high_seas:block/ring" },
+    "roped=true": { "model": "create_high_seas:block/ring_corde" }
+  }
+}

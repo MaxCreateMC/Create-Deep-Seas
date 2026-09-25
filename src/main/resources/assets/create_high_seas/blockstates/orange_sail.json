@@ -1,0 +1,17 @@
+{
+  "variants": {
+    "axis=x": {
+      "model": "create_high_seas:block/orange_sail",
+      "x": 90,
+      "y": 90
+    },
+    "axis=y": {
+      "model": "create_high_seas:block/orange_sail"
+    },
+    "axis=z": {
+      "model": "create_high_seas:block/orange_sail",
+      "x": 90,
+      "y": 180
+    }
+  }
+}

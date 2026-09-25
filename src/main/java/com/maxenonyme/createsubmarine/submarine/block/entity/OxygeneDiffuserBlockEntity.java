@@ -31,6 +31,11 @@ import org.joml.Vector3d;
 import javax.annotation.ParametersAreNonnullByDefault;
 import java.util.List;
 import java.util.UUID;
+import com.maxenonyme.createsubmarine.submarine.system.SubmarineHullManager;
+import com.maxenonyme.createsubmarine.submarine.system.SubmarinePressureSystem;
+import net.minecraft.network.protocol.Packet;
+import net.minecraft.network.protocol.game.ClientGamePacketListener;
+import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
 
 @ParametersAreNonnullByDefault
 public class OxygeneDiffuserBlockEntity extends BlockEntity implements IHaveGoggleInformation {
@@ -93,6 +98,7 @@ public class OxygeneDiffuserBlockEntity extends BlockEntity implements IHaveGogg
             if (!owner) {
                 return;
             }
+            CompartmentTracker.claimSubmarine(be.currentSubLevelId, gameTick);
 
             if (!level.isClientSide) {
                 if (gameTick % CONSUME_EVERY == 0) {
@@ -111,14 +117,18 @@ public class OxygeneDiffuserBlockEntity extends BlockEntity implements IHaveGogg
                 return;
             }
 
-            if (!CompartmentTracker.isScanActive(be.currentSubLevelId)
-                    && gameTick - CompartmentTracker.lastUpdateTick(be.currentSubLevelId) >= 20) {
+            long lastUpdate = CompartmentTracker.lastUpdateTick(be.currentSubLevelId);
+            long sinceUpdate = gameTick - lastUpdate;
+            boolean scanDue = lastUpdate == 0
+                    || CompartmentTracker.isStructureDirty(be.currentSubLevelId)
+                    || sinceUpdate >= 200;
+            if (!CompartmentTracker.isScanActive(be.currentSubLevelId) && scanDue && sinceUpdate >= 20) {
                 CompartmentTracker.beginScanIfIdle(be.currentSubLevelId, sub);
             }
             if (CompartmentTracker.isScanActive(be.currentSubLevelId)) {
                 boolean done = CompartmentTracker.stepScan(be.currentSubLevelId, sub, SCAN_BUDGET, gameTick);
                 if (done && !level.isClientSide) {
-                    com.maxenonyme.createsubmarine.submarine.system.SubmarinePressureSystem.setSealedCompartments(
+                    SubmarinePressureSystem.setSealedCompartments(
                         be.currentSubLevelId, CompartmentTracker.getCompartments(be.currentSubLevelId));
                 }
             }
@@ -129,7 +139,7 @@ public class OxygeneDiffuserBlockEntity extends BlockEntity implements IHaveGogg
                 Vector3d dimensions = CompartmentTracker.getOrComputeDimensions(be.currentSubLevelId, bounds);
                 Pose3dc pose = sub.logicalPose();
                 if (CompartmentTracker.poseMovedEnough(be.currentSubLevelId, pose, 0.01, 1e-6)) {
-                    com.maxenonyme.createsubmarine.submarine.system.SubmarineHullManager.updateHull(be.currentSubLevelId, pose.position(), dimensions, pose.orientation());
+                    SubmarineHullManager.updateHull(be.currentSubLevelId, pose.position(), dimensions, pose.orientation());
                     CompartmentTracker.updateAABB(be.currentSubLevelId, pose.position(), dimensions);
                     CompartmentTracker.recordPose(be.currentSubLevelId, pose);
                 }
@@ -156,10 +166,10 @@ public class OxygeneDiffuserBlockEntity extends BlockEntity implements IHaveGogg
         if (currentSubLevelId != null) {
             long tick = level != null ? level.getGameTime() : 0L;
             if (SubmarineDriverRegistry.release(currentSubLevelId, worldPosition, tick)) {
-                com.maxenonyme.createsubmarine.submarine.system.SubmarineHullManager.removeHull(currentSubLevelId);
+                SubmarineHullManager.removeHull(currentSubLevelId);
                 if (level != null && !level.isClientSide) {
                     SubLevelRegistry.unregister(currentSubLevelId);
-                    com.maxenonyme.createsubmarine.submarine.system.SubmarinePressureSystem.clearSubmarine(currentSubLevelId);
+                    SubmarinePressureSystem.clearSubmarine(currentSubLevelId);
                 }
                 CompartmentTracker.remove(currentSubLevelId);
             }
@@ -176,8 +186,8 @@ public class OxygeneDiffuserBlockEntity extends BlockEntity implements IHaveGogg
     }
 
     @Override
-    public net.minecraft.network.protocol.Packet<net.minecraft.network.protocol.game.ClientGamePacketListener> getUpdatePacket() {
-        return net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket.create(this);
+    public Packet<ClientGamePacketListener> getUpdatePacket() {
+        return ClientboundBlockEntityDataPacket.create(this);
     }
 
     @Override

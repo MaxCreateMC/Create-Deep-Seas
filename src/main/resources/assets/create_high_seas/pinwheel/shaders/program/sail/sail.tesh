@@ -18,6 +18,7 @@ uniform vec3 sailMax[8];
 uniform vec3 sailAxis[8];
 uniform vec3 supportDir[8];
 uniform vec3 bulge[8];
+uniform float furl[8];
 uniform int sailCount;
 uniform float time;
 
@@ -59,12 +60,24 @@ void main(void) {
         else if (plane.y < 0.5) uv = vec2(t.x, t.z);
         else uv = vec2(t.x, t.y);
 
+        float f = furl[found];
+
         pos += sd * 0.375;
 
         float anchor = pow(sin(uv.x * PI), 0.5) * pow(sin(uv.y * PI), 0.5);
         float ripple = sin((uv.x + uv.y) * 9.0 + time * 1.6) * sin((uv.x - uv.y) * 5.0 - time * 1.1);
         float flutter = 1.0 + 0.18 * ripple;
-        pos += bulge[found] * (anchor * flutter);
+        pos += bulge[found] * (anchor * flutter) * (1.0 - f);
+
+        if (f > 0.0) {
+            float h = mx.y - mn.y;
+            float hfrac = clamp((localPos.y - mn.y) / max(h, 0.001), 0.0, 1.0);
+            float topY = mx.y + offset.y;
+            float keep = 1.0 - f * 0.55;
+            pos.y = topY - (topY - pos.y) * keep;
+            float pleat = sin(hfrac * PI * 6.0 + time * 0.15) * 0.22 * f;
+            pos += ax * pleat;
+        }
     }
 
     gl_Position = ProjMat * ModelViewMat * vec4(pos, 1.0);

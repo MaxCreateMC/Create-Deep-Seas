@@ -7,14 +7,11 @@
     },
     "T": {
       "item": "minecraft:tnt"
-    },
-    "L": {
-      "item": "minecraft:lodestone"
     }
   },
   "pattern": [
     "CTC",
-    "TLT",
+    "T T",
     "CTC"
   ],
   "result": {

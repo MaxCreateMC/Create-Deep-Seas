@@ -1,6 +1,6 @@
 {
 	"format_version": "1.21.11",
-	"parent": "block",
+	"parent": "minecraft:block/block",
 	"textures": {
 		"0": "create_submarine:block/steel_cable/connector_steel_knot",
 		"particle": "create_submarine:block/steel_cable/connector_steel_knot"

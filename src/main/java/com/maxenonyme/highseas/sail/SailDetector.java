@@ -2,7 +2,7 @@ package com.maxenonyme.highseas.sail;
 
 import com.maxenonyme.highseas.wind.WindConfig;
 import dev.ryanhcode.sable.companion.math.BoundingBox3ic;
-import dev.simulated_team.simulated.index.SimTags;
+import com.maxenonyme.highseas.block.BoatSailBlock;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.level.BlockGetter;
@@ -38,7 +38,7 @@ public final class SailDetector {
                 for (int z = bounds.minZ(); z <= bounds.maxZ(); z++) {
                     m.set(x, y, z);
                     BlockState state = level.getBlockState(m);
-                    if (state.is(SimTags.Blocks.SYMMETRIC_SAILS) && state.hasProperty(BlockStateProperties.AXIS)) {
+                    if (state.is(BoatSailBlock.SAILS) && state.hasProperty(BlockStateProperties.AXIS)) {
                         sails.put(m.immutable(), state.getValue(BlockStateProperties.AXIS));
                     }
                 }
@@ -117,11 +117,44 @@ public final class SailDetector {
         return groups;
     }
 
+    public static BlockPos groupMin(BlockGetter level, BlockPos start) {
+        BlockState s = level.getBlockState(start);
+        if (!s.is(BoatSailBlock.SAILS) || !s.hasProperty(BlockStateProperties.AXIS)) {
+            return null;
+        }
+        Direction.Axis axis = s.getValue(BlockStateProperties.AXIS);
+
+        Set<BlockPos> visited = new HashSet<>();
+        Deque<BlockPos> queue = new ArrayDeque<>();
+        queue.add(start);
+        visited.add(start);
+        int minX = start.getX(), minY = start.getY(), minZ = start.getZ();
+        while (!queue.isEmpty()) {
+            BlockPos p = queue.poll();
+            minX = Math.min(minX, p.getX());
+            minY = Math.min(minY, p.getY());
+            minZ = Math.min(minZ, p.getZ());
+            for (Direction dir : Direction.values()) {
+                BlockPos n = p.relative(dir);
+                if (visited.contains(n)) {
+                    continue;
+                }
+                BlockState ns = level.getBlockState(n);
+                if (ns.is(BoatSailBlock.SAILS) && ns.hasProperty(BlockStateProperties.AXIS)
+                        && ns.getValue(BlockStateProperties.AXIS) == axis) {
+                    visited.add(n);
+                    queue.add(n);
+                }
+            }
+        }
+        return new BlockPos(minX, minY, minZ);
+    }
+
     private static boolean isSupport(BlockGetter level, BlockPos pos) {
         BlockState state = level.getBlockState(pos);
         return !state.isAir()
                 && state.getFluidState().isEmpty()
-                && !state.is(SimTags.Blocks.SYMMETRIC_SAILS);
+                && !state.is(BoatSailBlock.SAILS);
     }
 
     private static boolean hasHole(List<BlockPos> component, Direction.Axis axis, int minX, int minY, int minZ, int maxX, int maxY, int maxZ) {

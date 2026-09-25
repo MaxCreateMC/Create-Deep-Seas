@@ -13,6 +13,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.ChatFormatting;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.core.registries.BuiltInRegistries;
+import com.simibubi.create.content.equipment.goggles.GogglesItem;
 
 @EventBusSubscriber(modid = CreateSubmarine.MOD_ID, value = Dist.CLIENT)
 public class CreateSubmarineClientEvents {
@@ -22,16 +23,7 @@ public class CreateSubmarineClientEvents {
         if (event.getEntity() == null)
             return;
 
-        boolean hasGoggles = false;
-        var headSlot = event.getEntity().getInventory().getArmor(3);
-        if (headSlot != null && !headSlot.isEmpty()) {
-            ResourceLocation id = BuiltInRegistries.ITEM.getKey(headSlot.getItem());
-            if (id != null && id.getNamespace().equals("create") && id.getPath().contains("goggles")) {
-                hasGoggles = true;
-            }
-        }
-
-        if (!hasGoggles)
+        if (!GogglesItem.isWearingGoggles(event.getEntity()))
             return;
 
         if (event.getItemStack().getItem() instanceof BlockItem blockItem) {

@@ -20,9 +20,11 @@ import org.joml.Vector3d;
 import org.joml.Vector3dc;
 import dev.ryanhcode.sable.api.physics.constraint.ConstraintJointAxis;
 import dev.ryanhcode.sable.api.physics.constraint.PhysicsConstraintHandle;
-import dev.ryanhcode.sable.api.physics.constraint.generic.GenericConstraintConfiguration;
+import dev.ryanhcode.sable.api.physics.constraint.GenericConstraintConfiguration;
 import java.util.EnumSet;
 import java.util.UUID;
+import dev.ryanhcode.sable.companion.math.BoundingBox3ic;
+import net.minecraft.world.entity.player.Player;
 
 public class SubmarineLianaBlockEntity extends BlockEntity implements BlockEntitySubLevelActor {
     private UUID parentId;
@@ -267,7 +269,7 @@ public class SubmarineLianaBlockEntity extends BlockEntity implements BlockEntit
                 if (parentSub != null && parentSub.getPlot() != null) {
                     BlockPos parentPlotAnchor = parentSub.getPlot().getCenterBlock();
                     BlockPos currentPlotAnchor = subLevel.getPlot().getCenterBlock();
-                    dev.ryanhcode.sable.companion.math.BoundingBox3ic parentBounds = parentSub.getPlot()
+                    BoundingBox3ic parentBounds = parentSub.getPlot()
                             .getBoundingBox();
                     int parentLenVal = parentBounds.maxY() - parentBounds.minY() + 1;
                     Vector3d localAnchorCurrent = new Vector3d(parentPlotAnchor.getX() + 0.5,
@@ -410,7 +412,7 @@ public class SubmarineLianaBlockEntity extends BlockEntity implements BlockEntit
         totalForce.add(waveSway, 0, 0);
 
         Vector3dc subPos = subLevel.logicalPose().position();
-        for (net.minecraft.world.entity.player.Player player : subLevel.getLevel().players()) {
+        for (Player player : subLevel.getLevel().players()) {
             double dx = subPos.x() - player.getX();
             double dy = subPos.y() - (player.getY() + player.getEyeHeight() * 0.5);
             double dz = subPos.z() - player.getZ();

@@ -51,7 +51,7 @@ public class PulleyBlock extends DirectionalBlock implements EntityBlock {
 
     @Override
     public VoxelShape getCollisionShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
-        return Shapes.empty();
+        return Shapes.block();
     }
 
     @Override

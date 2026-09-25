@@ -20,6 +20,11 @@ public class SubmarineDisplaySources {
             BarometerDisplaySource::new
     );
 
+    public static final DeferredHolder<DisplaySource, CommandSubDisplaySource> COMMAND_SUB = DISPLAY_SOURCES.register(
+            "command_sub",
+            CommandSubDisplaySource::new
+    );
+
     public static void register(IEventBus modEventBus) {
         DISPLAY_SOURCES.register(modEventBus);
     }

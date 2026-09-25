@@ -2,6 +2,7 @@ package com.maxenonyme.createsubmarine.submarine.network;
 
 import com.maxenonyme.createsubmarine.CreateSubmarine;
 import com.maxenonyme.createsubmarine.submarine.block.entity.ElectrolyzerBlockEntity;
+import com.maxenonyme.createsubmarine.submarine.gui.ElectrolyzerMenu;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
@@ -26,8 +27,7 @@ public record ElectrolyzerTogglePayload(BlockPos pos) implements CustomPacketPay
         context.enqueueWork(() -> {
             var player = context.player();
             if (player == null) return;
-            BlockPos pos = payload.pos();
-            if (player.containerMenu instanceof com.maxenonyme.createsubmarine.submarine.gui.ElectrolyzerMenu menu && menu.pos.equals(payload.pos())) {
+            if (player.containerMenu instanceof ElectrolyzerMenu menu && menu.pos.equals(payload.pos())) {
                 if (player.level().getBlockEntity(payload.pos()) instanceof ElectrolyzerBlockEntity be) {
                     be.toggleEnabled();
                 }

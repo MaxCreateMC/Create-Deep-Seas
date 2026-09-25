@@ -27,6 +27,19 @@ import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import com.maxenonyme.createsubmarine.submarine.config.SubmarineConfig;
+import dev.ryanhcode.sable.sublevel.SubLevel;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.NbtUtils;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.tags.FluidTags;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.chunk.ChunkAccess;
+import net.minecraft.world.level.chunk.LevelChunkSection;
+import net.minecraft.world.level.chunk.status.ChunkStatus;
+import net.neoforged.neoforge.event.level.BlockEvent;
+import net.neoforged.neoforge.network.PacketDistributor;
 
 public class SubmarinePressureSystem {
     private static final int TICK_INTERVAL = 20;
@@ -109,7 +122,7 @@ public class SubmarinePressureSystem {
             sub.logicalPose().transformPosition(worldVec);
         }
         BlockPos worldPos = BlockPos.containing(worldVec.x, worldVec.y, worldVec.z);
-        oceanLevel.playSound(null, worldPos, net.minecraft.sounds.SoundEvents.IRON_GOLEM_REPAIR,
+        oceanLevel.playSound(null, worldPos, SoundEvents.IRON_GOLEM_REPAIR,
                 SoundSource.BLOCKS, 0.6f, 1.0f + RAND.nextFloat() * 0.3f);
         return true;
     }
@@ -117,7 +130,7 @@ public class SubmarinePressureSystem {
     public static void onServerTick(ServerTickEvent.Post event) {
         if (++tickCounter % TICK_INTERVAL != 0)
             return;
-        if (com.maxenonyme.createsubmarine.submarine.config.SubmarineConfig.DISABLE_IMPLOSION.get())
+        if (SubmarineConfig.DISABLE_IMPLOSION.get())
             return;
 
         for (Map.Entry<UUID, SubLevelAccess> entry : SubLevelRegistry.getAll().entrySet()) {
@@ -134,7 +147,7 @@ public class SubmarinePressureSystem {
         if (bounds == null)
             return;
 
-        Level oceanLevel = sub instanceof dev.ryanhcode.sable.sublevel.SubLevel sl ? sl.getLevel() : plotLevel;
+        Level oceanLevel = sub instanceof SubLevel sl ? sl.getLevel() : plotLevel;
 
         Vector3dc subCenter = sub.logicalPose().position();
         int surfaceY = measureSurfaceY(oceanLevel, subCenter);
@@ -175,34 +188,43 @@ public class SubmarinePressureSystem {
         }
     }
 
-    private static int measureSurfaceY(Level level, Vector3dc subCenter) {
+    public static int measureSurfaceY(Level level, Vector3dc subCenter) {
         int x = (int) Math.round(subCenter.x());
         int z = (int) Math.round(subCenter.z());
         int startY = (int) Math.round(subCenter.y());
-        int seaLevel = level.getSeaLevel();
 
         int surfaceY = Integer.MIN_VALUE;
         int top = Math.min(startY + MAX_WATER_SCAN, level.getMaxBuildHeight());
-        net.minecraft.world.level.chunk.ChunkAccess chunk = level.getChunk(
+        ChunkAccess chunk = level.getChunk(
                 x >> 4, z >> 4,
-                net.minecraft.world.level.chunk.status.ChunkStatus.FULL, false);
+                ChunkStatus.FULL, false);
         if (chunk == null)
             return Integer.MIN_VALUE;
 
         BlockPos.MutableBlockPos m = new BlockPos.MutableBlockPos();
-        try {
-            for (int y = startY; y < top; y++) {
-                m.set(x, y, z);
-                if (CompartmentTracker.realFluidState(chunk, m).is(net.minecraft.tags.FluidTags.WATER)) {
-                    surfaceY = y;
-                } else if (y >= seaLevel) {
-                    break;
-                }
+        m.set(x, startY, z);
+        if (!CompartmentTracker.realFluidState(chunk, m).is(FluidTags.WATER))
+            return Integer.MIN_VALUE;
+        for (int y = startY; y < top; y++) {
+            m.set(x, y, z);
+            if (CompartmentTracker.realFluidState(chunk, m).is(FluidTags.WATER)) {
+                surfaceY = y;
+            } else if (isRealAir(chunk, m)) {
+                break;
             }
-        } catch (Exception ignored) {
         }
 
         return surfaceY;
+    }
+
+    private static boolean isRealAir(ChunkAccess chunk, BlockPos pos) {
+        int idx = chunk.getSectionIndex(pos.getY());
+        if (idx < 0 || idx >= chunk.getSections().length)
+            return true;
+        LevelChunkSection section = chunk.getSection(idx);
+        if (section == null || section.hasOnlyAir())
+            return true;
+        return section.getBlockState(pos.getX() & 15, pos.getY() & 15, pos.getZ() & 15).isAir();
     }
 
     private static void applyPressure(UUID id, Level plotLevel, Level oceanLevel, SubLevelAccess sub, BlockPos plotPos,
@@ -294,7 +316,7 @@ public class SubmarinePressureSystem {
         if (cracks == null || cracks.remove(plotPos) == null)
             return;
         SubLevelAccess sub = SubLevelRegistry.getAll().get(id);
-        Level oceanLevel = sub instanceof dev.ryanhcode.sable.sublevel.SubLevel sl ? sl.getLevel() : plotLevel;
+        Level oceanLevel = sub instanceof SubLevel sl ? sl.getLevel() : plotLevel;
         sendCrackPacket(oceanLevel, id, plotPos, -1, 0);
     }
 
@@ -302,8 +324,8 @@ public class SubmarinePressureSystem {
         if (!(oceanLevel instanceof ServerLevel sl))
             return;
         SubCrackPayload payload = new SubCrackPayload(id, plotPos, crackLevel, blockId);
-        for (net.minecraft.server.level.ServerPlayer player : sl.players()) {
-            net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(player, payload);
+        for (ServerPlayer player : sl.players()) {
+            PacketDistributor.sendToPlayer(player, payload);
         }
     }
 
@@ -320,21 +342,21 @@ public class SubmarinePressureSystem {
     }
 
     public static BlockState getActualBlockState(Level level, BlockPos pos, BlockState originalState) {
-        net.minecraft.world.level.block.entity.BlockEntity be = level.getBlockEntity(pos);
+        BlockEntity be = level.getBlockEntity(pos);
         if (be != null) {
             ResourceLocation id = BuiltInRegistries.BLOCK_ENTITY_TYPE.getKey(be.getType());
             if (id != null && id.getPath().contains("copycat")) {
-                net.minecraft.nbt.CompoundTag nbt = be.saveWithFullMetadata(level.registryAccess());
+                CompoundTag nbt = be.saveWithFullMetadata(level.registryAccess());
                 if (nbt.contains("Material")) {
-                    BlockState mat = net.minecraft.nbt.NbtUtils.readBlockState(BuiltInRegistries.BLOCK.asLookup(), nbt.getCompound("Material"));
+                    BlockState mat = NbtUtils.readBlockState(BuiltInRegistries.BLOCK.asLookup(), nbt.getCompound("Material"));
                     if (mat != null && !mat.isAir()) return mat;
                 }
                 if (nbt.contains("material_data")) {
-                    net.minecraft.nbt.CompoundTag data = nbt.getCompound("material_data");
+                    CompoundTag data = nbt.getCompound("material_data");
                     for (String key : data.getAllKeys()) {
-                        net.minecraft.nbt.CompoundTag itemTag = data.getCompound(key);
+                        CompoundTag itemTag = data.getCompound(key);
                         if (itemTag.contains("material")) {
-                            BlockState mat = net.minecraft.nbt.NbtUtils.readBlockState(BuiltInRegistries.BLOCK.asLookup(), itemTag.getCompound("material"));
+                            BlockState mat = NbtUtils.readBlockState(BuiltInRegistries.BLOCK.asLookup(), itemTag.getCompound("material"));
                             if (mat != null && !mat.isAir()) return mat;
                         }
                     }
@@ -380,10 +402,10 @@ public class SubmarinePressureSystem {
         return depth >= weakest * 0.80;
     }
 
-    public static void onBlockBroken(net.neoforged.neoforge.event.level.BlockEvent.BreakEvent event) {
+    public static void onBlockBroken(BlockEvent.BreakEvent event) {
         if (!(event.getLevel() instanceof Level level) || level.isClientSide())
             return;
-        if (com.maxenonyme.createsubmarine.submarine.config.SubmarineConfig.DISABLE_IMPLOSION.get())
+        if (SubmarineConfig.DISABLE_IMPLOSION.get())
             return;
         if (event.getPlayer() != null && event.getPlayer().isCreative())
             return;

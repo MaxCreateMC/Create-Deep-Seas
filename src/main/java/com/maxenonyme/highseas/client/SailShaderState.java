@@ -1,6 +1,7 @@
 package com.maxenonyme.highseas.client;
 
 import com.maxenonyme.highseas.sail.BoatClassifier;
+import com.maxenonyme.highseas.sail.FurlState;
 import com.maxenonyme.highseas.sail.RudderDetector;
 import com.maxenonyme.highseas.sail.SailDetector;
 import com.maxenonyme.highseas.sail.SailGroup;
@@ -25,12 +26,27 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import com.maxenonyme.highseas.config.HighSeasConfig;
+import java.util.concurrent.ConcurrentHashMap;
 
 public final class SailShaderState {
     private SailShaderState() {
     }
 
     private static final int MAX_SAILS = 8;
+    private static final String[] SAIL_MIN = uniforms("sailMin");
+    private static final String[] SAIL_MAX = uniforms("sailMax");
+    private static final String[] SAIL_AXIS = uniforms("sailAxis");
+    private static final String[] SUPPORT_DIR = uniforms("supportDir");
+    private static final String[] BULGE = uniforms("bulge");
+    private static final String[] FURL = uniforms("furl");
+
+    private static String[] uniforms(String name) {
+        String[] out = new String[MAX_SAILS];
+        for (int i = 0; i < MAX_SAILS; i++)
+            out[i] = name + "[" + i + "]";
+        return out;
+    }
     private static final int SCAN_INTERVAL = 20;
     private static final double WIND_REF = 1.0;
     private static final double IDLE_FILL = 0.5;
@@ -39,6 +55,12 @@ public final class SailShaderState {
     private static final double DEPTH_MAX = 2.6;
 
     private static final Map<UUID, SailData> CACHE = new HashMap<>();
+    private static final Map<UUID, Vector3d> FORWARD = new ConcurrentHashMap<>();
+
+    public static Vector3d forwardFor(UUID id) {
+        Vector3d f = FORWARD.get(id);
+        return f == null ? null : new Vector3d(f);
+    }
 
     private static class SailBox {
         final int minX, minY, minZ, maxX, maxY, maxZ;
@@ -46,7 +68,11 @@ public final class SailShaderState {
         final int supportSign, area;
         long startTick;
         double smoothedPower = -1.0;
+        double bulgeSign = 0.0;
         long lastUpdate = 0;
+        double furlAmount = 0.0;
+        double furlTarget = 0.0;
+        long furlLastMs = 0;
 
         SailBox(int minX, int minY, int minZ, int maxX, int maxY, int maxZ, float axisX, float axisY, float axisZ, int supportSign, int area, long startTick) {
             this.minX = minX; this.minY = minY; this.minZ = minZ; this.maxX = maxX; this.maxY = maxY; this.maxZ = maxZ;
@@ -83,6 +109,8 @@ public final class SailShaderState {
         rot.transformInverse(offset);
         shader.safeGetUniform("offset").set((float) offset.x, (float) offset.y, (float) offset.z);
         shader.safeGetUniform("time").set(time());
+        shader.safeGetUniform("tessLevel").set(
+                (float) HighSeasConfig.sailSubdivisions);
 
         Vector3dc rp = renderPose.rotationPoint();
         ClientLevel level = Minecraft.getInstance().level;
@@ -95,7 +123,7 @@ public final class SailShaderState {
         SailData data = lookup(sub);
         List<SailBox> activeSails = data.sails;
         List<DecayingSailBox> decayingSails = data.decaying;
-        int totalSails = activeSails.size() + decayingSails.size();
+        int totalSails = Math.min(MAX_SAILS, activeSails.size() + decayingSails.size());
         shader.safeGetUniform("sailCount").set(totalSails);
 
         SubLevelContainer container = SubLevelContainer.getContainer(level);
@@ -107,100 +135,115 @@ public final class SailShaderState {
         Vector3d keel;
         if (root != null && root != sub) {
             SailData rootData = lookup(root);
-            keel = forward(root, root.logicalPose().orientation(), rootData.sails, rootData.rudder);
+            BoundingBox3ic rbb = root.getPlot() != null ? root.getPlot().getBoundingBox() : null;
+            boolean square = rbb != null && (rbb.maxX() - rbb.minX()) == (rbb.maxZ() - rbb.minZ());
+            if (rootData.rudder == null && square) {
+                keel = sailDir(rot, activeSails);
+            } else {
+                keel = forward(root, root.logicalPose().orientation(), rootData.sails, rootData.rudder);
+            }
         } else {
             keel = forward(sub, rot, activeSails, data.rudder);
         }
+        if (keel == null) {
+            keel = sailDir(rot, activeSails);
+        }
+        if (keel != null) {
+            FORWARD.put(sub.getUniqueId(), new Vector3d(keel));
+        }
 
+        UUID subId = sub.getUniqueId();
         int index = 0;
         for (SailBox b : activeSails) {
+            if (index >= MAX_SAILS)
+                return;
             long age = level.getGameTime() - b.startTick;
             double factor = Math.min(1.0, age / 60.0);
+            b.furlTarget = FurlState.isFurled(subId, b.minX, b.minY, b.minZ) ? 1.0 : 0.0;
             setUniformsForBox(shader, b, index, rp, renderPose, rot, level, keel, factor);
             index++;
         }
         for (DecayingSailBox dec : decayingSails) {
+            if (index >= MAX_SAILS)
+                return;
             long age = level.getGameTime() - dec.startTick;
             double factor = Math.max(0.0, (60.0 - age) / 60.0);
+            dec.box.furlTarget = 0.0;
             setUniformsForBox(shader, dec.box, index, rp, renderPose, rot, level, keel, factor);
             index++;
         }
     }
 
     private static void setUniformsForBox(ShaderInstance shader, SailBox b, int i, Vector3dc rp, Pose3dc renderPose, Quaterniondc rot, ClientLevel level, Vector3d keel, double decayFactor) {
-        shader.safeGetUniform("sailMin[" + i + "]").set(
+        shader.safeGetUniform(SAIL_MIN[i]).set(
                 (float) (b.minX - rp.x()),
                 (float) (b.minY - rp.y()),
                 (float) (b.minZ - rp.z()));
-        shader.safeGetUniform("sailMax[" + i + "]").set(
+        shader.safeGetUniform(SAIL_MAX[i]).set(
                 (float) (b.maxX - rp.x()),
                 (float) (b.maxY - rp.y()),
                 (float) (b.maxZ - rp.z()));
-        shader.safeGetUniform("sailAxis[" + i + "]").set(b.axisX, b.axisY, b.axisZ);
-        shader.safeGetUniform("supportDir[" + i + "]").set(
+        shader.safeGetUniform(SAIL_AXIS[i]).set(b.axisX, b.axisY, b.axisZ);
+        shader.safeGetUniform(SUPPORT_DIR[i]).set(
                 b.axisX * b.supportSign, b.axisY * b.supportSign, b.axisZ * b.supportSign);
 
         Vec3 bulge = windBulge(b, renderPose, rot, level, keel, decayFactor);
-        shader.safeGetUniform("bulge[" + i + "]").set((float) bulge.x, (float) bulge.y, (float) bulge.z);
+        shader.safeGetUniform(BULGE[i]).set((float) bulge.x, (float) bulge.y, (float) bulge.z);
+
+        long now = System.currentTimeMillis();
+        if (b.furlLastMs == 0) {
+            b.furlAmount = b.furlTarget;
+        } else {
+            double dt = Math.min((now - b.furlLastMs) / 1000.0, 0.1);
+            double step = 1.6 * dt;
+            double diff = b.furlTarget - b.furlAmount;
+            if (Math.abs(diff) <= step) {
+                b.furlAmount = b.furlTarget;
+            } else {
+                b.furlAmount += Math.signum(diff) * step;
+            }
+        }
+        b.furlLastMs = now;
+        shader.safeGetUniform(FURL[i]).set((float) b.furlAmount);
+    }
+
+    private static Vector3d sailDir(Quaterniondc rot, List<SailBox> sails) {
+        Vector3d dir = new Vector3d();
+        for (SailBox b : sails) {
+            Vector3d n = rot.transform(new Vector3d(b.axisX, b.axisY, b.axisZ));
+            n.y = 0;
+            if (n.lengthSquared() < 1.0e-9) {
+                continue;
+            }
+            n.normalize();
+            double side = b.supportSign != 0 ? -b.supportSign : 1.0;
+            dir.add(n.mul(b.area * side));
+        }
+        if (dir.lengthSquared() < 1.0e-9) {
+            return null;
+        }
+        dir.y = 0;
+        dir.normalize();
+        return dir;
     }
 
     private static Vector3d forward(ClientSubLevel sub, Quaterniondc rot, List<SailBox> sails, Vec3 rudder) {
-        if (sub.getPlot() == null) {
-            return null;
-        }
-        BoundingBox3ic bb = sub.getPlot().getBoundingBox();
-        if (rudder != null) {
-            double cx = (bb.minX() + bb.maxX()) * 0.5;
-            double cz = (bb.minZ() + bb.maxZ()) * 0.5;
-            Vector3d fwd = new Vector3d(cx - rudder.x, 0.0, cz - rudder.z);
-            rot.transform(fwd);
-            fwd.y = 0;
-            if (fwd.lengthSquared() >= 1.0e-6) {
-                fwd.normalize();
-                return fwd;
-            }
-        }
-        int spanX = bb.maxX() - bb.minX();
-        int spanZ = bb.maxZ() - bb.minZ();
-        Vector3d keel = spanX >= spanZ ? new Vector3d(1, 0, 0) : new Vector3d(0, 0, 1);
-        rot.transform(keel);
-        keel.y = 0;
-        if (keel.lengthSquared() < 1.0e-9) {
-            return null;
-        }
-        keel.normalize();
-
-        double sign = 0;
-        for (SailBox b : sails) {
-            Vector3d n = rot.transform(new Vector3d(b.axisX, b.axisY, b.axisZ));
-            sign += (n.x * keel.x + n.z * keel.z) * b.area;
-        }
-        if (sign < 0) {
-            keel.negate();
-        }
-        return keel;
+        return sailDir(rot, sails);
     }
 
     private static Vec3 windBulge(SailBox b, Pose3dc renderPose, Quaterniondc rot, ClientLevel level, Vector3d keel, double decayFactor) {
         Vector3d worldNormal = rot.transform(new Vector3d(b.axisX, b.axisY, b.axisZ));
 
-        Vector3d bulgeDir;
-        if (b.supportSign != 0) {
-            bulgeDir = new Vector3d(b.axisX, b.axisY, b.axisZ).mul(-b.supportSign);
-        } else {
-            double s = (keel != null && worldNormal.x * keel.x + worldNormal.z * keel.z < 0) ? -1.0 : 1.0;
-            bulgeDir = new Vector3d(b.axisX, b.axisY, b.axisZ).mul(s);
-        }
-
         double fill = IDLE_FILL;
-        if (level != null && keel != null) {
+        if (level != null) {
             Vector3d worldCenter = new Vector3d(
                     (b.minX + b.maxX) * 0.5, (b.minY + b.maxY) * 0.5, (b.minZ + b.maxZ) * 0.5);
             renderPose.transformPosition(worldCenter);
             Vec3 w = WindManager.getWind(level, worldCenter.x, worldCenter.y, worldCenter.z).vector();
-            double tailwind = Math.max(0.0, w.x * keel.x + w.y * keel.y + w.z * keel.z);
-            double across = Math.abs(worldNormal.x * keel.x + worldNormal.z * keel.z);
-            double targetPower = Mth.clamp(across * tailwind / WIND_REF, 0.0, 1.0);
+            double windDotN = w.x * worldNormal.x + w.y * worldNormal.y + w.z * worldNormal.z;
+            if (Math.abs(windDotN) > 0.15 * WIND_REF)
+                b.bulgeSign = Math.signum(windDotN);
+            double targetPower = Mth.clamp(Math.abs(windDotN) / WIND_REF, 0.0, 1.0);
             
             long now = System.currentTimeMillis();
             if (b.smoothedPower < 0) {
@@ -221,6 +264,16 @@ public final class SailShaderState {
     }
 
         fill *= decayFactor;
+
+        Vector3d bulgeDir;
+        if (b.supportSign != 0) {
+            bulgeDir = new Vector3d(b.axisX, b.axisY, b.axisZ).mul(-b.supportSign);
+        } else if (b.bulgeSign != 0.0) {
+            bulgeDir = new Vector3d(b.axisX, b.axisY, b.axisZ).mul(b.bulgeSign);
+        } else {
+            double s = (keel != null && worldNormal.x * keel.x + worldNormal.z * keel.z < 0) ? -1.0 : 1.0;
+            bulgeDir = new Vector3d(b.axisX, b.axisY, b.axisZ).mul(s);
+        }
 
         double depth = fill * maxDepth(b);
         return new Vec3(bulgeDir.x * depth, bulgeDir.y * depth, bulgeDir.z * depth);
@@ -277,6 +330,8 @@ public final class SailShaderState {
                             newBox.startTick = oldBox.startTick;
                             newBox.smoothedPower = oldBox.smoothedPower;
                             newBox.lastUpdate = oldBox.lastUpdate;
+                            newBox.furlAmount = oldBox.furlAmount;
+                            newBox.furlLastMs = oldBox.furlLastMs;
                             found = true;
                             break;
                         }
@@ -327,5 +382,6 @@ public final class SailShaderState {
 
     public static void clearAll() {
         CACHE.clear();
+        FORWARD.clear();
     }
 }

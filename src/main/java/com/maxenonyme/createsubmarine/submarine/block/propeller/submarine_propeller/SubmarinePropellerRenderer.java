@@ -1,74 +1,87 @@
 package com.maxenonyme.createsubmarine.submarine.block.propeller.submarine_propeller;
 
+import com.maxenonyme.createsubmarine.submarine.client.renderer.AllPartialModels;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
+import com.simibubi.create.content.kinetics.base.KineticBlockEntityRenderer;
+import dev.engine_room.flywheel.api.visualization.VisualizationManager;
 import dev.engine_room.flywheel.lib.model.baked.PartialModel;
-import dev.eriksonn.aeronautics.content.blocks.propeller.small.SimplePropellerRenderer;
-import com.maxenonyme.createsubmarine.submarine.client.renderer.AllPartialModels;
+import net.createmod.catnip.math.AngleHelper;
+import net.createmod.catnip.render.CachedBuffers;
+import net.createmod.catnip.render.SuperByteBuffer;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
 import net.minecraft.core.Direction;
+import net.minecraft.util.Mth;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 
 import static dev.eriksonn.aeronautics.content.blocks.propeller.small.BasePropellerBlock.REVERSED;
 
-public class SubmarinePropellerRenderer extends SimplePropellerRenderer<SubmarinePropellerBlockEntity> {
+public class SubmarinePropellerRenderer extends KineticBlockEntityRenderer<SubmarinePropellerBlockEntity> {
 
-    public SubmarinePropellerRenderer(final BlockEntityRendererProvider.Context context) {
+    public SubmarinePropellerRenderer(BlockEntityRendererProvider.Context context) {
         super(context);
     }
 
-    @Override
-    public PartialModel getCurrentModel(final SubmarinePropellerBlockEntity be) {
+    public PartialModel getCurrentModel(SubmarinePropellerBlockEntity be) {
         return be.getBlockState().getValue(REVERSED) ? AllPartialModels.SUBMARINE_PROPELLER_REVERSED : AllPartialModels.SUBMARINE_PROPELLER;
     }
 
-    public PartialModel getContraModel(final SubmarinePropellerBlockEntity be) {
+    public PartialModel getContraModel(SubmarinePropellerBlockEntity be) {
         return be.getBlockState().getValue(REVERSED) ? AllPartialModels.SUBMARINE_PROPELLER_REVERSED_CONTRA : AllPartialModels.SUBMARINE_PROPELLER_CONTRA;
     }
 
     @Override
-    public float getAngle(final float partialTicks, final Direction dir, final SubmarinePropellerBlockEntity be) {
-        return super.getAngle(partialTicks, dir, be) + getRotationOffsetForPosition(be, be.getBlockPos(), dir.getAxis());
+    protected SuperByteBuffer getRotatedModel(SubmarinePropellerBlockEntity be, BlockState state) {
+        return CachedBuffers.partialFacing(com.simibubi.create.AllPartialModels.SHAFT_HALF, state,
+                state.getValue(BlockStateProperties.FACING).getOpposite());
+    }
+
+    public float getAngle(float partialTicks, Direction dir, SubmarinePropellerBlockEntity be) {
+        float angle = 2 * Mth.lerp(partialTicks, be.getPreviousAngle(), be.getAngle()) * Mth.DEG_TO_RAD;
+        return angle + getRotationOffsetForPosition(be, be.getBlockPos(), dir.getAxis());
     }
 
     @Override
-    public void renderSafe(final SubmarinePropellerBlockEntity be, final float partialTicks, final PoseStack ms, final MultiBufferSource buffer, final int light, final int overlay) {
-        if (dev.engine_room.flywheel.api.visualization.VisualizationManager.supportsVisualization(be.getLevel())) {
+    protected void renderSafe(SubmarinePropellerBlockEntity be, float partialTicks, PoseStack ms, MultiBufferSource buffer, int light, int overlay) {
+        if (VisualizationManager.supportsVisualization(be.getLevel()))
             return;
-        }
 
         super.renderSafe(be, partialTicks, ms, buffer, light, overlay);
+        if (be.isGroupMember())
+            return;
 
-        final BlockState state = be.getBlockState();
-        final Direction dir = state.getValue(BlockStateProperties.FACING);
-        final VertexConsumer vb = buffer.getBuffer(RenderType.solid());
+        BlockState state = be.getBlockState();
+        Direction dir = state.getValue(BlockStateProperties.FACING);
+        VertexConsumer vb = buffer.getBuffer(RenderType.solid());
+        float angle = getAngle(partialTicks, dir, be);
 
-        final net.createmod.catnip.render.SuperByteBuffer propeller = net.createmod.catnip.render.CachedBuffers.partialFacing(this.getCurrentModel(be), state);
-        final float angle = this.getAngle(partialTicks, dir, be);
-        kineticRotationTransform(propeller, be, dir.getAxis(), angle, light);
-
-        if (dir.getAxis().isHorizontal()) {
-            propeller.rotateCentered(net.createmod.catnip.math.AngleHelper.rad(net.createmod.catnip.math.AngleHelper.horizontalAngle(dir.getOpposite())), Direction.UP);
+        ms.pushPose();
+        if (be.isGroupMaster()) {
+            Direction[] plane = SubmarinePropellerBlockEntity.planeAxes(dir);
+            ms.translate((plane[0].getStepX() + plane[1].getStepX()) * 0.5,
+                    (plane[0].getStepY() + plane[1].getStepY()) * 0.5,
+                    (plane[0].getStepZ() + plane[1].getStepZ()) * 0.5);
+            ms.translate(0.5, 0.5, 0.5);
+            ms.scale(dir.getAxis() == Direction.Axis.X ? 1 : 2,
+                    dir.getAxis() == Direction.Axis.Y ? 1 : 2,
+                    dir.getAxis() == Direction.Axis.Z ? 1 : 2);
+            ms.translate(-0.5, -0.5, -0.5);
         }
-        if (dir.getAxis().isVertical()) {
-            propeller.rotateCentered(net.createmod.catnip.math.AngleHelper.rad(net.createmod.catnip.math.AngleHelper.verticalAngle(dir.getOpposite())), Direction.EAST);
-        }
-        propeller.translate(0, 0, -3 / 16f).rotateCentered(net.createmod.catnip.math.AngleHelper.rad(-90 - net.createmod.catnip.math.AngleHelper.verticalAngle(dir)), Direction.EAST);
-        propeller.renderInto(ms, vb);
+        renderBlades(CachedBuffers.partialFacing(getCurrentModel(be), state), be, dir, angle, light).renderInto(ms, vb);
+        renderBlades(CachedBuffers.partialFacing(getContraModel(be), state), be, dir, -angle, light).renderInto(ms, vb);
+        ms.popPose();
+    }
 
-        final net.createmod.catnip.render.SuperByteBuffer contraPropeller = net.createmod.catnip.render.CachedBuffers.partialFacing(this.getContraModel(be), state);
-        kineticRotationTransform(contraPropeller, be, dir.getAxis(), -angle, light);
-
-        if (dir.getAxis().isHorizontal()) {
-            contraPropeller.rotateCentered(net.createmod.catnip.math.AngleHelper.rad(net.createmod.catnip.math.AngleHelper.horizontalAngle(dir.getOpposite())), Direction.UP);
-        }
-        if (dir.getAxis().isVertical()) {
-            contraPropeller.rotateCentered(net.createmod.catnip.math.AngleHelper.rad(net.createmod.catnip.math.AngleHelper.verticalAngle(dir.getOpposite())), Direction.EAST);
-        }
-        contraPropeller.translate(0, 0, -3 / 16f).rotateCentered(net.createmod.catnip.math.AngleHelper.rad(-90 - net.createmod.catnip.math.AngleHelper.verticalAngle(dir)), Direction.EAST);
-        contraPropeller.renderInto(ms, vb);
+    private SuperByteBuffer renderBlades(SuperByteBuffer blades, SubmarinePropellerBlockEntity be, Direction dir, float angle, int light) {
+        kineticRotationTransform(blades, be, dir.getAxis(), angle, light);
+        if (dir.getAxis().isHorizontal())
+            blades.rotateCentered(AngleHelper.rad(AngleHelper.horizontalAngle(dir.getOpposite())), Direction.UP);
+        if (dir.getAxis().isVertical())
+            blades.rotateCentered(AngleHelper.rad(AngleHelper.verticalAngle(dir.getOpposite())), Direction.EAST);
+        blades.translate(0, 0, -3 / 16f).rotateCentered(AngleHelper.rad(-90 - AngleHelper.verticalAngle(dir)), Direction.EAST);
+        return blades;
     }
 }

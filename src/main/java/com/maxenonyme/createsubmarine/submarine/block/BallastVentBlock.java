@@ -1,15 +1,14 @@
 package com.maxenonyme.createsubmarine.submarine.block;
 import com.maxenonyme.createsubmarine.CreateSubmarine;
 import com.maxenonyme.createsubmarine.submarine.block.entity.BallastVentBlockEntity;
-import com.simibubi.create.content.kinetics.base.HorizontalKineticBlock;
+import com.simibubi.create.content.equipment.wrench.IWrenchable;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.core.Direction.Axis;
 import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelAccessor;
-import net.minecraft.world.level.LevelReader;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.EntityBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityTicker;
@@ -20,7 +19,7 @@ import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.block.state.properties.BooleanProperty;
 import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.fluids.capability.IFluidHandler;
-public class BallastVentBlock extends HorizontalKineticBlock implements EntityBlock {
+public class BallastVentBlock extends Block implements EntityBlock, IWrenchable {
     public static final BooleanProperty UP = BlockStateProperties.UP;
     public static final BooleanProperty DOWN = BlockStateProperties.DOWN;
     public static final BooleanProperty NORTH = BlockStateProperties.NORTH;
@@ -35,8 +34,7 @@ public class BallastVentBlock extends HorizontalKineticBlock implements EntityBl
             .setValue(EAST, false).setValue(WEST, false));
     }
     @Override
-    protected void createBlockStateDefinition(StateDefinition.Builder<net.minecraft.world.level.block.Block, BlockState> builder) {
-        super.createBlockStateDefinition(builder);
+    protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
         builder.add(UP, DOWN, NORTH, SOUTH, EAST, WEST);
     }
     @Override
@@ -44,46 +42,24 @@ public class BallastVentBlock extends HorizontalKineticBlock implements EntityBl
         return new BallastVentBlockEntity(pos, state);
     }
     @Override
-    public Axis getRotationAxis(BlockState state) {
-        return state.getValue(BlockStateProperties.HORIZONTAL_FACING).getAxis();
-    }
-    @Override
     public <T extends BlockEntity> BlockEntityTicker<T> getTicker(Level level, BlockState state, BlockEntityType<T> type) {
+        if (level.isClientSide)
+            return null;
         return type == CreateSubmarine.BALLAST_VENT_BE.get() ? (l, p, s, be) -> ((BallastVentBlockEntity) be).tick() : null;
     }
     @Override
-    public boolean hasShaftTowards(LevelReader world, BlockPos pos, BlockState state, Direction face) {
-        return face == state.getValue(BlockStateProperties.HORIZONTAL_FACING).getOpposite();
-    }
-    @Override
     public BlockState getStateForPlacement(BlockPlaceContext context) {
-        BlockState base = super.getStateForPlacement(context);
-        if (base == null) base = this.defaultBlockState();
-        return computeConnections(base, context.getLevel(), context.getClickedPos());
+        return computeConnections(this.defaultBlockState(), context.getLevel(), context.getClickedPos());
     }
     @Override
     protected BlockState updateShape(BlockState state, Direction direction, BlockState neighborState, LevelAccessor level, BlockPos pos, BlockPos neighborPos) {
-        BlockState updated = super.updateShape(state, direction, neighborState, level, pos, neighborPos);
-        if (!isPipeConnectionFace(updated, direction)) {
-            return updated.setValue(propertyForDirection(direction), false);
-        }
-        boolean connected = canConnectTo(level, neighborPos, direction);
-        return updated.setValue(propertyForDirection(direction), connected);
+        return state.setValue(propertyForDirection(direction), canConnectTo(level, neighborPos, direction));
     }
     public static BlockState computeConnections(BlockState state, BlockGetter level, BlockPos pos) {
         for (Direction dir : Direction.values()) {
-            BooleanProperty prop = propertyForDirection(dir);
-            if (!isPipeConnectionFace(state, dir)) {
-                state = state.setValue(prop, false);
-                continue;
-            }
-            state = state.setValue(prop, canConnectTo(level, pos.relative(dir), dir));
+            state = state.setValue(propertyForDirection(dir), canConnectTo(level, pos.relative(dir), dir));
         }
         return state;
-    }
-    public static boolean isPipeConnectionFace(BlockState state, Direction face) {
-        Direction shaftFace = state.getValue(BlockStateProperties.HORIZONTAL_FACING).getOpposite();
-        return face != shaftFace;
     }
     private static boolean canConnectTo(BlockGetter level, BlockPos neighborPos, Direction faceTowardsNeighbor) {
         BlockEntity be = level.getBlockEntity(neighborPos);

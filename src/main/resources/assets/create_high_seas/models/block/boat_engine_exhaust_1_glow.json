@@ -1,0 +1,46 @@
+{
+	"ambientocclusion": false,
+	"render_type": "minecraft:cutout",
+	"texture_size": [
+		64,
+		64
+	],
+	"textures": {
+		"2": "create_high_seas:block/boat_engine/boat_engine_powered_glow",
+		"particle": "create_high_seas:block/boat_engine/boat_engine_powered_glow"
+	},
+	"elements": [
+		{
+			"from": [
+				2,
+				6,
+				18.01
+			],
+			"to": [
+				6,
+				16,
+				18.01
+			],
+			"faces": {
+				"south": {
+					"uv": [
+						10.25,
+						10,
+						11.25,
+						12.5
+					],
+					"texture": "#2"
+				}
+			},
+			"rotation": {
+				"angle": 0,
+				"axis": "y",
+				"origin": [
+					4,
+					11,
+					17
+				]
+			}
+		}
+	]
+}

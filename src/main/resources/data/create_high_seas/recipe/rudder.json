@@ -1,0 +1,20 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "   ",
+    " P ",
+    " S "
+  ],
+  "key": {
+    "P": {
+      "item": "create:copycat_panel"
+    },
+    "S": {
+      "item": "create_high_seas:white_sail"
+    }
+  },
+  "result": {
+    "id": "create_high_seas:rudder",
+    "count": 1
+  }
+}

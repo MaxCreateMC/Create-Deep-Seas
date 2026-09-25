@@ -24,6 +24,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Queue;
 import java.util.UUID;
+import net.minecraft.world.level.EmptyBlockGetter;
 
 public final class SubmarineInfoCommand {
     private SubmarineInfoCommand() {}
@@ -57,11 +58,7 @@ public final class SubmarineInfoCommand {
             BoundingBox3ic b = sub.getPlot().getBoundingBox();
             if (b == null) continue;
             Vector3d local = new Vector3d(ppos);
-            try {
-                sub.logicalPose().transformPositionInverse(local);
-            } catch (Throwable t) {
-                continue;
-            }
+            sub.logicalPose().transformPositionInverse(local);
             if (local.x >= b.minX() - 2 && local.x <= b.maxX() + 2
                     && local.y >= b.minY() - 2 && local.y <= b.maxY() + 2
                     && local.z >= b.minZ() - 2 && local.z <= b.maxZ() + 2) {
@@ -101,7 +98,8 @@ public final class SubmarineInfoCommand {
         boolean breached = SubmarinePressureSystem.isBreached(id);
         int cracks = SubmarinePressureSystem.getCrackCount(id);
         int depth = SubmarinePressureSystem.getCachedDepth(id);
-        boolean underPressure = hermetic && depth > 0 && cracks > 0;
+        boolean underPressure = hermetic && depth > 0;
+        int hullLimit = subLevel != null ? SubmarinePressureSystem.getWeakestHullDepth(id, subLevel) : -1;
 
         final int fc = controllers, fd = diffusers, ff = floaters;
         final boolean fScanned = scanned;
@@ -119,6 +117,8 @@ public final class SubmarineInfoCommand {
         source.sendSuccess(() -> line("Cracked blocks", String.valueOf(cracks)), false);
         source.sendSuccess(() -> line("Water depth", String.valueOf(depth)), false);
         source.sendSuccess(() -> bool("Under pressure", underPressure), false);
+        if (hullLimit > 0 && hullLimit < Integer.MAX_VALUE)
+            source.sendSuccess(() -> line("Hull depth limit", String.valueOf(hullLimit)), false);
         return 1;
     }
 
@@ -146,11 +146,7 @@ public final class SubmarineInfoCommand {
             BoundingBox3ic b = sub.getPlot().getBoundingBox();
             if (b == null) continue;
             Vector3d local = new Vector3d(ppos);
-            try {
-                sub.logicalPose().transformPositionInverse(local);
-            } catch (Throwable t) {
-                continue;
-            }
+            sub.logicalPose().transformPositionInverse(local);
             if (local.x >= b.minX() - 2 && local.x <= b.maxX() + 2
                     && local.y >= b.minY() - 2 && local.y <= b.maxY() + 2
                     && local.z >= b.minZ() - 2 && local.z <= b.maxZ() + 2) {
@@ -172,12 +168,7 @@ public final class SubmarineInfoCommand {
         }
 
         Vector3d localPlayerVec = new Vector3d(ppos);
-        try {
-            found.logicalPose().transformPositionInverse(localPlayerVec);
-        } catch (Throwable t) {
-            source.sendFailure(Component.translatable("create_submarine.command.findhole.failed_local_pos"));
-            return 0;
-        }
+        found.logicalPose().transformPositionInverse(localPlayerVec);
         BlockPos playerLocalPos = BlockPos.containing(localPlayerVec.x, localPlayerVec.y, localPlayerVec.z);
 
         int minX = b.minX(), maxX = b.maxX();
@@ -463,7 +454,7 @@ public final class SubmarineInfoCommand {
         if (state.isAir()) {
             return true;
         }
-        return state.getCollisionShape(net.minecraft.world.level.EmptyBlockGetter.INSTANCE, BlockPos.ZERO).isEmpty();
+        return state.getCollisionShape(EmptyBlockGetter.INSTANCE, BlockPos.ZERO).isEmpty();
     }
 
     private static Component line(String label, String value) {

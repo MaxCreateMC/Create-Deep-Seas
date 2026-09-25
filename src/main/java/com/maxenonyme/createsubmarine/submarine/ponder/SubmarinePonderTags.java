@@ -23,6 +23,8 @@ public class SubmarinePonderTags {
               .add(ResourceLocation.fromNamespaceAndPath(CreateSubmarine.MOD_ID, "water_thruster"))
               .add(ResourceLocation.fromNamespaceAndPath(CreateSubmarine.MOD_ID, "barometer"))
               .add(ResourceLocation.fromNamespaceAndPath(CreateSubmarine.MOD_ID, "steel_cable"))
-              .add(ResourceLocation.fromNamespaceAndPath(CreateSubmarine.MOD_ID, "pulley"));
+              .add(ResourceLocation.fromNamespaceAndPath(CreateSubmarine.MOD_ID, "pulley"))
+              .add(ResourceLocation.fromNamespaceAndPath(CreateSubmarine.MOD_ID, "command_sub"))
+              .add(ResourceLocation.fromNamespaceAndPath(CreateSubmarine.MOD_ID, "pump_controller"));
     }
 }

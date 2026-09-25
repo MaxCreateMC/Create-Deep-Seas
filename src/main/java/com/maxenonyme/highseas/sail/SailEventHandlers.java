@@ -4,7 +4,7 @@ import dev.eriksonn.aeronautics.content.particle.AirPoofParticleData;
 import dev.eriksonn.aeronautics.content.particle.GustParticleData;
 import dev.eriksonn.aeronautics.index.AeroSoundEvents;
 import dev.ryanhcode.sable.sublevel.ServerSubLevel;
-import dev.simulated_team.simulated.index.SimTags;
+import com.maxenonyme.highseas.block.BoatSailBlock;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundSource;
@@ -22,7 +22,7 @@ public class SailEventHandlers {
     @SubscribeEvent
     public static void onBlockBreak(BlockEvent.BreakEvent event) {
         if (!(event.getLevel() instanceof ServerSubLevel ship)) return;
-        if (!event.getState().is(SimTags.Blocks.SYMMETRIC_SAILS)) return;
+        if (!event.getState().is(BoatSailBlock.SAILS)) return;
         
         ServerLevel parentLevel = (ServerLevel) ship.getLevel();
         if (parentLevel == null) return;

@@ -9,6 +9,7 @@
     "create_submarine:submarine_propeller",
     "create_submarine:arresting_hook",
     "create_submarine:barometer",
-    "create_submarine:weather_vane"
+    "create_high_seas:wind_vane",
+    "create_high_seas:rudder"
   ]
 }

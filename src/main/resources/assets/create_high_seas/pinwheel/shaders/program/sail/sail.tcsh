@@ -10,14 +10,17 @@ out vec4 vertexColor_tc[];
 out float vertexDistance_tc[];
 out vec3 normalPass_tc[];
 
+uniform float tessLevel;
+
 void main(void) {
     if (gl_InvocationID == 0) {
-        gl_TessLevelInner[0] = 4.0;
-        gl_TessLevelInner[1] = 4.0;
-        gl_TessLevelOuter[0] = 4.0;
-        gl_TessLevelOuter[1] = 4.0;
-        gl_TessLevelOuter[2] = 4.0;
-        gl_TessLevelOuter[3] = 4.0;
+        float t = max(tessLevel, 1.0);
+        gl_TessLevelInner[0] = t;
+        gl_TessLevelInner[1] = t;
+        gl_TessLevelOuter[0] = t;
+        gl_TessLevelOuter[1] = t;
+        gl_TessLevelOuter[2] = t;
+        gl_TessLevelOuter[3] = t;
     }
 
     gl_out[gl_InvocationID].gl_Position = gl_in[gl_InvocationID].gl_Position;

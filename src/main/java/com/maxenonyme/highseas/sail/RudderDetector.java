@@ -1,6 +1,6 @@
 package com.maxenonyme.highseas.sail;
 
-import com.maxenonyme.createsubmarine.submarine.block.SubmarineRudderBlock;
+import com.maxenonyme.highseas.block.RudderBlock;
 import com.maxenonyme.highseas.wind.WindConfig;
 import dev.ryanhcode.sable.companion.math.BoundingBox3ic;
 import net.minecraft.core.BlockPos;
@@ -26,7 +26,7 @@ public final class RudderDetector {
             for (int y = bounds.minY(); y <= bounds.maxY(); y++) {
                 for (int z = bounds.minZ(); z <= bounds.maxZ(); z++) {
                     m.set(x, y, z);
-                    if (level.getBlockState(m).getBlock() instanceof SubmarineRudderBlock) {
+                    if (level.getBlockState(m).getBlock() instanceof RudderBlock) {
                         sx += x + 0.5;
                         sy += y + 0.5;
                         sz += z + 0.5;

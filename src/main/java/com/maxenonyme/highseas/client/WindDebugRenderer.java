@@ -116,8 +116,12 @@ public final class WindDebugRenderer {
                     if (wn.lengthSquared() > 1.0e-9) {
                         wn.normalize();
                         double power = SailForce.power(windVec, wn.x, wn.y, wn.z, forward.x, forward.y, forward.z, group.area());
-                        drawArrow(lines, matrix, start, start.add(fwd.scale(Mth.clamp(power * 0.15, 0.5, 6.0))),
-                                fwd, 1.0f, 0.2f, 0.2f);
+                        double len = Mth.clamp(power * 0.15, -6.0, 6.0);
+                        if (Math.abs(len) < 0.5) {
+                            len = 0.5 * Math.signum(power);
+                        }
+                        Vec3 tipDir = len >= 0 ? fwd : new Vec3(-fwd.x, -fwd.y, -fwd.z);
+                        drawArrow(lines, matrix, start, start.add(fwd.scale(len)), tipDir, 1.0f, 0.2f, 0.2f);
                     }
 
                     if (strength >= 1.0e-4) {

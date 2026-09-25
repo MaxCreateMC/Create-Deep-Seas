@@ -14,6 +14,7 @@ import net.minecraft.world.phys.Vec3;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import com.maxenonyme.highseas.config.HighSeasConfig;
 
 public final class WindManager {
     private WindManager() {
@@ -88,9 +89,9 @@ public final class WindManager {
                 zx * WindConfig.NOISE_SCALE * WindConfig.ZONE_SIZE,
                 gameTime * WindConfig.TIME_SCALE,
                 zz * WindConfig.NOISE_SCALE * WindConfig.ZONE_SIZE);
-        double gustMult = 1.0 + gust * WindConfig.GUST_AMPLITUDE;
+        double gustMult = 1.0 + gust * HighSeasConfig.gustAmplitude;
 
-        double magnitude = WindConfig.BASE_WIND
+        double magnitude = HighSeasConfig.baseWind
                 * weatherMult(level)
                 * biomeMult(level, cx, cz)
                 * gustMult;
@@ -101,7 +102,7 @@ public final class WindManager {
     private static double weatherMult(Level level) {
         double rain = level.getRainLevel(1.0f);
         double thunder = level.getThunderLevel(1.0f);
-        return 1.0 + rain * WindConfig.RAIN_BOOST + thunder * WindConfig.THUNDER_BOOST;
+        return 1.0 + rain * HighSeasConfig.rainBoost + thunder * HighSeasConfig.thunderBoost;
     }
 
     private static double biomeMult(Level level, int x, int z) {
@@ -139,7 +140,7 @@ public final class WindManager {
                 worst = Math.max(worst, Mth.clamp(over / 24.0, 0.0, 1.0));
             }
         }
-        return 1.0 - worst * WindConfig.OCCLUSION_MAX_REDUCTION;
+        return 1.0 - worst * HighSeasConfig.windOcclusion;
     }
 
     public static void clearAll() {

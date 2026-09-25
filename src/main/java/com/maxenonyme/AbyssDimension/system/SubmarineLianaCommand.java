@@ -8,7 +8,7 @@ import com.mojang.brigadier.context.CommandContext;
 import dev.ryanhcode.sable.api.SubLevelAssemblyHelper;
 import dev.ryanhcode.sable.api.physics.constraint.ConstraintJointAxis;
 import dev.ryanhcode.sable.api.physics.constraint.PhysicsConstraintHandle;
-import dev.ryanhcode.sable.api.physics.constraint.generic.GenericConstraintConfiguration;
+import dev.ryanhcode.sable.api.physics.constraint.GenericConstraintConfiguration;
 import dev.ryanhcode.sable.api.sublevel.ServerSubLevelContainer;
 import dev.ryanhcode.sable.api.sublevel.SubLevelContainer;
 import dev.ryanhcode.sable.sublevel.ServerSubLevel;
@@ -32,6 +32,16 @@ import java.util.ArrayDeque;
 import java.util.UUID;
 import java.util.Random;
 import java.util.Comparator;
+import dev.ryanhcode.sable.sublevel.SubLevel;
+import java.lang.reflect.Method;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.state.BlockState;
 
 public final class SubmarineLianaCommand {
     private static final int SEGMENT_SIZE = 3;
@@ -182,8 +192,8 @@ public final class SubmarineLianaCommand {
     }
 
     private static void rollback(ServerLevel level,
-            java.util.Map<BlockPos, net.minecraft.world.level.block.state.BlockState> originalStates) {
-        for (java.util.Map.Entry<BlockPos, net.minecraft.world.level.block.state.BlockState> entry : originalStates
+            Map<BlockPos, BlockState> originalStates) {
+        for (Map.Entry<BlockPos, BlockState> entry : originalStates
                 .entrySet()) {
             level.setBlock(entry.getKey(), entry.getValue(), 3);
         }
@@ -192,8 +202,8 @@ public final class SubmarineLianaCommand {
     private static void removeSubLevels(ServerSubLevelContainer container, List<ServerSubLevel> subLevels) {
         try {
             Class<?> reasonCls = Class.forName("dev.ryanhcode.sable.api.sublevel.SubLevelRemovalReason");
-            java.lang.reflect.Method method = ServerSubLevelContainer.class.getMethod("removeSubLevel",
-                    dev.ryanhcode.sable.sublevel.SubLevel.class, reasonCls);
+            Method method = ServerSubLevelContainer.class.getMethod("removeSubLevel",
+                    SubLevel.class, reasonCls);
             Object reason = reasonCls.getEnumConstants()[0];
             for (ServerSubLevel sub : subLevels) {
                 try {
@@ -217,11 +227,11 @@ public final class SubmarineLianaCommand {
         int[] seedPlotZForSeg = new int[numSegments];
         Vector3d[] seedLocalForSeg = new Vector3d[numSegments];
         Vector3d[] seedOffsetForSeg = new Vector3d[numSegments];
-        java.util.Arrays.fill(seedPlotXForSeg, -1);
-        java.util.Arrays.fill(seedPlotZForSeg, -1);
+        Arrays.fill(seedPlotXForSeg, -1);
+        Arrays.fill(seedPlotZForSeg, -1);
         double currentY = basePos.getY() + 1.5;
 
-        java.util.Map<BlockPos, net.minecraft.world.level.block.state.BlockState> originalStates = new java.util.HashMap<>();
+        Map<BlockPos, BlockState> originalStates = new HashMap<>();
         List<ServerSubLevel> assembledSubLevels = new ArrayList<>();
 
         Random random = new Random();
@@ -229,7 +239,7 @@ public final class SubmarineLianaCommand {
         if (length > 1) {
             int maxFruits = Math.min(2, numSegments);
             int fruitsToSpawn = random.nextInt(maxFruits + 1);
-            java.util.Set<Integer> usedSegments = new java.util.HashSet<>();
+            Set<Integer> usedSegments = new HashSet<>();
             while (seedIndices.size() < fruitsToSpawn) {
                 int randIdx = random.nextInt(length - 1) + 2;
                 if (usedSegments.add((randIdx - 1) / SEGMENT_SIZE)) {
@@ -239,7 +249,7 @@ public final class SubmarineLianaCommand {
         }
 
         List<Integer> directions = new ArrayList<>(List.of(0, 1, 2, 3));
-        java.util.Collections.shuffle(directions, random);
+        Collections.shuffle(directions, random);
         int spawnedFruitCount = 0;
 
         for (int i = 0; i < numSegments; i++) {
@@ -356,7 +366,7 @@ public final class SubmarineLianaCommand {
                         seedJoint.setContactsEnabled(false);
                     }
 
-                    net.minecraft.world.level.block.entity.BlockEntity rawBe = subLevel.getPlot()
+                    BlockEntity rawBe = subLevel.getPlot()
                             .getEmbeddedLevelAccessor().getBlockEntity(segmentPlotAnchor);
                     if (rawBe instanceof SubmarineLianaBlockEntity lianaBe) {
                         lianaBe.setSeed(seedSubLevel.getUniqueId(), localAnchorOffset);
@@ -403,7 +413,7 @@ public final class SubmarineLianaCommand {
                     segmentLen));
 
             BlockPos plotAnchor = current.getPlot().getCenterBlock();
-            net.minecraft.world.level.block.entity.BlockEntity rawBe = current.getPlot().getEmbeddedLevelAccessor()
+            BlockEntity rawBe = current.getPlot().getEmbeddedLevelAccessor()
                     .getBlockEntity(plotAnchor);
             if (rawBe instanceof SubmarineLianaBlockEntity be) {
                 be.setController(isController);
@@ -442,7 +452,7 @@ public final class SubmarineLianaCommand {
             if (groundJoint != null) {
                 groundJoint.setContactsEnabled(false);
             }
-            net.minecraft.world.level.block.entity.BlockEntity rawBe0 = segments[0].getPlot().getEmbeddedLevelAccessor()
+            BlockEntity rawBe0 = segments[0].getPlot().getEmbeddedLevelAccessor()
                     .getBlockEntity(plotAnchor0);
             if (rawBe0 instanceof SubmarineLianaBlockEntity be0) {
                 be0.setGroundJoint(groundJoint);
@@ -472,7 +482,7 @@ public final class SubmarineLianaCommand {
             if (joint != null) {
                 joint.setContactsEnabled(false);
             }
-            net.minecraft.world.level.block.entity.BlockEntity rawBeNext = next.getPlot().getEmbeddedLevelAccessor()
+            BlockEntity rawBeNext = next.getPlot().getEmbeddedLevelAccessor()
                     .getBlockEntity(nextPlotAnchor);
             if (rawBeNext instanceof SubmarineLianaBlockEntity beNext) {
                 beNext.setParentJoint(joint);

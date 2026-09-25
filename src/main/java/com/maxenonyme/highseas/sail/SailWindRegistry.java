@@ -1,6 +1,5 @@
 package com.maxenonyme.highseas.sail;
 
-import com.maxenonyme.highseas.wind.WindConfig;
 import dev.ryanhcode.sable.sublevel.SubLevel;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
@@ -10,6 +9,8 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
+import com.maxenonyme.highseas.config.HighSeasConfig;
+import java.util.ArrayList;
 
 public final class SailWindRegistry {
     private SailWindRegistry() {
@@ -24,7 +25,7 @@ public final class SailWindRegistry {
         UUID id = ship.getUniqueId();
         Long last = LAST_SCAN.get(id);
         List<SailGroup> cached = SAILS.get(id);
-        if (cached != null && last != null && gameTime - last < WindConfig.SAIL_SCAN_INTERVAL) {
+        if (cached != null && last != null && gameTime - last < HighSeasConfig.sailScanInterval) {
             return cached;
         }
 
@@ -35,7 +36,7 @@ public final class SailWindRegistry {
             List<SailGroup> detected = SailDetector.detect(blocks, ship.getPlot().getBoundingBox());
             
             if (cached != null) {
-                List<SailGroup> newResult = new java.util.ArrayList<>();
+                List<SailGroup> newResult = new ArrayList<>();
                 for (SailGroup g : detected) {
                     long st = gameTime;
                     for (SailGroup c : cached) {
@@ -48,7 +49,7 @@ public final class SailWindRegistry {
                 }
                 result = newResult;
             } else {
-                List<SailGroup> newResult = new java.util.ArrayList<>();
+                List<SailGroup> newResult = new ArrayList<>();
                 for (SailGroup g : detected) {
                     newResult.add(new SailGroup(g.axis(), g.localCenter(), g.area(), g.min(), g.max(), g.supportSign(), gameTime));
                 }
@@ -56,6 +57,7 @@ public final class SailWindRegistry {
             }
             
             rudder = RudderDetector.centroid(blocks, ship.getPlot().getBoundingBox());
+
         }
         SAILS.put(id, result);
         if (rudder != null) {

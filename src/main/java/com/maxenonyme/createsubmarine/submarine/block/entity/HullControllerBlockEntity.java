@@ -16,6 +16,7 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import org.joml.Vector3d;
 import java.util.UUID;
+import net.minecraft.server.MinecraftServer;
 public class HullControllerBlockEntity extends BlockEntity {
 
     private UUID currentSubLevelId = null;
@@ -32,6 +33,7 @@ public class HullControllerBlockEntity extends BlockEntity {
             if (!SubmarineDriverRegistry.claim(currentSubLevelId, worldPosition, SubmarineDriverRegistry.HULL_CONTROLLER, gameTick)) {
                 return;
             }
+            CompartmentTracker.claimSubmarine(currentSubLevelId, gameTick);
             long lastUpdate = CompartmentTracker.lastUpdateTick(currentSubLevelId);
             long sinceUpdate = gameTick - lastUpdate;
             boolean scanDue = lastUpdate == 0
@@ -78,7 +80,7 @@ public class HullControllerBlockEntity extends BlockEntity {
         if (level.isClientSide) {
             return 2;
         }
-        net.minecraft.server.MinecraftServer server = level.getServer();
+        MinecraftServer server = level.getServer();
         if (server != null) {
             int players = server.getPlayerCount();
             if (players <= 1) return 1;

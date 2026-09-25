@@ -20,6 +20,11 @@ import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import com.maxenonyme.createsubmarine.submarine.client.renderer.SubLevelRenderPoseCapture;
+import com.maxenonyme.createsubmarine.submarine.compartment.CompartmentTracker;
+import dev.ryanhcode.sable.sublevel.SubLevel;
+import java.util.UUID;
+import net.minecraft.util.Mth;
 
 @Pseudo
 @Mixin(value = VanillaChunkedSubLevelRenderData.class, remap = false)
@@ -36,7 +41,7 @@ public abstract class SableSubLevelPocketFogMixin {
     private void createsubmarine$defogBegin(RenderType layer, ShaderInstance shader, Matrix4f modelView,
             double camX, double camY, double camZ, CallbackInfo ci) {
         if (this.subLevel.getLevel() != null) {
-            com.maxenonyme.createsubmarine.submarine.client.renderer.SubLevelRenderPoseCapture.capture(
+            SubLevelRenderPoseCapture.capture(
                     this.subLevel.getUniqueId(), this.subLevel.renderPose());
         }
         createsubmarine$savedFogColor = null;
@@ -46,15 +51,22 @@ public abstract class SableSubLevelPocketFogMixin {
         if (container == null) return;
         WaterOcclusionRegion region = container.getOccludingRegion(Minecraft.getInstance().gameRenderer.getMainCamera().getPosition());
         boolean shouldClearFog = false;
-        if (region != null && Sable.HELPER.getContaining(this.subLevel.getLevel(), region.getVolume().getMinBlockPos()) != this.subLevel) {
-            Vector3dc p = this.subLevel.renderPose().position();
-            if (container.isOccluded(new Vec3(p.x(), p.y(), p.z()))) {
-                shouldClearFog = true;
+        if (region != null) {
+            SubLevel regionSub = Sable.HELPER.getContaining(this.subLevel.getLevel(), region.getVolume().getMinBlockPos());
+            if (regionSub != this.subLevel) {
+                Vector3dc p = this.subLevel.renderPose().position();
+                Vec3 local = regionSub != null
+                        ? regionSub.logicalPose().transformPositionInverse(new Vec3(p.x(), p.y(), p.z()))
+                        : new Vec3(p.x(), p.y(), p.z());
+                if (region.getVolume().getOccupied(Mth.floor(local.x), Mth.floor(local.y), Mth.floor(local.z))) {
+                    shouldClearFog = true;
+                }
             }
         }
         
         if (!shouldClearFog) {
-            if (com.maxenonyme.createsubmarine.submarine.compartment.CompartmentTracker.isInSealedExact(this.subLevel.getLevel(), Minecraft.getInstance().gameRenderer.getMainCamera().getPosition())) {
+            UUID sealedSub = CompartmentTracker.findSealedSublevelExact(this.subLevel.getLevel(), Minecraft.getInstance().gameRenderer.getMainCamera().getPosition());
+            if (sealedSub != null && sealedSub.equals(this.subLevel.getUniqueId())) {
                 shouldClearFog = true;
             }
         }
@@ -73,6 +85,7 @@ public abstract class SableSubLevelPocketFogMixin {
         if (createsubmarine$savedFogColor == null) return;
         shader.FOG_COLOR.set(createsubmarine$savedFogColor[0], createsubmarine$savedFogColor[1],
                 createsubmarine$savedFogColor[2], createsubmarine$savedFogColor[3]);
+        shader.FOG_COLOR.upload();
         createsubmarine$savedFogColor = null;
     }
 }
