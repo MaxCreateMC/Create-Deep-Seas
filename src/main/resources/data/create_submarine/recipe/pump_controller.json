@@ -1,0 +1,23 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    " C ",
+    "CMC",
+    "CTC"
+  ],
+  "key": {
+    "C": {
+      "item": "minecraft:copper_block"
+    },
+    "M": {
+      "item": "create:mechanical_pump"
+    },
+    "T": {
+      "item": "create:transmitter"
+    }
+  },
+  "result": {
+    "id": "create_submarine:pump_controller",
+    "count": 1
+  }
+}

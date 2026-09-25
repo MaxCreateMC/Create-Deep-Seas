@@ -3,7 +3,6 @@ package com.maxenonyme.createsubmarine.submarine.block.entity;
 import com.maxenonyme.createsubmarine.CreateSubmarine;
 import com.maxenonyme.createsubmarine.submarine.block.BallastVentBlock;
 import com.maxenonyme.createsubmarine.submarine.util.SubLevelRegistry;
-import com.simibubi.create.content.kinetics.base.KineticBlockEntity;
 import dev.ryanhcode.sable.companion.SableCompanion;
 import dev.ryanhcode.sable.companion.SubLevelAccess;
 import net.minecraft.core.BlockPos;
@@ -14,154 +13,42 @@ import net.minecraft.tags.FluidTags;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.block.state.properties.BlockStateProperties;
+import net.minecraft.world.level.material.Fluids;
 import net.neoforged.neoforge.fluids.FluidStack;
 import net.neoforged.neoforge.fluids.capability.IFluidHandler;
 import org.jetbrains.annotations.NotNull;
 import org.joml.Vector3d;
+
 import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.LinkedList;
 import java.util.List;
-import java.util.Queue;
-import java.util.Set;
-import java.util.UUID;
-import net.minecraft.world.level.block.Blocks;
-import com.maxenonyme.createsubmarine.submarine.compartment.CompartmentDetector;
 import com.maxenonyme.createsubmarine.submarine.compartment.CompartmentTracker;
-import com.maxenonyme.createsubmarine.submarine.config.SubmarineConfig;
-import com.maxenonyme.createsubmarine.submarine.system.SubmarinePressureSystem;
+import dev.ryanhcode.sable.sublevel.SubLevel;
 
-public class BallastVentBlockEntity extends KineticBlockEntity {
-    private enum Mode {
-        NONE, TANK, OCEAN
-    }
+public class BallastVentBlockEntity extends BlockEntity {
+    private static final int OCEAN = 1_000_000;
 
-    private BallastTankBlockEntity cachedTank;
+    private final IFluidHandler sea = new SeaHandler();
+    private boolean submerged;
     private int scanCooldown = 0;
-
-    private Mode mode = Mode.NONE;
 
     public BallastVentBlockEntity(BlockPos pos, BlockState state) {
         super(CreateSubmarine.BALLAST_VENT_BE.get(), pos, state);
     }
 
-    @Override
     public void tick() {
-        super.tick();
         if (level == null || level.isClientSide)
             return;
-
-        scanCooldown--;
-        if (scanCooldown <= 0) {
-            detectMode();
-            scanCooldown = 40;
-        }
-
-        if (mode == Mode.TANK) {
-            tickBallastTank();
-        }
-    }
-
-    private void detectMode() {
-        cachedTank = findBallastTank();
-        if (cachedTank != null) {
-            mode = Mode.TANK;
-            return;
-        }
-        mode = isAnyHolesFaceSubmerged() ? Mode.OCEAN : Mode.NONE;
-    }
-
-
-
-    private void tickBallastTank() {
-        float speed = getSpeed();
-        if (Math.abs(speed) < 0.1f)
-            return;
-        if (cachedTank == null)
-            return;
-
-        int signal = level.getBestNeighborSignal(worldPosition);
-
-        IFluidHandler handler = cachedTank.getClusterFluidHandler(Direction.UP);
-        if (handler == null)
-            return;
-        long totalCapacity = 0, totalAmount = 0;
-        for (int t = 0; t < handler.getTanks(); t++) {
-            totalCapacity += handler.getTankCapacity(t);
-            totalAmount += handler.getFluidInTank(t).getAmount();
-        }
-        if (signal == 0)
-            return;
-
-        double speedMultiplier = signal / 15.0;
-
-        boolean filling = speed > 0;
-        boolean draining = speed < 0;
-
-        if (!filling && !draining)
-            return;
-
-        if (!isAnyHolesFaceSubmerged())
-            return;
-
-        float absSpeed = Math.abs(speed);
-        int baseTransferRate = (int) (absSpeed * 50.0f);
-        double rateMult = com.maxenonyme.createsubmarine.submarine.config.SubmarineConfig.BALLAST_TRANSFER_RATE_MULTIPLIER
-                .get();
-        int transferRate = (int) (baseTransferRate * speedMultiplier * rateMult);
-
-        int minRateForFullTransfer = (int) Math.ceil((double) totalCapacity / 600.0);
-        transferRate = Math.max(transferRate, minRateForFullTransfer);
-
-        if (transferRate <= 0)
-            return;
-
-        if (filling) {
-            long toFillLong = totalCapacity - totalAmount;
-            int toFill = (int) Math.min(Integer.MAX_VALUE, toFillLong);
-            if (toFill <= 0)
-                return;
-            int filled = handler.fill(
-                    new FluidStack(net.minecraft.world.level.material.Fluids.WATER, Math.min(transferRate, toFill)),
-                    IFluidHandler.FluidAction.EXECUTE);
-            if (filled > 0 && level.getGameTime() % 4 == 0)
-                spawnHolesFaceParticles(true);
-        } else if (draining) {
-            long toDrainLong = totalAmount;
-            int toDrain = (int) Math.min(Integer.MAX_VALUE, toDrainLong);
-            if (toDrain <= 0)
-                return;
-            FluidStack drained = handler.drain(
-                    Math.min(transferRate, toDrain),
-                    IFluidHandler.FluidAction.EXECUTE);
-            if (!drained.isEmpty() && level.getGameTime() % 4 == 0)
-                spawnHolesFaceParticles(false);
+        if (--scanCooldown <= 0) {
+            submerged = isAnyOpenFaceSubmerged();
+            scanCooldown = 20;
         }
     }
 
     public IFluidHandler getFluidHandlerForSide(Direction side) {
-        if (side == null)
-            return null;
-        BlockState state = getBlockState();
-        Direction shaftFace = state.getValue(BlockStateProperties.HORIZONTAL_FACING).getOpposite();
-        if (side == shaftFace)
-            return null;
-        if (level == null || level.isClientSide)
-            return null;
-        if (mode == Mode.NONE)
-            detectMode();
-        return switch (mode) {
-            case OCEAN -> new OceanHandler();
-            default -> new PassthroughHandler(side);
-        };
+        return sea;
     }
 
-
-
-    private static class OceanHandler implements IFluidHandler {
-        private static final int OCEAN = 1_000_000;
-
+    private class SeaHandler implements IFluidHandler {
         @Override
         public int getTanks() {
             return 1;
@@ -169,7 +56,7 @@ public class BallastVentBlockEntity extends KineticBlockEntity {
 
         @Override
         public @NotNull FluidStack getFluidInTank(int tank) {
-            return new FluidStack(net.minecraft.world.level.material.Fluids.WATER, OCEAN);
+            return submerged ? new FluidStack(Fluids.WATER, OCEAN) : FluidStack.EMPTY;
         }
 
         @Override
@@ -179,173 +66,67 @@ public class BallastVentBlockEntity extends KineticBlockEntity {
 
         @Override
         public boolean isFluidValid(int tank, @NotNull FluidStack stack) {
-            return stack.getFluid().isSame(net.minecraft.world.level.material.Fluids.WATER);
+            return stack.getFluid().is(FluidTags.WATER);
         }
 
         @Override
-        public int fill(@NotNull FluidStack resource, IFluidHandler.FluidAction action) {
-            return isFluidValid(0, resource) ? resource.getAmount() : 0;
+        public int fill(@NotNull FluidStack resource, FluidAction action) {
+            if (!submerged || resource.isEmpty() || !isFluidValid(0, resource))
+                return 0;
+            if (action.execute())
+                bubble(false);
+            return resource.getAmount();
         }
 
         @Override
-        public @NotNull FluidStack drain(@NotNull FluidStack resource, IFluidHandler.FluidAction action) {
+        public @NotNull FluidStack drain(@NotNull FluidStack resource, FluidAction action) {
             if (resource.isEmpty() || !isFluidValid(0, resource))
                 return FluidStack.EMPTY;
             return drain(resource.getAmount(), action);
         }
 
         @Override
-        public @NotNull FluidStack drain(int maxDrain, IFluidHandler.FluidAction action) {
-            if (maxDrain <= 0)
+        public @NotNull FluidStack drain(int maxDrain, FluidAction action) {
+            if (!submerged || maxDrain <= 0)
                 return FluidStack.EMPTY;
-            return new FluidStack(net.minecraft.world.level.material.Fluids.WATER, maxDrain);
+            if (action.execute())
+                bubble(true);
+            return new FluidStack(Fluids.WATER, maxDrain);
         }
     }
 
-    private class PassthroughHandler implements IFluidHandler {
-        private final Direction side;
-
-        PassthroughHandler(Direction side) {
-            this.side = side;
-        }
-
-        private IFluidHandler delegate() {
-            if (cachedTank == null && scanCooldown <= 0) {
-                cachedTank = findBallastTank();
-                scanCooldown = 40;
-            }
-            return cachedTank == null ? null : cachedTank.getClusterFluidHandler(side);
-        }
-
-        @Override
-        public int getTanks() {
-            return 1;
-        }
-
-        @Override
-        public @NotNull FluidStack getFluidInTank(int tank) {
-            IFluidHandler d = delegate();
-            return d == null ? FluidStack.EMPTY : d.getFluidInTank(tank);
-        }
-
-        @Override
-        public int getTankCapacity(int tank) {
-            IFluidHandler d = delegate();
-            return d == null ? 0 : d.getTankCapacity(tank);
-        }
-
-        @Override
-        public boolean isFluidValid(int tank, @NotNull FluidStack stack) {
-            return stack.getFluid().isSame(net.minecraft.world.level.material.Fluids.WATER);
-        }
-
-        @Override
-        public int fill(@NotNull FluidStack resource, IFluidHandler.FluidAction action) {
-            IFluidHandler d = delegate();
-            return d == null ? 0 : d.fill(resource, action);
-        }
-
-        @Override
-        public @NotNull FluidStack drain(@NotNull FluidStack resource, IFluidHandler.FluidAction action) {
-            IFluidHandler d = delegate();
-            return d == null ? FluidStack.EMPTY : d.drain(resource, action);
-        }
-
-        @Override
-        public @NotNull FluidStack drain(int maxDrain, IFluidHandler.FluidAction action) {
-            IFluidHandler d = delegate();
-            return d == null ? FluidStack.EMPTY : d.drain(maxDrain, action);
-        }
-    }
-
-    private BallastTankBlockEntity findBallastTank() {
-        Set<BlockPos> visited = new HashSet<>();
-        Queue<BlockPos> queue = new LinkedList<>();
-
-        visited.add(worldPosition);
-        BlockState myState = getBlockState();
-        Direction shaftFace = myState.getValue(BlockStateProperties.HORIZONTAL_FACING).getOpposite();
-
+    private List<Direction> getOpenFaces() {
+        BlockState state = getBlockState();
+        List<Direction> faces = new ArrayList<>();
         for (Direction dir : Direction.values()) {
-            if (dir == shaftFace)
-                continue;
-            boolean isHole = myState.getValue(BallastVentBlock.propertyForDirection(dir));
-
-            if (!isHole) {
-                BlockPos start = worldPosition.relative(dir);
-                queue.add(start);
-                visited.add(start);
-            }
+            if (!state.getValue(BallastVentBlock.propertyForDirection(dir)))
+                faces.add(dir);
         }
-        int maxDepth = 64;
-        while (!queue.isEmpty() && visited.size() < maxDepth) {
-            BlockPos pos = queue.poll();
-            BlockEntity be = level.getBlockEntity(pos);
-            if (be instanceof BallastTankBlockEntity tank)
-                return tank;
-            BlockState state = level.getBlockState(pos);
-            net.minecraft.resources.ResourceLocation id = net.minecraft.core.registries.BuiltInRegistries.BLOCK
-                    .getKey(state.getBlock());
-            if (id != null && id.getNamespace().equals("create") &&
-                    (id.getPath().contains("pipe") || id.getPath().contains("pump")
-                            || id.getPath().contains("valve"))) {
-                for (Direction dir : Direction.values()) {
-                    BlockPos next = pos.relative(dir);
-                    if (!visited.contains(next)) {
-                        visited.add(next);
-                        queue.add(next);
-                    }
-                }
-            }
-        }
-        return null;
+        return faces;
     }
 
-    private boolean isAnyHolesFaceSubmerged() {
-        for (Direction dir : getHolesFaces()) {
+    private boolean isAnyOpenFaceSubmerged() {
+        for (Direction dir : getOpenFaces()) {
             if (isSubmerged(level, worldPosition.relative(dir)))
                 return true;
         }
         return false;
     }
 
-    private java.util.List<Direction> getHolesFaces() {
-        BlockState state = getBlockState();
-        Direction shaftFace = state.getValue(BlockStateProperties.HORIZONTAL_FACING).getOpposite();
-        java.util.List<Direction> faces = new java.util.ArrayList<>();
-        for (Direction dir : Direction.values()) {
-            if (dir == shaftFace)
-                continue;
-            if (state.getValue(BallastVentBlock.propertyForDirection(dir)))
-                continue;
-            faces.add(dir);
-        }
-        return faces;
-    }
-
-    private void spawnHolesFaceParticles(boolean filling) {
-        if (!(level instanceof ServerLevel serverLevel))
+    private void bubble(boolean intake) {
+        if (!(level instanceof ServerLevel serverLevel) || level.getGameTime() % 4 != 0)
             return;
-        for (Direction dir : getHolesFaces()) {
+        for (Direction dir : getOpenFaces()) {
             if (!isSubmerged(level, worldPosition.relative(dir)))
                 continue;
-            double cx = worldPosition.getX() + 0.5;
-            double cy = worldPosition.getY() + 0.5;
-            double cz = worldPosition.getZ() + 0.5;
-            double fx = cx + dir.getStepX() * 0.6;
-            double fy = cy + dir.getStepY() * 0.6;
-            double fz = cz + dir.getStepZ() * 0.6;
-            int count = 5;
-            double spread = 0.9;
-            double speedMagnitude = 0.5;
-            if (filling) {
-                serverLevel.sendParticles(ParticleTypes.BUBBLE,
-                        fx, fy, fz, count, spread, spread, spread, speedMagnitude);
+            double fx = worldPosition.getX() + 0.5 + dir.getStepX() * 0.6;
+            double fy = worldPosition.getY() + 0.5 + dir.getStepY() * 0.6;
+            double fz = worldPosition.getZ() + 0.5 + dir.getStepZ() * 0.6;
+            if (intake) {
+                serverLevel.sendParticles(ParticleTypes.BUBBLE, fx, fy, fz, 5, 0.9, 0.9, 0.9, 0.5);
             } else {
-                serverLevel.sendParticles(ParticleTypes.SPLASH,
-                        fx, fy, fz, count, spread, spread, spread, speedMagnitude);
-                serverLevel.sendParticles(ParticleTypes.BUBBLE,
-                        fx, fy, fz, count / 2, spread, spread, spread, speedMagnitude * 0.6);
+                serverLevel.sendParticles(ParticleTypes.SPLASH, fx, fy, fz, 5, 0.9, 0.9, 0.9, 0.5);
+                serverLevel.sendParticles(ParticleTypes.BUBBLE, fx, fy, fz, 2, 0.9, 0.9, 0.9, 0.3);
             }
         }
     }
@@ -358,17 +139,12 @@ public class BallastVentBlockEntity extends KineticBlockEntity {
         sub.logicalPose().transformPosition(worldPos);
         BlockPos wPos = BlockPos.containing(worldPos.x, worldPos.y, worldPos.z);
         Level parentLevel = SubLevelRegistry.getLevel(sub.getUniqueId());
-        if (parentLevel == null && sub instanceof dev.ryanhcode.sable.sublevel.SubLevel sl) {
+        if (parentLevel == null && sub instanceof SubLevel sl) {
             parentLevel = sl.getLevel();
         }
         if (parentLevel == null)
             return false;
-        return com.maxenonyme.createsubmarine.submarine.compartment.CompartmentTracker.realFluidState(parentLevel, wPos)
+        return CompartmentTracker.realFluidState(parentLevel, wPos)
                 .is(FluidTags.WATER);
-    }
-
-    @Override
-    public float calculateStressApplied() {
-        return 4.0f;
     }
 }

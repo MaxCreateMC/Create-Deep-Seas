@@ -13,6 +13,7 @@ import net.neoforged.neoforge.client.event.ScreenEvent;
 import net.neoforged.neoforge.client.gui.IConfigScreenFactory;
 
 import java.util.List;
+import com.maxenonyme.createsubmarine.submarine.config.SubmarineClientState;
 
 public class DeepSeasWelcomeScreen extends Screen {
     private static final int PANEL_BG = 0xE6101A22;
@@ -35,7 +36,7 @@ public class DeepSeasWelcomeScreen extends Screen {
         if (!(event.getNewScreen() instanceof TitleScreen menu)) {
             return;
         }
-        if (!SubmarineConfig.SPEC.isLoaded() || com.maxenonyme.createsubmarine.submarine.config.SubmarineClientState.hasSeenWelcomeScreen()) {
+        if (!SubmarineConfig.CLIENT_SPEC.isLoaded() || SubmarineClientState.hasSeenWelcomeScreen()) {
             return;
         }
         if (SubmarineConfig.DISABLE_STARTUP_SCREENS.get()) {
@@ -94,7 +95,7 @@ public class DeepSeasWelcomeScreen extends Screen {
     }
 
     private void acknowledge() {
-        com.maxenonyme.createsubmarine.submarine.config.SubmarineClientState.setWelcomeScreenSeen(true);
+        SubmarineClientState.setWelcomeScreenSeen(true);
     }
 
     private void openConfig() {

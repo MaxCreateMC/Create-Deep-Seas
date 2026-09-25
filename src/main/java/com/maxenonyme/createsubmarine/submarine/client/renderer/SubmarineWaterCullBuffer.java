@@ -21,17 +21,26 @@ import org.joml.Vector3dc;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import net.minecraft.core.Direction;
+import net.minecraft.tags.FluidTags;
+import net.minecraft.world.level.EmptyBlockGetter;
 
 public final class SubmarineWaterCullBuffer {
-    private static final double POSE_MOVE_THRESHOLD_SQ = 0.25;
+    private static final double POSE_MOVE_THRESHOLD_SQ = 0.01;
     private static final double DEFAULT_RADIUS = 16.0;
+    private static final int WET_SCAN_INTERVAL = 5;
 
     private static final Map<UUID, WaterOcclusionRegion> regions = new HashMap<>();
     private static final Map<UUID, Vector3d> lastClientPose = new ConcurrentHashMap<>();
+    private static final Map<UUID, Collection<BlockPos>> lastBlocks = new HashMap<>();
+    private static final Map<UUID, Boolean> lastWet = new HashMap<>();
+    private static long lastWetScanTick = -1;
     private static boolean renderingSubmarineFluid = false;
 
     private SubmarineWaterCullBuffer() {
@@ -53,6 +62,10 @@ public final class SubmarineWaterCullBuffer {
         lastClientPose.remove(id);
     }
 
+    public static Map<UUID, Collection<BlockPos>> regionBlocks() {
+        return lastBlocks;
+    }
+
     public static void invalidateAllPoseCaches() {
         lastClientPose.clear();
     }
@@ -65,7 +78,9 @@ public final class SubmarineWaterCullBuffer {
         if (container == null)
             return;
 
-        for (UUID id : regions.keySet()) {
+        Set<UUID> tracked = new HashSet<>(regions.keySet());
+        tracked.addAll(lastBlocks.keySet());
+        for (UUID id : tracked) {
             SubLevel sub = container.getSubLevel(id);
             if (sub == null)
                 continue;
@@ -90,23 +105,61 @@ public final class SubmarineWaterCullBuffer {
             else
                 last.set(p);
         }
+
+        long now = mc.level.getGameTime();
+        if (now - lastWetScanTick >= WET_SCAN_INTERVAL) {
+            lastWetScanTick = now;
+            for (Map.Entry<UUID, Collection<BlockPos>> e : new HashMap<>(lastBlocks).entrySet()) {
+                Boolean prev = lastWet.get(e.getKey());
+                boolean wet = waterNearby(mc.level, e.getKey());
+                if (prev == null || prev != wet) {
+                    updateSubmarineOcclusion(e.getKey(), e.getValue());
+                }
+            }
+        }
+    }
+
+    private static boolean waterNearby(Level level, UUID id) {
+        AABB aabb = CompartmentTracker.getWorldAABB(id);
+        if (aabb == null) {
+            SubLevelContainer subContainer = SubLevelContainer.getContainer(level);
+            SubLevel sub = subContainer == null ? null : subContainer.getSubLevel(id);
+            if (sub == null)
+                return true;
+            Vector3dc p = sub.logicalPose().position();
+            double r = computeRadius(id, sub);
+            aabb = new AABB(p.x() - r, p.y() - r, p.z() - r, p.x() + r, p.y() + r, p.z() + r);
+        }
+        if (aabb.minY - 2.0 <= level.getSeaLevel())
+            return true;
+
+        int minX = (int) Math.floor(aabb.minX) - 2, maxX = (int) Math.ceil(aabb.maxX) + 2;
+        int minY = Math.max(level.getMinBuildHeight(), (int) Math.floor(aabb.minY) - 2);
+        int maxY = Math.min(level.getMaxBuildHeight(), (int) Math.ceil(aabb.maxY) + 2);
+        int minZ = (int) Math.floor(aabb.minZ) - 2, maxZ = (int) Math.ceil(aabb.maxZ) + 2;
+        int sxz = Math.max(4, Math.max(maxX - minX, maxZ - minZ) / 24);
+        int sy = Math.max(2, (maxY - minY) / 24);
+        BlockPos.MutableBlockPos m = new BlockPos.MutableBlockPos();
+        for (int x = minX; x <= maxX; x += sxz) {
+            for (int y = minY; y <= maxY; y += sy) {
+                for (int z = minZ; z <= maxZ; z += sxz) {
+                    m.set(x, y, z);
+                    if (CompartmentTracker.realFluidState(level, m).is(FluidTags.WATER))
+                        return true;
+                }
+            }
+        }
+        return false;
     }
 
     private static double computeRadius(UUID id, SubLevel sub) {
         Vector3d dims = CompartmentTracker.getCachedDimensions(id);
         if (dims != null)
             return Math.max(dims.x, Math.max(dims.y, dims.z)) * 0.75;
-        try {
-            BoundingBox3dc bb = sub.boundingBox();
-            if (bb != null) {
-                double sx = bb.maxX() - bb.minX();
-                double sy = bb.maxY() - bb.minY();
-                double sz = bb.maxZ() - bb.minZ();
-                return Math.max(sx, Math.max(sy, sz)) * 0.75;
-            }
-        } catch (Throwable ignored) {
-        }
-        return DEFAULT_RADIUS;
+        BoundingBox3dc bb = sub.boundingBox();
+        if (bb == null)
+            return DEFAULT_RADIUS;
+        return Math.max(bb.maxX() - bb.minX(), Math.max(bb.maxY() - bb.minY(), bb.maxZ() - bb.minZ())) * 0.75;
     }
 
     private static void invalidateSections(Minecraft mc, AABB aabb) {
@@ -136,11 +189,25 @@ public final class SubmarineWaterCullBuffer {
             WaterOcclusionRegion old = regions.remove(id);
             if (old != null)
                 container.removeRegion(old);
-            if (blocks == null || blocks.isEmpty())
+            if (blocks == null || blocks.isEmpty()) {
+                lastBlocks.remove(id);
+                lastWet.remove(id);
+                CompartmentTracker.setOcclusionBlocks(id, null);
                 return;
+            }
 
+            Collection<BlockPos> previous = lastBlocks.put(id, blocks);
+            if (previous == null || previous.size() != blocks.size() || !previous.containsAll(blocks)) {
+                AABB known = CompartmentTracker.getWorldAABB(id);
+                if (known != null && mc.levelRenderer != null)
+                    invalidateSections(mc, known);
+            }
             Collection<BlockPos> filtered = filterToCubes(mc.level, id, blocks);
-            if (filtered.isEmpty())
+            CompartmentTracker.setOcclusionBlocks(id, filtered);
+
+            boolean wet = waterNearby(mc.level, id);
+            lastWet.put(id, wet);
+            if (!wet || filtered.isEmpty())
                 return;
 
             BoundedBitVolume3i volume = BoundedBitVolume3i.fromBlocks(filtered);
@@ -164,13 +231,15 @@ public final class SubmarineWaterCullBuffer {
             return blocks;
 
         List<BlockPos> out = new ArrayList<>(blocks.size());
-        ChunkPos lastCp = null;
+        long lastCp = Long.MIN_VALUE;
         LevelChunk lastChunk = null;
         for (BlockPos pos : blocks) {
-            ChunkPos cp = new ChunkPos(pos.getX() >> 4, pos.getZ() >> 4);
-            if (!cp.equals(lastCp)) {
+            int cx = pos.getX() >> 4;
+            int cz = pos.getZ() >> 4;
+            long cp = ChunkPos.asLong(cx, cz);
+            if (cp != lastCp) {
                 lastCp = cp;
-                lastChunk = plot.getChunk(plot.toLocal(cp));
+                lastChunk = plot.getChunk(plot.toLocal(new ChunkPos(cx, cz)));
             }
             if (lastChunk == null) {
                 out.add(pos);
@@ -180,8 +249,8 @@ public final class SubmarineWaterCullBuffer {
             if (!state.getFluidState().isEmpty())
                 continue;
             boolean fillsCell = state.isAir()
-                    || state.isCollisionShapeFullBlock(net.minecraft.world.level.EmptyBlockGetter.INSTANCE,
-                            net.minecraft.core.BlockPos.ZERO);
+                    || state.isCollisionShapeFullBlock(EmptyBlockGetter.INSTANCE,
+                            BlockPos.ZERO);
             if (fillsCell || isBuriedInShip(id, pos))
                 out.add(pos);
         }
@@ -189,7 +258,7 @@ public final class SubmarineWaterCullBuffer {
     }
 
     private static boolean isBuriedInShip(UUID id, BlockPos pos) {
-        for (net.minecraft.core.Direction dir : net.minecraft.core.Direction.values()) {
+        for (Direction dir : Direction.values()) {
             if (!CompartmentTracker.isWithinShip(id, pos.relative(dir)))
                 return false;
         }

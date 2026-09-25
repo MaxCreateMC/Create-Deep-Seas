@@ -9,9 +9,14 @@ import dev.simulated_team.simulated.content.blocks.rope.strand.server.RopeAttach
 import dev.simulated_team.simulated.content.blocks.rope.RopeHolderBlock;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
+import net.minecraft.core.particles.ItemParticleOption;
+import net.minecraft.core.particles.ParticleOptions;
+import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.Vec3;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import org.spongepowered.asm.mixin.Mixin;
@@ -19,11 +24,17 @@ import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.Redirect;
+import org.spongepowered.asm.mixin.injection.ModifyArg;
+import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import java.util.List;
 import java.util.UUID;
+import com.maxenonyme.createsubmarine.CreateSubmarine;
+import com.maxenonyme.createsubmarine.submarine.block.SteelCableItem;
+import com.maxenonyme.createsubmarine.submarine.config.SubmarineConfig;
+import com.maxenonyme.createsubmarine.submarine.system.CableElectrificationSystem;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(value = RopeStrandHolderBehavior.class, remap = false)
 public class RopeStrandHolderBehaviorMixin implements SteelCableHolderAccessor {
@@ -109,20 +120,77 @@ public class RopeStrandHolderBehaviorMixin implements SteelCableHolderAccessor {
         }
     }
 
-    @Redirect(method = "destroyRope", at = @At(value = "NEW", target = "(Lnet/minecraft/world/level/ItemLike;)Lnet/minecraft/world/item/ItemStack;"))
-    private ItemStack createsubmarine$redirectItemStack(net.minecraft.world.level.ItemLike item) {
-        if (this.createsubmarine$isSteelCable) {
-            return new ItemStack(com.maxenonyme.createsubmarine.CreateSubmarine.STEEL_CABLE.get());
-        }
-        return new ItemStack(item);
+    @ModifyExpressionValue(method = "destroyRope", at = @At(value = "NEW", target = "(Lnet/minecraft/world/level/ItemLike;)Lnet/minecraft/world/item/ItemStack;"))
+    private ItemStack createsubmarine$steelCableDrop(ItemStack original) {
+        if (this.createsubmarine$isSteelCable)
+            return new ItemStack(CreateSubmarine.STEEL_CABLE.get());
+        return original;
     }
 
-    @Redirect(method = "createRope", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/phys/Vec3;closerThan(Lnet/minecraft/core/Position;D)Z"))
-    private boolean createsubmarine$redirectCloserThan(net.minecraft.world.phys.Vec3 instance, net.minecraft.core.Position position, double distance) {
-        if (this.createsubmarine$isSteelCable) {
-            double maxLength = com.maxenonyme.createsubmarine.submarine.config.SubmarineConfig.STEEL_CABLE_MAX_LENGTH.get();
-            return instance.closerThan(position, maxLength);
-        }
-        return instance.closerThan(position, distance);
+    @ModifyArg(method = "destroyRope", at = @At(value = "INVOKE", target = "Lnet/minecraft/server/level/ServerLevel;sendParticles(Lnet/minecraft/core/particles/ParticleOptions;DDDIDDDD)I"), index = 0)
+    private ParticleOptions createsubmarine$steelCableParticles(ParticleOptions options) {
+        if (this.createsubmarine$isSteelCable)
+            return new ItemParticleOption(ParticleTypes.ITEM, new ItemStack(CreateSubmarine.STEEL_CABLE.get()));
+        return options;
+    }
+
+    @Inject(method = "destroyRope", at = @At("HEAD"))
+    private void createsubmarine$clearFarEndOnDestroy(ServerPlayer player, Vec3 dropPos, boolean dropItem, CallbackInfo ci) {
+        createsubmarine$clearFarEnd();
+    }
+
+    @Inject(method = "destroyRope", at = @At("TAIL"))
+    private void createsubmarine$clearSteelOnDestroy(ServerPlayer player, Vec3 dropPos, boolean dropItem, CallbackInfo ci) {
+        this.createsubmarine$isSteelCable = false;
+    }
+
+    @Inject(method = "detachRope", at = @At("HEAD"))
+    private void createsubmarine$clearFarEndOnDetach(CallbackInfo ci) {
+        createsubmarine$clearFarEnd();
+    }
+
+    @Inject(method = "detachRope", at = @At("TAIL"))
+    private void createsubmarine$clearSteelOnDetach(CallbackInfo ci) {
+        this.createsubmarine$isSteelCable = false;
+    }
+
+    @Inject(method = "createRope", at = @At("HEAD"), require = 0)
+    private void createsubmarine$clearStaleSteel(RopeStrandHolderBehavior other, boolean flag,
+            CallbackInfoReturnable<Boolean> cir) {
+        if (SteelCableItem.isCreatingSteel())
+            return;
+        this.createsubmarine$isSteelCable = false;
+        createsubmarine$clearIfFree(other);
+    }
+
+    @Unique
+    private static void createsubmarine$clearIfFree(RopeStrandHolderBehavior holder) {
+        if (holder == null || ((RopeStrandHolderBehaviorMixin) (Object) holder).ownedServerStrand != null)
+            return;
+        ((SteelCableHolderAccessor) (Object) holder).createsubmarine$setSteelCable(false);
+    }
+
+    @Unique
+    private void createsubmarine$clearFarEnd() {
+        if (this.ownedServerStrand == null)
+            return;
+        Level level = ((com.simibubi.create.foundation.blockEntity.behaviour.BlockEntityBehaviour) (Object) this).blockEntity.getLevel();
+        if (!(level instanceof ServerLevel serverLevel))
+            return;
+        RopeAttachment end = this.ownedServerStrand.getAttachment(RopeAttachmentPoint.END);
+        if (end == null)
+            return;
+        ServerLevel endLevel = CableElectrificationSystem.getLevelForAttachment(serverLevel, end);
+        if (endLevel == null || !endLevel.isLoaded(end.blockAttachment()))
+            return;
+        if (endLevel.getBlockEntity(end.blockAttachment()) instanceof com.simibubi.create.foundation.blockEntity.SmartBlockEntity smart)
+            createsubmarine$clearIfFree(smart.getBehaviour(RopeStrandHolderBehavior.TYPE));
+    }
+
+    @ModifyArg(method = "createRope", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/phys/Vec3;closerThan(Lnet/minecraft/core/Position;D)Z"), index = 1)
+    private double createsubmarine$steelCableReach(double distance) {
+        if (this.createsubmarine$isSteelCable)
+            return SubmarineConfig.STEEL_CABLE_MAX_LENGTH.get();
+        return distance;
     }
 }

@@ -1,0 +1,37 @@
+{
+	"ambientocclusion": false,
+	"render_type": "minecraft:cutout",
+	"texture_size": [
+		64,
+		64
+	],
+	"textures": {
+		"2": "create_high_seas:block/boat_engine/boat_engine_powered",
+		"particle": "create_high_seas:block/boat_engine/boat_engine_powered"
+	},
+	"elements": [
+		{
+			"from": [
+				8,
+				8,
+				8
+			],
+			"to": [
+				8,
+				8,
+				8
+			],
+			"faces": {
+				"north": {
+					"uv": [
+						0,
+						0,
+						0,
+						0
+					],
+					"texture": "#2"
+				}
+			}
+		}
+	]
+}

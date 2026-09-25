@@ -1,6 +1,10 @@
 package com.maxenonyme.createsubmarine.submarine.block.entity.renderer;
 
+import com.maxenonyme.createsubmarine.submarine.block.ElectrolyzerBlock;
 import com.maxenonyme.createsubmarine.submarine.block.entity.ElectrolyzerBlockEntity;
+import com.simibubi.create.content.kinetics.base.KineticBlockEntityRenderer;
+import net.minecraft.core.Direction;
+import net.minecraft.world.level.block.state.BlockState;
 import com.maxenonyme.createsubmarine.submarine.client.renderer.AllPartialModels;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
@@ -31,6 +35,17 @@ public class ElectrolyzerBlockEntityRenderer implements BlockEntityRenderer<Elec
             if (fillRatio > 0) {
                 renderForcedFluid(water, 2.1f / 16f, 13.1f / 16f, 2.1f / 16f, 13.9f / 16f, 13.1f / 16f + (fillRatio * 13.7f / 16f), 13.9f / 16f, ms, buffer, light, overlay);
             }
+        }
+
+        BlockState state = be.getBlockState();
+        if (state.getValue(ElectrolyzerBlock.ALTERNATOR)) {
+            ms.pushPose();
+            ms.translate(0.5, 0.5 - 1 / 16f, 0.5);
+            ms.scale(1f, 1f, 18 / 16f);
+            ms.translate(-0.5, -0.5, -0.5);
+            KineticBlockEntityRenderer.renderRotatingKineticBlock(be, KineticBlockEntityRenderer.shaft(Direction.Axis.Z), ms,
+                    buffer.getBuffer(RenderType.solid()), light);
+            ms.popPose();
         }
 
         if (AllPartialModels.ELECTROLYZER_GLASS.get() != null) {

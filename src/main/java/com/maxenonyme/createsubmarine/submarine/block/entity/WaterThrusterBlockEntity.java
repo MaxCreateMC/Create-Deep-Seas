@@ -19,7 +19,7 @@ import net.neoforged.neoforge.fluids.capability.templates.FluidTank;
 public class WaterThrusterBlockEntity extends BlockEntity implements BlockEntitySubLevelPropellerActor, BlockEntityPropeller {
     public static final int WATER_CAPACITY = 1000;
 
-    public final FluidTank waterTank = new FluidTank(WATER_CAPACITY, fluid -> fluid.getFluid().isSame(Fluids.WATER)) {
+    public final FluidTank waterTank = new FluidTank(WATER_CAPACITY, fluid -> fluid.getFluid().is(net.minecraft.tags.FluidTags.WATER)) {
         @Override
         protected void onContentsChanged() {
             setChanged();

@@ -6,7 +6,6 @@ import dev.ryanhcode.sable.SableClient;
 import dev.ryanhcode.sable.render.water_occlusion.WaterOcclusionRenderer;
 import foundry.veil.api.client.render.framebuffer.AdvancedFbo;
 import foundry.veil.api.client.render.framebuffer.AdvancedFboTextureAttachment;
-import net.minecraft.client.Minecraft;
 import org.lwjgl.opengl.GL13;
 import org.lwjgl.opengl.GL20;
 
@@ -19,7 +18,6 @@ public final class SodiumWaterOcclusionBridge {
     public static final int FAR_TEXTURE_UNIT = 7;
 
     private static final String UNIFORM_ENABLED = "SableWaterOcclusionEnabled";
-    private static final String UNIFORM_SCREEN_SIZE = "ScreenSize";
     private static final String UNIFORM_CLOSE_SAMPLER = "SableCloseSampler";
     private static final String UNIFORM_FAR_SAMPLER = "SableFarSampler";
 
@@ -27,7 +25,7 @@ public final class SodiumWaterOcclusionBridge {
 
     public static volatile boolean PIXEL_PERFECT_ACTIVE = false;
 
-    private record ProgramUniforms(int enabled, int closeSampler, int farSampler, int screenSize) {
+    private record ProgramUniforms(int enabled, int closeSampler, int farSampler) {
         boolean hasOcclusion() {
             return enabled >= 0;
         }
@@ -43,8 +41,7 @@ public final class SodiumWaterOcclusionBridge {
         ProgramUniforms u = new ProgramUniforms(
                 GL20.glGetUniformLocation(programHandle, UNIFORM_ENABLED),
                 GL20.glGetUniformLocation(programHandle, UNIFORM_CLOSE_SAMPLER),
-                GL20.glGetUniformLocation(programHandle, UNIFORM_FAR_SAMPLER),
-                GL20.glGetUniformLocation(programHandle, UNIFORM_SCREEN_SIZE));
+                GL20.glGetUniformLocation(programHandle, UNIFORM_FAR_SAMPLER));
         UNIFORM_CACHE.put(programHandle, u);
         return u;
     }
@@ -53,6 +50,7 @@ public final class SodiumWaterOcclusionBridge {
         if (programHandle <= 0)
             return;
         ProgramUniforms u = locations(programHandle);
+
         if (!u.hasOcclusion()) {
             if (translucentPass)
                 setPixelPerfect(false);
@@ -97,10 +95,6 @@ public final class SodiumWaterOcclusionBridge {
                 GL20.glUniform1i(u.closeSampler, CLOSE_TEXTURE_UNIT);
             if (u.farSampler >= 0)
                 GL20.glUniform1i(u.farSampler, FAR_TEXTURE_UNIT);
-            if (u.screenSize >= 0) {
-                var window = Minecraft.getInstance().getWindow();
-                GL20.glUniform2f(u.screenSize, (float) window.getWidth(), (float) window.getHeight());
-            }
             GL20.glUniform1f(u.enabled, 1.0f);
             setPixelPerfect(true);
         } catch (Throwable t) {

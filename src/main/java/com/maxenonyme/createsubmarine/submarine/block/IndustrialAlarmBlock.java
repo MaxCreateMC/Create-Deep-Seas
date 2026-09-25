@@ -55,7 +55,7 @@ public class IndustrialAlarmBlock extends DirectionalBlock implements SimpleWate
         return defaultBlockState()
                 .setValue(BlockStateProperties.FACING, ctx.getClickedFace())
                 .setValue(BlockStateProperties.LIT, false)
-                .setValue(BlockStateProperties.WATERLOGGED, fluidstate.getType() == Fluids.WATER);
+                .setValue(BlockStateProperties.WATERLOGGED, fluidstate.is(net.minecraft.tags.FluidTags.WATER));
     }
 
     @Override

@@ -107,7 +107,7 @@ public class SubmarineSinkingSystem {
         }
         // The water this chamber created vanishes as the pocket collapses.
         for (BlockPos p : comp.internal()) {
-            if (parentLevel.getBlockState(p).getBlock() == Blocks.WATER) {
+            if (parentLevel.getFluidState(p).is(net.minecraft.tags.FluidTags.WATER)) {
                 PENDING.offer(new ScheduledRemoval(parentLevel, p.immutable(), baseTick + RAND.nextInt(10)));
             }
         }

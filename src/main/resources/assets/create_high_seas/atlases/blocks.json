@@ -1,0 +1,14 @@
+{
+	"sources": [
+		{
+			"type": "minecraft:directory",
+			"source": "block/boat_engine",
+			"prefix": "block/boat_engine/"
+		},
+		{
+			"type": "minecraft:directory",
+			"source": "item/seaglide",
+			"prefix": "item/seaglide/"
+		}
+	]
+}

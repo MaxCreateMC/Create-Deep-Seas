@@ -218,13 +218,9 @@ public class DecompressionChamberBlockEntity extends BlockEntity {
         BlockState state = level.getBlockState(p);
         if (state.isAir())
             return 0;
-        if (state.getBlock() == Blocks.WATER) {
-            int lvl = state.getValue(net.minecraft.world.level.block.LiquidBlock.LEVEL);
-            if (lvl == 0)
-                return 8;
-            if (lvl >= 1 && lvl <= 7)
-                return 8 - lvl;
-            return 0;
+        net.minecraft.world.level.material.FluidState fs = level.getFluidState(p);
+        if (fs.is(net.minecraft.tags.FluidTags.WATER)) {
+            return fs.getAmount();
         }
         return -1;
     }
@@ -273,18 +269,18 @@ public class DecompressionChamberBlockEntity extends BlockEntity {
                 continue;
 
             if (dripping && !placed) {
-                boolean canPlace = state.isAir() || state.getBlock() == Blocks.WATER
+                boolean canPlace = state.isAir() || state.getFluidState().is(net.minecraft.tags.FluidTags.WATER)
                         || !state.getFluidState().isEmpty();
                 if (canPlace) {
-                    if (state.getBlock() != Blocks.WATER
-                            || state.getValue(net.minecraft.world.level.block.LiquidBlock.LEVEL) != 0) {
+                    if (!state.getFluidState().is(net.minecraft.tags.FluidTags.WATER)
+                            || !state.getFluidState().isSource()) {
                         level.setBlock(hole, Blocks.WATER.defaultBlockState(), 3);
                     }
                     placed = true;
                 }
             } else {
-                if (!draining && state.getBlock() == Blocks.WATER
-                        && state.getValue(net.minecraft.world.level.block.LiquidBlock.LEVEL) == 0) {
+                if (!draining && state.getFluidState().is(net.minecraft.tags.FluidTags.WATER)
+                        && state.getFluidState().isSource()) {
                     if (chamberHasAir(cachedCompartment)) {
                         level.setBlock(hole, Blocks.AIR.defaultBlockState(), 3);
                     }
@@ -363,7 +359,7 @@ public class DecompressionChamberBlockEntity extends BlockEntity {
             BlockPos hole = worldPosition.relative(dir);
             BlockState state = level.getBlockState(hole);
 
-            boolean isBlocked = !state.isAir() && state.getBlock() != Blocks.WATER && state.getFluidState().isEmpty();
+            boolean isBlocked = !state.isAir() && !state.getFluidState().is(net.minecraft.tags.FluidTags.WATER) && state.getFluidState().isEmpty();
             if (isBlocked)
                 continue;
 
@@ -482,7 +478,7 @@ public class DecompressionChamberBlockEntity extends BlockEntity {
         for (Direction dir : priorityFaces) {
             BlockPos h = worldPosition.relative(dir);
             BlockState st = level.getBlockState(h);
-            if (st.isAir() || st.getBlock() == Blocks.WATER || !st.getFluidState().isEmpty()) {
+            if (st.isAir() || st.getFluidState().is(net.minecraft.tags.FluidTags.WATER) || !st.getFluidState().isEmpty()) {
                 activeHole = h;
                 break;
             }
@@ -532,18 +528,18 @@ public class DecompressionChamberBlockEntity extends BlockEntity {
 
     private boolean isEmptyCell(BlockPos p) {
         BlockState state = level.getBlockState(p);
-        return state.isAir() || (!state.getFluidState().isEmpty() && state.getBlock() != Blocks.WATER);
+        return state.isAir() || (!state.getFluidState().isEmpty() && !state.getFluidState().is(net.minecraft.tags.FluidTags.WATER));
     }
 
     private boolean isWaterCell(BlockPos p) {
-        return level.getBlockState(p).getBlock() == Blocks.WATER;
+        return level.getFluidState(p).is(net.minecraft.tags.FluidTags.WATER);
     }
 
     private boolean isVentBlocked() {
         for (Direction dir : getHolesFaces()) {
             BlockPos hole = worldPosition.relative(dir);
             BlockState state = level.getBlockState(hole);
-            if (state.isAir() || state.getBlock() == Blocks.WATER || !state.getFluidState().isEmpty()) {
+            if (state.isAir() || state.getFluidState().is(net.minecraft.tags.FluidTags.WATER) || !state.getFluidState().isEmpty()) {
                 return false;
             }
         }
@@ -623,7 +619,7 @@ public class DecompressionChamberBlockEntity extends BlockEntity {
 
         @Override
         public boolean isFluidValid(int tank, @NotNull FluidStack stack) {
-            return stack.getFluid().isSame(net.minecraft.world.level.material.Fluids.WATER);
+            return stack.getFluid().is(net.minecraft.tags.FluidTags.WATER);
         }
 
         @Override
@@ -694,7 +690,7 @@ public class DecompressionChamberBlockEntity extends BlockEntity {
 
         @Override
         public boolean isFluidValid(int tank, @NotNull FluidStack stack) {
-            return stack.getFluid().isSame(net.minecraft.world.level.material.Fluids.WATER);
+            return stack.getFluid().is(net.minecraft.tags.FluidTags.WATER);
         }
 
         @Override

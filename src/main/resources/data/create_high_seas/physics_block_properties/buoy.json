@@ -1,0 +1,7 @@
+{
+  "selector": "create_high_seas:buoy",
+  "priority": 1001,
+  "properties": {
+    "sable:mass": 60.0
+  }
+}

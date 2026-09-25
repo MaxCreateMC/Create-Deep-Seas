@@ -9,6 +9,8 @@
     "ServerRopeStrandMixin",
     "RapierVoxelColliderBakeryMixin",
     "RopeWinchBlockEntityMixin",
+    "KineticGoggleMixin",
+    "RopeWinchBlockMixin",
     "RopeConnectorBlockEntityMixin",
     "SmartBlockEntityMixin",
     "EntityWaterPhysicsMixin",

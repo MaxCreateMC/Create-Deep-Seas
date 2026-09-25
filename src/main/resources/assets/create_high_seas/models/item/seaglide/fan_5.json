@@ -1,0 +1,56 @@
+{
+	"format_version": "1.9.0",
+	"credit": "Made with Blockbench",
+	"ambientocclusion": false,
+	"render_type": "minecraft:cutout",
+	"textures": {
+		"2": "create_high_seas:item/seaglide/fan_blades",
+		"particle": "create_high_seas:item/seaglide/water_thruster"
+	},
+	"elements": [
+		{
+			"name": "fan5",
+			"from": [
+				4.5,
+				3.5,
+				6
+			],
+			"to": [
+				12.5,
+				11.5,
+				6
+			],
+			"rotation": {
+				"angle": 0,
+				"axis": "y",
+				"origin": [
+					8.5,
+					7.5,
+					6
+				]
+			},
+			"faces": {
+				"north": {
+					"uv": [
+						0,
+						0,
+						16,
+						16
+					],
+					"rotation": 270,
+					"texture": "#2"
+				},
+				"south": {
+					"uv": [
+						0,
+						0,
+						16,
+						16
+					],
+					"rotation": 90,
+					"texture": "#2"
+				}
+			}
+		}
+	]
+}

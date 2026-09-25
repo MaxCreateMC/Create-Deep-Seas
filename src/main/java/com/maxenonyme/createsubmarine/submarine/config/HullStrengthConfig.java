@@ -51,8 +51,6 @@ public class HullStrengthConfig {
             if (state.isAir())
                 continue;
             ResourceLocation id = BuiltInRegistries.BLOCK.getKey(block);
-            if (id == null)
-                continue;
             String key = id.toString();
 
             HullProperty prop = existing.get(key);
@@ -81,8 +79,6 @@ public class HullStrengthConfig {
             if (state.isAir())
                 return Optional.empty();
             ResourceLocation id = BuiltInRegistries.BLOCK.getKey(block);
-            if (id == null)
-                return Optional.empty();
             base = values.getOrDefault(id.toString(), autoCompute(state, id));
             resolvedCache.put(block, base);
         }
@@ -90,6 +86,8 @@ public class HullStrengthConfig {
     }
 
     private static HullProperty applyRuntimeMultipliers(HullProperty base) {
+        if (!SubmarineConfig.SERVER_SPEC.isLoaded())
+            return base;
         double depthMult = SubmarineConfig.MAX_DEPTH_MULTIPLIER.get();
         double chanceMult = SubmarineConfig.IMPLOSION_CHANCE_MULTIPLIER.get();
         int depth = Math.max(1, (int) Math.round(base.maxWaterDepth() * depthMult));
@@ -186,7 +184,7 @@ public class HullStrengthConfig {
             multiplier = 1.1;
         score *= multiplier;
 
-        int globalCap = SubmarineConfig.GLOBAL_MAX_DEPTH_CAP.get();
+        int globalCap = globalCap();
         int maxWaterDepth = Math.max(1, (int) score);
         boolean isInternal = id != null && id.getNamespace().equals(CreateSubmarine.MOD_ID);
         if (!isInternal && maxWaterDepth > globalCap)
@@ -196,8 +194,12 @@ public class HullStrengthConfig {
         return new HullProperty(maxWaterDepth, chance);
     }
 
+    private static int globalCap() {
+        return SubmarineConfig.SERVER_SPEC.isLoaded() ? SubmarineConfig.GLOBAL_MAX_DEPTH_CAP.get() : 300;
+    }
+
     private static void buildStaticDefaults(Map<String, HullProperty> map) {
-        int cap = SubmarineConfig.GLOBAL_MAX_DEPTH_CAP.get();
+        int cap = globalCap();
         map.put("minecraft:obsidian", new HullProperty(cap, 0.08f));
         map.put("minecraft:reinforced_deepslate", new HullProperty(cap, 0.01f));
         map.put("minecraft:bedrock", new HullProperty(cap, 0.00f));

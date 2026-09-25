@@ -32,12 +32,34 @@ import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
 import java.util.UUID;
+import com.maxenonyme.createsubmarine.submarine.compartment.CompartmentTracker;
+import com.maxenonyme.createsubmarine.submarine.config.SubmarineConfig;
+import com.maxenonyme.createsubmarine.submarine.util.SablePhysicsHelper;
+import com.maxenonyme.createsubmarine.submarine.util.SubLevelRegistry;
+import dev.ryanhcode.sable.api.block.BlockEntitySubLevelActor;
+import dev.ryanhcode.sable.api.physics.force.QueuedForceGroup;
+import dev.ryanhcode.sable.api.physics.handle.RigidBodyHandle;
+import dev.ryanhcode.sable.companion.math.BoundingBox3ic;
+import dev.ryanhcode.sable.sublevel.ServerSubLevel;
+import dev.ryanhcode.sable.sublevel.SubLevel;
+import dev.ryanhcode.sable.sublevel.plot.LevelPlot;
+import java.util.concurrent.ConcurrentHashMap;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.tags.FluidTags;
+import net.minecraft.world.level.material.FluidState;
+import net.minecraft.world.level.material.Fluids;
+import org.joml.Quaterniond;
 
 public class BallastTankBlockEntity extends BlockEntity
-        implements IHaveGoggleInformation, dev.ryanhcode.sable.api.block.BlockEntitySubLevelActor {
-    private org.joml.Vector3d recordedForceVec = null;
+        implements IHaveGoggleInformation, BlockEntitySubLevelActor {
+    private Vector3d recordedForceVec = null;
     private static final int CAPACITY = 8000;
     private static final double MAX_ACCEL_LIMIT = 0.2;
+    private static final double KEEL_DRAG = 0.12;
+    private static final double KEEL_RATIO = 1.25;
+    private static final double RIGHTING_RATE = 0.8;
+    private static final double RIGHTING_GAIN = 0.05;
     private static long lastClearTick = -1;
     private static final Map<UUID, Double> TICK_TOTAL_FORCE = new HashMap<>();
     public final FluidTank tank = new FluidTank(CAPACITY) {
@@ -49,8 +71,52 @@ public class BallastTankBlockEntity extends BlockEntity
             }
         }
     };
-    private List<BallastTankBlockEntity> cachedCluster;
+    private static final int CLUSTER_REFRESH = 100;
+    private static volatile int clusterEpoch;
+
+    private volatile List<BallastTankBlockEntity> cachedCluster;
+    private volatile BallastTankBlockEntity cachedMaster;
     private long clusterCacheTick = -1;
+    private int cachedEpoch = -1;
+
+    private static final Map<UUID, Map<BlockPos, BallastTankBlockEntity>> BY_SUB = new ConcurrentHashMap<>();
+    private UUID registeredSub;
+
+    public static double fillRatio(UUID subId) {
+        Map<BlockPos, BallastTankBlockEntity> tanks = BY_SUB.get(subId);
+        if (tanks == null || tanks.isEmpty())
+            return Double.NaN;
+        long water = 0;
+        long capacity = 0;
+        for (BallastTankBlockEntity be : tanks.values()) {
+            if (be.isRemoved())
+                continue;
+            water += be.tank.getFluidAmount();
+            capacity += CAPACITY;
+        }
+        return capacity == 0 ? Double.NaN : (double) water / capacity;
+    }
+
+    @Override
+    public void onLoad() {
+        super.onLoad();
+        clusterEpoch++;
+    }
+
+    @Override
+    public void setRemoved() {
+        super.setRemoved();
+        clusterEpoch++;
+        if (registeredSub != null) {
+            Map<BlockPos, BallastTankBlockEntity> tanks = BY_SUB.get(registeredSub);
+            if (tanks != null) {
+                tanks.remove(worldPosition, this);
+                if (tanks.isEmpty())
+                    BY_SUB.remove(registeredSub);
+            }
+            registeredSub = null;
+        }
+    }
 
     public BallastTankBlockEntity(BlockPos pos, BlockState state) {
         super(CreateSubmarine.BALLAST_TANK_BE.get(), pos, state);
@@ -60,8 +126,10 @@ public class BallastTankBlockEntity extends BlockEntity
         if (level == null)
             return List.of(this);
         long tick = level.getGameTime();
-        if (cachedCluster != null && tick - clusterCacheTick < 5)
-            return cachedCluster;
+        List<BallastTankBlockEntity> known = cachedCluster;
+        if (known != null && cachedEpoch == clusterEpoch && tick - clusterCacheTick < CLUSTER_REFRESH)
+            return known;
+        int epoch = clusterEpoch;
         List<BallastTankBlockEntity> cluster = new ArrayList<>();
         Set<BlockPos> visited = new HashSet<>();
         Queue<BlockPos> queue = new LinkedList<>();
@@ -81,8 +149,18 @@ public class BallastTankBlockEntity extends BlockEntity
                 }
             }
         }
-        cachedCluster = cluster;
-        clusterCacheTick = tick;
+        BallastTankBlockEntity master = this;
+        for (BallastTankBlockEntity be : cluster) {
+            if (be.worldPosition.compareTo(master.worldPosition) < 0)
+                master = be;
+        }
+        cluster = List.copyOf(cluster);
+        for (BallastTankBlockEntity be : cluster) {
+            be.cachedCluster = cluster;
+            be.cachedMaster = master;
+            be.clusterCacheTick = tick;
+            be.cachedEpoch = epoch;
+        }
         return cluster;
     }
 
@@ -112,7 +190,7 @@ public class BallastTankBlockEntity extends BlockEntity
             if (be instanceof BallastVentBlockEntity)
                 return true;
             BlockState state = level.getBlockState(pos);
-            net.minecraft.resources.ResourceLocation id = net.minecraft.core.registries.BuiltInRegistries.BLOCK
+            ResourceLocation id = BuiltInRegistries.BLOCK
                     .getKey(state.getBlock());
             if (id != null && id.getNamespace().equals("create") &&
                     (id.getPath().contains("pump") || id.getPath().contains("pipe")
@@ -143,7 +221,7 @@ public class BallastTankBlockEntity extends BlockEntity
     public int fillCluster(int amount, FluidAction action) {
         int filled = 0, toFill = amount;
         for (BallastTankBlockEntity be : getCluster()) {
-            int added = be.tank.fill(new FluidStack(net.minecraft.world.level.material.Fluids.WATER, toFill), action);
+            int added = be.tank.fill(new FluidStack(Fluids.WATER, toFill), action);
             filled += added;
             toFill -= added;
             if (toFill <= 0)
@@ -190,7 +268,7 @@ public class BallastTankBlockEntity extends BlockEntity
                 int total = 0;
                 for (BallastTankBlockEntity be : getCluster())
                     total += be.tank.getFluidAmount();
-                return new FluidStack(net.minecraft.world.level.material.Fluids.WATER, total);
+                return new FluidStack(Fluids.WATER, total);
             }
 
             @Override
@@ -200,7 +278,7 @@ public class BallastTankBlockEntity extends BlockEntity
 
             @Override
             public boolean isFluidValid(int tank, @NotNull FluidStack stack) {
-                return stack.getFluid().isSame(net.minecraft.world.level.material.Fluids.WATER);
+                return stack.getFluid().is(FluidTags.WATER);
             }
 
             @Override
@@ -243,7 +321,7 @@ public class BallastTankBlockEntity extends BlockEntity
                     if (toDrain <= 0)
                         break;
                 }
-                return new FluidStack(net.minecraft.world.level.material.Fluids.WATER, drained);
+                return new FluidStack(Fluids.WATER, drained);
             }
         };
     }
@@ -251,6 +329,7 @@ public class BallastTankBlockEntity extends BlockEntity
     public static void serverTick(Level level, BlockPos pos, BallastTankBlockEntity be) {
         if (level.isClientSide())
             return;
+        be.getCluster();
         be.shareFluidWithNeighbors();
         SubLevelAccess sub = SableCompanion.INSTANCE.getContaining(level, pos);
         if (sub == null)
@@ -262,23 +341,29 @@ public class BallastTankBlockEntity extends BlockEntity
             lastClearTick = gameTick;
         }
         UUID subId = sub.getUniqueId();
+        if (!subId.equals(be.registeredSub)) {
+            if (be.registeredSub != null && BY_SUB.containsKey(be.registeredSub))
+                BY_SUB.get(be.registeredSub).remove(pos, be);
+            BY_SUB.computeIfAbsent(subId, k -> new ConcurrentHashMap<>()).put(pos, be);
+            be.registeredSub = subId;
+        }
 
         Vector3d worldPos = new Vector3d(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5);
         sub.logicalPose().transformPosition(worldPos);
 
-        Object handle = com.maxenonyme.createsubmarine.submarine.util.SablePhysicsHelper.getHandle(sub);
-        Vector3dc currentVel = com.maxenonyme.createsubmarine.submarine.util.SablePhysicsHelper.getVelocity(handle);
+        Object handle = SablePhysicsHelper.getHandle(sub);
+        Vector3dc currentVel = SablePhysicsHelper.getVelocity(handle);
         double currentVelY = (currentVel != null) ? currentVel.y() : 0;
 
-        Level parentLevel = com.maxenonyme.createsubmarine.submarine.util.SubLevelRegistry.getLevel(sub.getUniqueId());
-        if (parentLevel == null && sub instanceof dev.ryanhcode.sable.sublevel.SubLevel sl) {
-            dev.ryanhcode.sable.sublevel.plot.LevelPlot plot = sl.getPlot();
+        Level parentLevel = SubLevelRegistry.getLevel(sub.getUniqueId());
+        if (parentLevel == null && sub instanceof SubLevel sl) {
+            LevelPlot plot = sl.getPlot();
             if (plot != null && sl.getLevel() != null) {
                 parentLevel = sl.getLevel();
-                dev.ryanhcode.sable.companion.math.BoundingBox3ic bounds = plot.getBoundingBox();
-                com.maxenonyme.createsubmarine.submarine.util.SubLevelRegistry.register(
+                BoundingBox3ic bounds = plot.getBoundingBox();
+                SubLevelRegistry.register(
                         sub.getUniqueId(), sub, parentLevel,
-                        new com.maxenonyme.createsubmarine.submarine.util.SubLevelRegistry.PlotBounds(bounds.minX(),
+                        new SubLevelRegistry.PlotBounds(bounds.minX(),
                                 bounds.maxX(), bounds.minY(), bounds.maxY(), bounds.minZ(), bounds.maxZ()));
             }
         }
@@ -289,16 +374,16 @@ public class BallastTankBlockEntity extends BlockEntity
         BlockPos parentPos = BlockPos.containing(worldPos.x, worldPos.y, worldPos.z);
         double localWaterSurfaceY = -999.0;
 
-        net.minecraft.world.level.material.FluidState fluidState = com.maxenonyme.createsubmarine.submarine.compartment.CompartmentTracker
+        FluidState fluidState = CompartmentTracker
                 .realFluidState(parentLevel, parentPos);
-        if (fluidState.is(net.minecraft.tags.FluidTags.WATER)) {
+        if (fluidState.is(FluidTags.WATER)) {
             float h = fluidState.getHeight(parentLevel, parentPos);
             localWaterSurfaceY = parentPos.getY() + h + countWaterAbove(parentLevel, parentPos);
         } else {
             BlockPos belowPos = parentPos.below();
-            net.minecraft.world.level.material.FluidState belowFluid = com.maxenonyme.createsubmarine.submarine.compartment.CompartmentTracker
+            FluidState belowFluid = CompartmentTracker
                     .realFluidState(parentLevel, belowPos);
-            if (belowFluid.is(net.minecraft.tags.FluidTags.WATER)) {
+            if (belowFluid.is(FluidTags.WATER)) {
                 float h = belowFluid.getHeight(parentLevel, belowPos);
                 localWaterSurfaceY = belowPos.getY() + h + countWaterAbove(parentLevel, belowPos);
             }
@@ -312,7 +397,7 @@ public class BallastTankBlockEntity extends BlockEntity
 
         double submergedRatio = Math.max(0.0, Math.min(1.0, depth));
 
-        double maxSpeed = com.maxenonyme.createsubmarine.submarine.config.SubmarineConfig.BALLAST_VERTICAL_SPEED.get();
+        double maxSpeed = SubmarineConfig.BALLAST_VERTICAL_SPEED.get();
         double baseTarget = (0.5 - fillRatio) * 2.0 * maxSpeed;
         double distanceToSurface = localWaterSurfaceY - worldPos.y;
         double targetVelY;
@@ -324,19 +409,21 @@ public class BallastTankBlockEntity extends BlockEntity
 
         double perceivedVelY = Math.max(-0.2, Math.min(0.2, currentVelY));
         double errorY = targetVelY - perceivedVelY;
-        double mass = com.maxenonyme.createsubmarine.submarine.util.SablePhysicsHelper.readMass(sub);
+        double mass = SablePhysicsHelper.readMass(sub);
 
-        double forceMult = com.maxenonyme.createsubmarine.submarine.config.SubmarineConfig.BALLAST_FORCE_MULTIPLIER
+        double forceMult = SubmarineConfig.BALLAST_FORCE_MULTIPLIER
                 .get();
-        double liftPerTank = com.maxenonyme.createsubmarine.submarine.config.SubmarineConfig.BALLAST_LIFT_PER_TANK
+        double liftPerTank = SubmarineConfig.BALLAST_LIFT_PER_TANK
                 .get();
         double forceToApply = errorY * liftPerTank * 0.16 * forceMult * submergedRatio;
+        double maxImpulse = Math.abs(errorY) * mass;
+        forceToApply = Math.clamp(forceToApply, -maxImpulse, maxImpulse);
 
         if (Double.isFinite(forceToApply)) {
             applyForce(sub, forceToApply);
             double finalForce = (Math.abs(currentVelY) < 0.01 && forceToApply < 0) ? forceToApply * 0.1 : forceToApply;
-            org.joml.Vector3d forceVec = new org.joml.Vector3d(0, finalForce, 0);
-            sub.logicalPose().orientation().conjugate(new org.joml.Quaterniond()).transform(forceVec);
+            Vector3d forceVec = new Vector3d(0, finalForce, 0);
+            sub.logicalPose().orientation().conjugate(new Quaterniond()).transform(forceVec);
             be.recordedForceVec = forceVec;
         }
 
@@ -348,12 +435,48 @@ public class BallastTankBlockEntity extends BlockEntity
                 double dragZ = -currentVel.z() * mass * dragCoefficient;
                 if (Math.abs(dragX) > 0.01 || Math.abs(dragZ) > 0.01) {
                     Vector3d dragVec = new Vector3d(dragX, 0, dragZ);
-                    sub.logicalPose().orientation().conjugate(new org.joml.Quaterniond()).transform(dragVec);
-                    com.maxenonyme.createsubmarine.submarine.util.SablePhysicsHelper.applyLinearImpulse(handle,
+                    sub.logicalPose().orientation().conjugate(new Quaterniond()).transform(dragVec);
+                    SablePhysicsHelper.applyLinearImpulse(handle,
                             dragVec);
                 }
+                keelDrag(sub, handle, currentVel, mass);
+                rightHull(sub, handle);
             }
         }
+    }
+
+    private static void keelDrag(SubLevelAccess sub, Object handle, Vector3dc velocity, double mass) {
+        SubLevelRegistry.PlotBounds bounds =
+                SubLevelRegistry.getBounds(sub.getUniqueId());
+        if (bounds == null)
+            return;
+        int lengthX = bounds.maxX() - bounds.minX() + 1;
+        int lengthZ = bounds.maxZ() - bounds.minZ() + 1;
+        if (Math.max(lengthX, lengthZ) < Math.min(lengthX, lengthZ) * KEEL_RATIO)
+            return;
+        Vector3d side = lengthX >= lengthZ ? new Vector3d(0, 0, 1) : new Vector3d(1, 0, 0);
+        sub.logicalPose().orientation().transform(side);
+        double sideSpeed = side.dot(velocity);
+        if (Math.abs(sideSpeed) < 0.01)
+            return;
+        Vector3d impulse = side.mul(-sideSpeed * mass * KEEL_DRAG);
+        sub.logicalPose().orientation().conjugate(new Quaterniond()).transform(impulse);
+        SablePhysicsHelper.applyLinearImpulse(handle, impulse);
+    }
+
+    private static void rightHull(SubLevelAccess sub, Object handle) {
+        Vector3dc spin = SablePhysicsHelper.getAngularVelocity(handle);
+        if (spin == null)
+            return;
+        Vector3d up = sub.logicalPose().orientation().transform(new Vector3d(0, 1, 0));
+        Vector3d tilt = up.cross(0, 1, 0, new Vector3d());
+        Vector3d correction = new Vector3d(
+                (tilt.x * RIGHTING_RATE - spin.x()) * RIGHTING_GAIN,
+                0,
+                (tilt.z * RIGHTING_RATE - spin.z()) * RIGHTING_GAIN);
+        if (correction.lengthSquared() < 1e-8)
+            return;
+        SablePhysicsHelper.addAngularVelocity(handle, correction);
     }
 
     private void shareFluidWithNeighbors() {
@@ -411,8 +534,8 @@ public class BallastTankBlockEntity extends BlockEntity
         BlockPos.MutableBlockPos m = new BlockPos.MutableBlockPos();
         for (int y = pos.getY() + 1; y < pos.getY() + 1 + 200; y++) {
             m.set(pos.getX(), y, pos.getZ());
-            if (com.maxenonyme.createsubmarine.submarine.compartment.CompartmentTracker.realFluidState(level, m)
-                    .is(net.minecraft.tags.FluidTags.WATER)) {
+            if (CompartmentTracker.realFluidState(level, m)
+                    .is(FluidTags.WATER)) {
                 depth++;
             } else {
                 break;
@@ -422,18 +545,18 @@ public class BallastTankBlockEntity extends BlockEntity
     }
 
     private static void applyForce(SubLevelAccess sub, double forceY) {
-        Object handle = com.maxenonyme.createsubmarine.submarine.util.SablePhysicsHelper.getHandle(sub);
+        Object handle = SablePhysicsHelper.getHandle(sub);
         if (handle == null)
             return;
-        com.maxenonyme.createsubmarine.submarine.util.SablePhysicsHelper.wakeUp(handle);
+        SablePhysicsHelper.wakeUp(handle);
         double velY = 0;
-        Vector3dc vel = com.maxenonyme.createsubmarine.submarine.util.SablePhysicsHelper.getVelocity(handle);
+        Vector3dc vel = SablePhysicsHelper.getVelocity(handle);
         if (vel != null)
             velY = vel.y();
         double finalForce = (Math.abs(velY) < 0.01 && forceY < 0) ? forceY * 0.1 : forceY;
         Vector3d forceVec = new Vector3d(0, finalForce, 0);
-        sub.logicalPose().orientation().conjugate(new org.joml.Quaterniond()).transform(forceVec);
-        com.maxenonyme.createsubmarine.submarine.util.SablePhysicsHelper.applyLinearImpulse(handle, forceVec);
+        sub.logicalPose().orientation().conjugate(new Quaterniond()).transform(forceVec);
+        SablePhysicsHelper.applyLinearImpulse(handle, forceVec);
     }
 
     @Override
@@ -467,31 +590,19 @@ public class BallastTankBlockEntity extends BlockEntity
         tank.readFromNBT(registries, tag.getCompound("Tank"));
     }
 
-    private BallastTankBlockEntity getMaster() {
-        List<BallastTankBlockEntity> cluster = getCluster();
-        BallastTankBlockEntity master = this;
-        for (BallastTankBlockEntity be : cluster) {
-            if (be.worldPosition.compareTo(master.worldPosition) < 0) {
-                master = be;
-            }
-        }
-        return master;
-    }
 
     @Override
-    public void sable$physicsTick(dev.ryanhcode.sable.sublevel.ServerSubLevel sub,
-            dev.ryanhcode.sable.api.physics.handle.RigidBodyHandle handle, double timeStep) {
-        if (this.recordedForceVec == null)
-            return;
-        if (this != getMaster())
+    public void sable$physicsTick(ServerSubLevel sub,
+            RigidBodyHandle handle, double timeStep) {
+        List<BallastTankBlockEntity> cluster = cachedCluster;
+        if (cachedMaster != this || cluster == null)
             return;
 
         if (sub.isTrackingIndividualQueuedForces()) {
-            dev.ryanhcode.sable.api.physics.force.QueuedForceGroup forceGroup = sub.getOrCreateQueuedForceGroup(
-                    com.maxenonyme.createsubmarine.CreateSubmarine.BALLAST_FORCE_GROUP.get());
-            org.joml.Vector3d totalForce = new org.joml.Vector3d();
-            org.joml.Vector3d centerPos = new org.joml.Vector3d();
-            List<BallastTankBlockEntity> cluster = getCluster();
+            QueuedForceGroup forceGroup = sub.getOrCreateQueuedForceGroup(
+                    CreateSubmarine.BALLAST_FORCE_GROUP.get());
+            Vector3d totalForce = new Vector3d();
+            Vector3d centerPos = new Vector3d();
             int count = 0;
             for (BallastTankBlockEntity be : cluster) {
                 if (be.recordedForceVec != null) {
@@ -504,11 +615,11 @@ public class BallastTankBlockEntity extends BlockEntity
             }
             if (count > 0) {
                 centerPos.div(count);
-                org.joml.Vector3d recordVec = totalForce.mul(20.0 * timeStep);
+                Vector3d recordVec = totalForce.mul(20.0 * timeStep);
                 forceGroup.recordPointForce(centerPos, recordVec);
             }
         } else {
-            for (BallastTankBlockEntity be : getCluster()) {
+            for (BallastTankBlockEntity be : cluster) {
                 be.recordedForceVec = null;
             }
         }

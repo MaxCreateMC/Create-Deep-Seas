@@ -1,0 +1,21 @@
+{
+  "replace": false,
+  "values": [
+    "create_high_seas:white_sail",
+    "create_high_seas:orange_sail",
+    "create_high_seas:magenta_sail",
+    "create_high_seas:light_blue_sail",
+    "create_high_seas:yellow_sail",
+    "create_high_seas:lime_sail",
+    "create_high_seas:pink_sail",
+    "create_high_seas:gray_sail",
+    "create_high_seas:light_gray_sail",
+    "create_high_seas:cyan_sail",
+    "create_high_seas:purple_sail",
+    "create_high_seas:blue_sail",
+    "create_high_seas:brown_sail",
+    "create_high_seas:green_sail",
+    "create_high_seas:red_sail",
+    "create_high_seas:black_sail"
+  ]
+}

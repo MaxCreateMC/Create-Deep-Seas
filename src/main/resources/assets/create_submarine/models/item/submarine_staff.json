@@ -1,0 +1,44 @@
+{
+	"parent": "builtin/entity",
+	"gui_light": "front",
+	"textures": {
+		"particle": "create_submarine:item/submarine_staff/submarine_main_staff"
+	},
+	"display": {
+		"thirdperson_righthand": {
+			"rotation": [0, -90, 0],
+			"translation": [0, 1.25, -0.5]
+		},
+		"thirdperson_lefthand": {
+			"rotation": [0, -90, 0],
+			"translation": [0, 1.25, -0.5]
+		},
+		"firstperson_righthand": {
+			"rotation": [-7, 8, 0],
+			"translation": [0.75, -1.5, 0]
+		},
+		"firstperson_lefthand": {
+			"rotation": [-7, 8, 0],
+			"translation": [0.75, -1.5, 0]
+		},
+		"ground": {
+			"rotation": [90, 0, 0],
+			"translation": [0, -1, 7.25]
+		},
+		"gui": {
+			"rotation": [0, 0, -43],
+			"translation": [1.25, 1.75, 0],
+			"scale": [0.49, 0.49, 0.49]
+		},
+		"head": {
+			"rotation": [0, 0, 79],
+			"translation": [-5.75, 11, 10],
+			"scale": [1.5, 1.5, 1.5]
+		},
+		"fixed": {
+			"rotation": [0, 0, -47],
+			"translation": [2, 1.5, 0],
+			"scale": [0.64, 0.64, 0.64]
+		}
+	}
+}

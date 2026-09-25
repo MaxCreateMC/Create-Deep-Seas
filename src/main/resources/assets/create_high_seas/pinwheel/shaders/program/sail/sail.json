@@ -1,0 +1,6 @@
+{
+  "vertex": "create_high_seas:sail/sail",
+  "fragment": "create_high_seas:sail/sail",
+  "tesselation_control": "create_high_seas:sail/sail",
+  "tesselation_evaluation": "create_high_seas:sail/sail"
+}

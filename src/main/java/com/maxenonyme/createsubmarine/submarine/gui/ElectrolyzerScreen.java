@@ -1,6 +1,7 @@
 package com.maxenonyme.createsubmarine.submarine.gui;
 
 import com.maxenonyme.createsubmarine.submarine.network.ElectrolyzerTogglePayload;
+import com.simibubi.create.foundation.gui.AllGuiTextures;
 import com.simibubi.create.foundation.gui.AllIcons;
 import com.simibubi.create.foundation.gui.menu.AbstractSimiContainerScreen;
 import com.simibubi.create.foundation.gui.widget.IconButton;
@@ -10,13 +11,16 @@ import net.minecraft.client.gui.components.AbstractButton;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.narration.NarrationElementOutput;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.InventoryMenu;
+import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.network.PacketDistributor;
 
 import javax.annotation.ParametersAreNonnullByDefault;
+import java.util.List;
 
 @ParametersAreNonnullByDefault
 public class ElectrolyzerScreen extends AbstractSimiContainerScreen<ElectrolyzerMenu> {
@@ -30,6 +34,8 @@ public class ElectrolyzerScreen extends AbstractSimiContainerScreen<Electrolyzer
     private static final ResourceLocation OFF_OVER = ResourceLocation.fromNamespaceAndPath("create_submarine", "textures/gui/off_over.png");
     private static final ResourceLocation ON       = ResourceLocation.fromNamespaceAndPath("create_submarine", "textures/gui/on.png");
     private static final ResourceLocation ON_OVER  = ResourceLocation.fromNamespaceAndPath("create_submarine", "textures/gui/on_over.png");
+
+    private static final ResourceLocation ELECTRON_TUBE = ResourceLocation.fromNamespaceAndPath("create", "electron_tube");
 
     private static final int BTN_W = 14;
     private static final int BTN_H = 15;
@@ -51,7 +57,7 @@ public class ElectrolyzerScreen extends AbstractSimiContainerScreen<Electrolyzer
 
     public ElectrolyzerScreen(ElectrolyzerMenu menu, Inventory inv, Component title) {
         super(menu, inv, title);
-        setWindowSize(W, H);
+        setWindowSize(W, H + 4 + AllGuiTextures.PLAYER_INVENTORY.getHeight());
     }
 
     @Override
@@ -102,7 +108,9 @@ public class ElectrolyzerScreen extends AbstractSimiContainerScreen<Electrolyzer
     protected void renderBg(GuiGraphics graphics, float partialTicks, int mouseX, int mouseY) {
         int x = leftPos, y = topPos;
 
+        renderPlayerInventory(graphics, getLeftOfCentered(AllGuiTextures.PLAYER_INVENTORY.getWidth()), y + H + 4);
         graphics.blit(BG, x, y, 0.0f, 0.0f, W, H, W, H);
+        drawModuleSlot(graphics, x + ElectrolyzerMenu.MODULE_X - 1, y + ElectrolyzerMenu.MODULE_Y - 1);
 
         int tw = font.width(title);
         graphics.drawString(font, title, x + (W - tw) / 2, y + 4, 0xFF000000, false);
@@ -115,6 +123,19 @@ public class ElectrolyzerScreen extends AbstractSimiContainerScreen<Electrolyzer
         graphics.drawString(font, "FE", x + GAUGE_ENERGY, labelY, 0xFFFFAA00, false);
         graphics.drawString(font, "mB", x + GAUGE_WATER,  labelY, 0xFF3399FF, false);
         graphics.drawString(font, "O2", x + GAUGE_OXYGEN, labelY, 0xFF000000, false);
+    }
+
+    private void drawModuleSlot(GuiGraphics graphics, int x, int y) {
+        graphics.fill(x, y, x + 18, y + 18, 0xFF373737);
+        graphics.fill(x + 1, y + 1, x + 18, y + 18, 0xFFFFFFFF);
+        graphics.fill(x + 1, y + 1, x + 17, y + 17, 0xFF8B8B8B);
+        if (!menu.getSlot(0).hasItem()) {
+            graphics.renderFakeItem(new ItemStack(BuiltInRegistries.ITEM.get(ELECTRON_TUBE)), x + 1, y + 1);
+            graphics.pose().pushPose();
+            graphics.pose().translate(0, 0, 200);
+            graphics.fill(x + 1, y + 1, x + 17, y + 17, 0xAA8B8B8B);
+            graphics.pose().popPose();
+        }
     }
 
     private void drawGauge(GuiGraphics graphics, int x, int y, int amount, int max, int tint) {
@@ -161,7 +182,13 @@ public class ElectrolyzerScreen extends AbstractSimiContainerScreen<Electrolyzer
     @Override
     protected void renderForeground(GuiGraphics graphics, int mouseX, int mouseY, float partialTicks) {
         super.renderForeground(graphics, mouseX, mouseY, partialTicks);
-        if (isHovering(GAUGE_ENERGY, GAUGE_Y, GAUGE_W, GAUGE_H, mouseX, mouseY))
+        if (isHovering(ElectrolyzerMenu.MODULE_X, ElectrolyzerMenu.MODULE_Y, 16, 16, mouseX, mouseY) && !menu.getSlot(0).hasItem())
+            graphics.renderTooltip(font, font.split(Component.translatable("create_submarine.electrolyzer.alternator_hint"), 160), mouseX, mouseY);
+        else if (isHovering(GAUGE_ENERGY, GAUGE_Y, GAUGE_W, GAUGE_H, mouseX, mouseY) && menu.getSlot(0).hasItem())
+            graphics.renderComponentTooltip(font, List.of(
+                    Component.literal("Energy: " + menu.getEnergy() + " / " + menu.getMaxEnergy() + " FE"),
+                    Component.translatable("create_submarine.electrolyzer.generating", menu.getGenerated())), mouseX, mouseY);
+        else if (isHovering(GAUGE_ENERGY, GAUGE_Y, GAUGE_W, GAUGE_H, mouseX, mouseY))
             graphics.renderTooltip(font, Component.literal("Energy: " + menu.getEnergy() + " / " + menu.getMaxEnergy() + " FE"), mouseX, mouseY);
         else if (isHovering(GAUGE_WATER, GAUGE_Y, GAUGE_W, GAUGE_H, mouseX, mouseY))
             graphics.renderTooltip(font, Component.literal("Water: " + menu.getWater() + " / " + menu.getMaxWater() + " mB"), mouseX, mouseY);

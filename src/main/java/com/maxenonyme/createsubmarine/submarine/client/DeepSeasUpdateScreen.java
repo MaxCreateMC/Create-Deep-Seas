@@ -14,6 +14,8 @@ import net.neoforged.neoforge.client.event.ScreenEvent;
 
 import java.util.ArrayList;
 import java.util.List;
+import com.maxenonyme.createsubmarine.submarine.config.SubmarineClientState;
+import net.minecraft.Util;
 
 public class DeepSeasUpdateScreen extends Screen {
     private static final int PANEL_BG = 0xE6101A22;
@@ -46,7 +48,7 @@ public class DeepSeasUpdateScreen extends Screen {
         if (!(event.getNewScreen() instanceof TitleScreen menu)) {
             return;
         }
-        if (!SubmarineConfig.SPEC.isLoaded() || !com.maxenonyme.createsubmarine.submarine.config.SubmarineClientState.hasSeenWelcomeScreen()) {
+        if (!SubmarineConfig.CLIENT_SPEC.isLoaded() || !SubmarineClientState.hasSeenWelcomeScreen()) {
             return;
         }
         if (SubmarineConfig.DISABLE_STARTUP_SCREENS.get()) {
@@ -55,7 +57,7 @@ public class DeepSeasUpdateScreen extends Screen {
         if (UPDATE_SCREEN_SHOWN || !UpdateChecker.isUpdateAvailable()) {
             return;
         }
-        if (UpdateChecker.getLatestVersion() != null && UpdateChecker.getLatestVersion().equals(com.maxenonyme.createsubmarine.submarine.config.SubmarineClientState.getIgnoredUpdateVersion())) {
+        if (UpdateChecker.getLatestVersion() != null && UpdateChecker.getLatestVersion().equals(SubmarineClientState.getIgnoredUpdateVersion())) {
             return;
         }
         UPDATE_SCREEN_SHOWN = true;
@@ -133,7 +135,7 @@ public class DeepSeasUpdateScreen extends Screen {
 
         addRenderableWidget(Button.builder(
                         Component.translatable("create_submarine.update.button.modrinth"),
-                        b -> { markAsSeenAndClose(); net.minecraft.Util.getPlatform().openUri("https://modrinth.com/project/mva5q4qZ"); })
+                        b -> { markAsSeenAndClose(); Util.getPlatform().openUri("https://modrinth.com/project/mva5q4qZ"); })
                 .bounds(centerX - gap / 2 - buttonW, buttonsY, buttonW, 20)
                 .build());
 
@@ -148,7 +150,7 @@ public class DeepSeasUpdateScreen extends Screen {
 
     private void markAsSeenAndClose() {
         if (UpdateChecker.getLatestVersion() != null) {
-            com.maxenonyme.createsubmarine.submarine.config.SubmarineClientState.setIgnoredUpdateVersion(UpdateChecker.getLatestVersion());
+            SubmarineClientState.setIgnoredUpdateVersion(UpdateChecker.getLatestVersion());
         }
         this.minecraft.setScreen(titleScreen);
     }

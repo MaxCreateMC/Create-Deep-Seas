@@ -5,6 +5,8 @@
     "create_submarine:oxygene_diffuser",
     "create_submarine:electrolyzer",
     "create_submarine:water_thruster",
-    "create_submarine:copper_pressurizer"
+    "create_submarine:copper_pressurizer",
+    "create_submarine:command_sub",
+    "create_submarine:pump_controller"
   ]
 }

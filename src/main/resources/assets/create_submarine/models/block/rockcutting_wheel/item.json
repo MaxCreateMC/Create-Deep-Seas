@@ -7,6 +7,9 @@
 	"loader": "neoforge:obj",
 	"flip_v": true,
 	"model": "create_submarine:models/block/rockcutting_wheel/spline_block.obj",
+	"transform": {
+		"translation": [0.5, 0.40625, 0.46875]
+	},
 	"display": {
 		"thirdperson_righthand": {
 			"rotation": [75, 45, 0],

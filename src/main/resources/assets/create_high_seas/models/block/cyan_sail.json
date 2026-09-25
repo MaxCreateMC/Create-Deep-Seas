@@ -1,0 +1,8 @@
+{
+  "parent": "create_high_seas:block/sail/block",
+  "textures": {
+    "0": "create:block/sail/canvas_cyan",
+    "1": "create_high_seas:block/sail/side_cyan",
+    "particle": "create:block/sail/canvas_cyan"
+  }
+}

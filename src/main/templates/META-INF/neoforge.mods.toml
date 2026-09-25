@@ -8,6 +8,9 @@ config="create_submarine.mixins.json"
 [[mixins]]
 config="create_abyss.mixins.json"
 
+[[mixins]]
+config="create_high_seas.mixins.json"
+
 [[mods]]
 modId="${mod_id}"
 version="${mod_version}"
@@ -35,6 +38,8 @@ modId="${high_seas_mod_id}"
 version="${high_seas_mod_version}"
 displayName="${high_seas_mod_name}"
 authors="Maxenonyme"
+logoFile="high_seas_logo_1.png"
+logoBlur=false
 description='''
 Surface naval content for Create Deep Seas. Coming soon.
 '''
@@ -85,16 +90,17 @@ Surface naval content for Create Deep Seas. Coming soon.
 [[dependencies.${mod_id}]]
     modId="aeronautics"
     type="required"
-    versionRange="[1.1.3,)"
+    versionRange="[1.3.2,)"
     ordering="AFTER"
     side="BOTH"
 
 [[dependencies.${mod_id}]]
-    modId="sodium"
-    type="incompatible"
-    versionRange="[mc1.21.1-0.6.13-neoforge]"
-    ordering="NONE"
-    side="CLIENT"
+    modId="simulated"
+    type="required"
+    versionRange="[1.3.0,)"
+    ordering="AFTER"
+    side="BOTH"
+
 
 [[dependencies.${mod_id}]]
     modId="fusion"

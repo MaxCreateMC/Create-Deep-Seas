@@ -14,7 +14,16 @@ import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
 import net.minecraft.world.phys.shapes.Shapes;
 import org.jetbrains.annotations.Nullable;
+import com.maxenonyme.createsubmarine.submarine.system.DiffuserZoneProtection;
+import net.minecraft.world.item.context.BlockPlaceContext;
 public class OxygeneDiffuserBlock extends Block implements EntityBlock {
+    @Override
+    public BlockState getStateForPlacement(BlockPlaceContext context) {
+        return DiffuserZoneProtection.canPlaceMachine(context)
+                ? super.getStateForPlacement(context)
+                : null;
+    }
+
     protected static final VoxelShape SHAPE = Shapes.or(
         Block.box(0.0, 0.0, 0.0, 16.0, 13.0, 16.0),
         Block.box(1.0, 13.0, 1.0, 15.0, 15.0, 15.0),

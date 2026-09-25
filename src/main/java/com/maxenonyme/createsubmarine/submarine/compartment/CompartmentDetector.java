@@ -13,7 +13,10 @@ import java.util.*;
 
 public class CompartmentDetector {
     private static int maxBlocks() {
-        return com.maxenonyme.createsubmarine.submarine.config.SubmarineConfig.OXYGEN_MAX_FILL_BLOCKS.get();
+        var spec = com.maxenonyme.createsubmarine.submarine.config.SubmarineConfig.SERVER_SPEC;
+        return spec.isLoaded()
+                ? com.maxenonyme.createsubmarine.submarine.config.SubmarineConfig.OXYGEN_MAX_FILL_BLOCKS.get()
+                : 500_000;
     }
 
     public record Component(Set<BlockPos> internal, Set<BlockPos> hull, boolean sealed, BlockPos anchor) {
@@ -164,6 +167,7 @@ public class CompartmentDetector {
             BlockState nextState = getStateInPlot(st.plot, next, st.cache);
             if (nextState == null) {
                 st.chunksMissing = true;
+                st.activeSealed = false;
                 continue;
             }
             if (isPermeable(nextState)) {

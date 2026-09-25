@@ -1,0 +1,10 @@
+{
+  "variants": {
+    "facing=down": { "model": "create_submarine:block/pump_controller/block", "x": 180 },
+    "facing=east": { "model": "create_submarine:block/pump_controller/block", "x": 90, "y": 90 },
+    "facing=north": { "model": "create_submarine:block/pump_controller/block", "x": 90 },
+    "facing=south": { "model": "create_submarine:block/pump_controller/block", "x": 90, "y": 180 },
+    "facing=up": { "model": "create_submarine:block/pump_controller/block" },
+    "facing=west": { "model": "create_submarine:block/pump_controller/block", "x": 90, "y": 270 }
+  }
+}

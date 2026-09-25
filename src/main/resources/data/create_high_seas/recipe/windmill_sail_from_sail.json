@@ -1,0 +1,13 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    {
+      "item": "create_high_seas:white_sail"
+    }
+  ],
+  "result": {
+    "count": 1,
+    "id": "create:white_sail"
+  }
+}

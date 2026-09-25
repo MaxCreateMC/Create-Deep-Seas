@@ -14,32 +14,34 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.Level;
+import com.maxenonyme.highseas.block.AnchorBlock;
+import net.minecraft.server.level.ServerLevel;
 
 public class SteelCableItem extends RopeItem {
 
-    private static java.lang.reflect.Method createRopeMethod = null;
-    private static boolean createRopeMethodNeedsBool = true;
-    private static boolean createRopeMethodFailed = false;
+    private static boolean creatingSteel;
 
-    private static java.lang.reflect.Method getCreateRopeMethod() {
-        if (createRopeMethodFailed) return null;
-        if (createRopeMethod != null) return createRopeMethod;
+    public static boolean isCreatingSteel() {
+        return creatingSteel;
+    }
+
+    public static boolean createSteelRope(RopeStrandHolderBehavior from, RopeStrandHolderBehavior to) {
+        SteelCableHolderAccessor a = (SteelCableHolderAccessor) from;
+        SteelCableHolderAccessor b = (SteelCableHolderAccessor) to;
+        a.createsubmarine$setSteelCable(true);
+        b.createsubmarine$setSteelCable(true);
+        boolean made;
+        creatingSteel = true;
         try {
-            createRopeMethod = dev.simulated_team.simulated.content.blocks.rope.RopeStrandHolderBehavior.class.getMethod("createRope", dev.simulated_team.simulated.content.blocks.rope.RopeStrandHolderBehavior.class, boolean.class);
-            createRopeMethodNeedsBool = true;
-        } catch (NoSuchMethodException e) {
-            try {
-                createRopeMethod = dev.simulated_team.simulated.content.blocks.rope.RopeStrandHolderBehavior.class.getMethod("createRope", dev.simulated_team.simulated.content.blocks.rope.RopeStrandHolderBehavior.class);
-                createRopeMethodNeedsBool = false;
-            } catch (Exception ex) {
-                createRopeMethodFailed = true;
-                ex.printStackTrace();
-            }
-        } catch (Exception e) {
-            createRopeMethodFailed = true;
-            e.printStackTrace();
+            made = from.createRope(to, false);
+        } finally {
+            creatingSteel = false;
         }
-        return createRopeMethod;
+        if (!made) {
+            a.createsubmarine$setSteelCable(false);
+            b.createsubmarine$setSteelCable(false);
+        }
+        return made;
     }
 
     public SteelCableItem(Properties properties) {
@@ -63,7 +65,7 @@ public class SteelCableItem extends RopeItem {
         if (validLocation) {
             if (heldStack.has(SimDataComponents.ROPE_FIRST_CONNECTION)) {
                 if (!level.isClientSide) {
-                    if (!this.attachSteelCable(level, heldStack.get(SimDataComponents.ROPE_FIRST_CONNECTION), clickedPos)) {
+                    if (!attachSteelCable(level, heldStack.get(SimDataComponents.ROPE_FIRST_CONNECTION), clickedPos)) {
                         heldStack.remove(SimDataComponents.ROPE_FIRST_CONNECTION);
                         return InteractionResult.SUCCESS;
                     } else {
@@ -71,7 +73,7 @@ public class SteelCableItem extends RopeItem {
                     }
                 }
                 heldStack.remove(SimDataComponents.ROPE_FIRST_CONNECTION);
-                if (!player.isCreative()) {
+                if (player == null || !player.isCreative()) {
                     context.getItemInHand().shrink(1);
                 }
                 return InteractionResult.SUCCESS;
@@ -83,7 +85,12 @@ public class SteelCableItem extends RopeItem {
         return super.useOn(context);
     }
 
-    private boolean attachSteelCable(Level level, BlockPos posA, BlockPos posB) {
+    public static boolean attachSteelCable(Level level, BlockPos posA, BlockPos posB) {
+        if (!level.isClientSide() && level instanceof ServerLevel serverLevel) {
+            posA = AnchorBlock.extractAnchorToSubLevel(serverLevel, posA);
+            posB = AnchorBlock.extractAnchorToSubLevel(serverLevel, posB);
+        }
+
         RopeStrandHolderBehavior ropeHolderA = getRopeHolder(level, posA);
         if (ropeHolderA == null) return false;
 
@@ -99,39 +106,18 @@ public class SteelCableItem extends RopeItem {
             return false;
         }
 
-        if (ropeHolderA instanceof SteelCableHolderAccessor accessorA) {
-            accessorA.createsubmarine$setSteelCable(true);
-        }
-        if (ropeHolderB instanceof SteelCableHolderAccessor accessorB) {
-            accessorB.createsubmarine$setSteelCable(true);
-        }
-
-        boolean success = false;
-        try {
-            java.lang.reflect.Method method = getCreateRopeMethod();
-            if (method != null) {
-                if (createRopeMethodNeedsBool) {
-                    success = (boolean) method.invoke(ropeHolderA, ropeHolderB, false);
-                } else {
-                    success = (boolean) method.invoke(ropeHolderA, ropeHolderB);
-                }
+        if (createSteelRope(ropeHolderA, ropeHolderB)) {
+            if (level.getBlockState(posA).getBlock() instanceof AnchorBlock) {
+                level.setBlock(posA, level.getBlockState(posA).setValue(AnchorBlock.HAS_CABLE, true), 3);
             }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-
-        if (success) {
+            if (level.getBlockState(posB).getBlock() instanceof AnchorBlock) {
+                level.setBlock(posB, level.getBlockState(posB).setValue(AnchorBlock.HAS_CABLE, true), 3);
+            }
             ropeHolderA.blockEntity.notifyUpdate();
             ropeHolderB.blockEntity.notifyUpdate();
             level.playSound(null, posA, SoundEvents.WOOL_PLACE, SoundSource.BLOCKS, 0.5F, 1F);
             level.playSound(null, posB, SoundEvents.WOOL_PLACE, SoundSource.BLOCKS, 0.5F, 1F);
             return true;
-        }
-        if (ropeHolderA instanceof SteelCableHolderAccessor accessorA) {
-            accessorA.createsubmarine$setSteelCable(false);
-        }
-        if (ropeHolderB instanceof SteelCableHolderAccessor accessorB) {
-            accessorB.createsubmarine$setSteelCable(false);
         }
         return false;
     }

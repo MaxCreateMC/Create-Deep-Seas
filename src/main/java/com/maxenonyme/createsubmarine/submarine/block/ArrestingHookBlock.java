@@ -64,7 +64,7 @@ public class ArrestingHookBlock extends HorizontalDirectionalBlock implements En
                 .setValue(FACING, context.getHorizontalDirection())
                 .setValue(POWERED, level.hasNeighborSignal(pos))
                 .setValue(CEILING, ceiling)
-                .setValue(WATERLOGGED, level.getFluidState(pos).getType() == Fluids.WATER);
+                .setValue(WATERLOGGED, level.getFluidState(pos).is(net.minecraft.tags.FluidTags.WATER));
     }
 
     @Override

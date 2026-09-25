@@ -1,0 +1,23 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "SPS",
+    "PTP",
+    "SPS"
+  ],
+  "key": {
+    "S": {
+      "item": "create:crafter_slot_cover"
+    },
+    "P": {
+      "tag": "minecraft:planks"
+    },
+    "T": {
+      "item": "create:transmitter"
+    }
+  },
+  "result": {
+    "id": "create_submarine:command_sub",
+    "count": 1
+  }
+}

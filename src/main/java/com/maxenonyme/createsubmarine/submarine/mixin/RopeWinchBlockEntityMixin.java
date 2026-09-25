@@ -1,33 +1,45 @@
 package com.maxenonyme.createsubmarine.submarine.mixin;
 
-import com.maxenonyme.createsubmarine.submarine.system.CableElectrificationSystem;
-import com.maxenonyme.createsubmarine.submarine.util.SteelCableHolderAccessor;
-import com.simibubi.create.api.equipment.goggles.IHaveGoggleInformation;
+import com.maxenonyme.createsubmarine.submarine.util.WinchAnchorSignal;
 import com.simibubi.create.foundation.blockEntity.SmartBlockEntity;
 import dev.simulated_team.simulated.content.blocks.rope.RopeStrandHolderBehavior;
 import dev.simulated_team.simulated.content.blocks.rope.rope_winch.RopeWinchBlockEntity;
-import net.minecraft.ChatFormatting;
-import net.minecraft.network.chat.Component;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Unique;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-import java.util.List;
 
 @Mixin(value = RopeWinchBlockEntity.class, remap = false)
-public abstract class RopeWinchBlockEntityMixin implements IHaveGoggleInformation {
+public abstract class RopeWinchBlockEntityMixin implements WinchAnchorSignal {
+
+    @Unique
+    private boolean createsubmarine$anchorGrounded = false;
 
     @Override
-    public boolean addToGoggleTooltip(List<Component> tooltip, boolean isPlayerSneaking) {
-        RopeStrandHolderBehavior behavior = ((SmartBlockEntity) (Object) this).getBehaviour(RopeStrandHolderBehavior.TYPE);
-        if (behavior instanceof SteelCableHolderAccessor accessor && accessor.createsubmarine$isSteelCable()) {
-            tooltip.add(Component.literal("    ")
-                .append(Component.translatable("create_submarine.gui.goggles.steel_cable_network").withStyle(ChatFormatting.GRAY)));
-            CableElectrificationSystem.ElectrifiedEnergyStorage storage = CableElectrificationSystem.WINCH_ENERGY.get(this);
-            int energy = storage != null ? storage.getEnergyStored() : 0;
-            tooltip.add(Component.literal("    ")
-                .append(Component.translatable("create_submarine.gui.goggles.energy").withStyle(ChatFormatting.GOLD))
-                .append(Component.literal(": " + energy + " / " + 1000000 + " FE").withStyle(ChatFormatting.WHITE)));
-            return true;
+    public boolean createsubmarine$isAnchorGrounded() {
+        return this.createsubmarine$anchorGrounded;
+    }
+
+    @Override
+    public void createsubmarine$setAnchorGrounded(boolean val) {
+        if (this.createsubmarine$anchorGrounded == val) return;
+        this.createsubmarine$anchorGrounded = val;
+        SmartBlockEntity be = (SmartBlockEntity) (Object) this;
+        if (be.getLevel() != null && !be.getLevel().isClientSide) {
+            be.getLevel().updateNeighborsAt(be.getBlockPos(), be.getBlockState().getBlock());
         }
-        return false;
+    }
+
+    @Inject(method = "tick", at = @At("TAIL"))
+    private void createsubmarine$clearStaleAnchorSignal(CallbackInfo ci) {
+        if (!this.createsubmarine$anchorGrounded) return;
+        SmartBlockEntity be = (SmartBlockEntity) (Object) this;
+        if (be.getLevel() == null || be.getLevel().isClientSide) return;
+        RopeStrandHolderBehavior behavior = be.getBehaviour(RopeStrandHolderBehavior.TYPE);
+        if (behavior == null || (behavior.getOwnedStrand() == null && behavior.getAttachedStrand() == null)) {
+            createsubmarine$setAnchorGrounded(false);
+        }
     }
 }

@@ -11,29 +11,46 @@ import net.minecraft.world.level.block.state.BlockState;
 import org.jetbrains.annotations.Nullable;
 import com.maxenonyme.createsubmarine.CreateSubmarine;
 import com.maxenonyme.createsubmarine.submarine.block.entity.UnderwaterMineBlockEntity;
+import java.util.List;
+import net.minecraft.ChatFormatting;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.TooltipFlag;
+import net.minecraft.world.level.BlockGetter;
+import net.minecraft.world.phys.shapes.CollisionContext;
+import net.minecraft.world.phys.shapes.Shapes;
+import net.minecraft.world.phys.shapes.VoxelShape;
 
 public class UnderwaterMineBlock extends Block implements EntityBlock {
 
-    private static final net.minecraft.world.phys.shapes.VoxelShape SHAPE = Block.box(-1.0, 0.0, -1.0, 17.0, 18.0, 17.0);
+    private static final VoxelShape SHAPE = Block.box(-1.0, 0.0, -1.0, 17.0, 18.0, 17.0);
 
     public UnderwaterMineBlock(Properties properties) {
         super(properties);
     }
 
     @Override
-    public net.minecraft.world.phys.shapes.VoxelShape getShape(BlockState state, net.minecraft.world.level.BlockGetter level, BlockPos pos, net.minecraft.world.phys.shapes.CollisionContext context) {
+    public VoxelShape getShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
         return SHAPE;
     }
 
     @Override
-    public void appendHoverText(net.minecraft.world.item.ItemStack stack, net.minecraft.world.item.Item.TooltipContext context, java.util.List<net.minecraft.network.chat.Component> tooltip, net.minecraft.world.item.TooltipFlag flag) {
-        if (net.minecraft.client.gui.screens.Screen.hasShiftDown()) {
-            tooltip.add(net.minecraft.network.chat.Component.empty());
-            com.maxenonyme.createsubmarine.submarine.block.BallastTankItem.addTranslatableLines(tooltip, "item.create_submarine.underwater_mine.tooltip.summary", 0xEBC255);
+    public VoxelShape getCollisionShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
+        return Shapes.block();
+    }
+
+    @Override
+    public void appendHoverText(ItemStack stack, Item.TooltipContext context, List<Component> tooltip, TooltipFlag flag) {
+        if (Screen.hasShiftDown()) {
+            tooltip.add(Component.empty());
+            BallastTankItem.addTranslatableLines(tooltip, "item.create_submarine.underwater_mine.tooltip.summary", 0xEBC255);
         } else {
-            tooltip.add(net.minecraft.network.chat.Component.translatable("create_submarine.tooltip.holdForInfo",
-                net.minecraft.network.chat.Component.translatable("create_submarine.tooltip.keyShift").withStyle(net.minecraft.ChatFormatting.GRAY))
-                .withStyle(net.minecraft.ChatFormatting.DARK_GRAY));
+            tooltip.add(Component.translatable("create_submarine.tooltip.holdForInfo",
+                Component.translatable("create_submarine.tooltip.keyShift").withStyle(ChatFormatting.GRAY))
+                .withStyle(ChatFormatting.DARK_GRAY));
         }
         super.appendHoverText(stack, context, tooltip, flag);
     }
@@ -53,7 +70,7 @@ public class UnderwaterMineBlock extends Block implements EntityBlock {
     }
 
     @Override
-    public void setPlacedBy(Level level, BlockPos pos, BlockState state, @Nullable net.minecraft.world.entity.LivingEntity placer, net.minecraft.world.item.ItemStack stack) {
+    public void setPlacedBy(Level level, BlockPos pos, BlockState state, @Nullable LivingEntity placer, ItemStack stack) {
         if (placer != null) {
             BlockEntity be = level.getBlockEntity(pos);
             if (be instanceof UnderwaterMineBlockEntity mine) {

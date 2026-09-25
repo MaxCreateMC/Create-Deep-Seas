@@ -109,22 +109,33 @@ dependencies {
     implementation "curse.maven:create-328085:${create_file_id}"
     implementation "net.createmod.ponder:ponder-neoforge:1.0.82+mc1.21.1"
     implementation "dev.engine-room.flywheel:flywheel-neoforge-1.21.1:1.0.6"
-    implementation "foundry.veil:veil-neoforge-1.21.1:3.6.2"
-    compileOnly(name: 'aeronautics-neoforge-1.21.1-1.1.3')
-    localRuntime "maven.modrinth:create-aeronautics:1sv6OtSz"
-    compileOnly(name: 'simulated-neoforge-1.21.1-1.1.3')
-    compileOnly "maven.modrinth:sable:1.2.2+mc1.21.1"
-    compileOnly "maven.modrinth:sodium:mc1.21.1-0.6.13-neoforge"
+    implementation "foundry.veil:veil-neoforge-1.21.1:4.1.4"
+    compileOnly(name: 'aeronautics-neoforge-1.21.1-1.3.0')
+    compileOnly(name: 'aeronautics_core-neoforge-1.21.1-1.3.0')
+    localRuntime "maven.modrinth:oWaK0Q19:44pLdPGg"
+    compileOnly(name: 'simulated-neoforge-1.21.1-1.3.0')
+    compileOnly(name: 'sable_rapier-neoforge-1.21.1-2.0.3')
+    compileOnly "maven.modrinth:T9PomCSv:1L6XJqnY"
+    compileOnly(name: 'sodium_core-mc1.21.1-0.8.12-beta.2-neoforge')
+    compileOnly "maven.modrinth:sodium:mc1.21.1-0.8.12-beta.2-neoforge"
 
     jarJar(api("dev.ryanhcode.sable-companion:sable-companion-common-${minecraft_version}:[${sable_companion_version},)")) {
         version {
             prefer project.sable_companion_version
         }
     }
-    localRuntime "maven.modrinth:lithostitched:1.4.8-neoforge-1.21"
-    implementation files("libs/sable-neoforge-1.21.1-1.2.2.jar")
+    jarJar(implementation("maven.modrinth:XaDC71GB:1.4.8-neoforge-1.21")) {
+        version {
+            prefer "1.4.8-neoforge-1.21"
+        }
+    }
+    implementation "maven.modrinth:T9PomCSv:1L6XJqnY"
 
-    localRuntime "maven.modrinth:fusion-connected-textures:1.2.12-neoforge-mc1.21.1"
+    jarJar(implementation("maven.modrinth:p19vrgc2:1.2.12-neoforge-mc1.21.1")) {
+        version {
+            prefer "1.2.12-neoforge-mc1.21.1"
+        }
+    }
 }
 
 var generateModMetadata = tasks.register("generateModMetadata", ProcessResources) {
