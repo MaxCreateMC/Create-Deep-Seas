@@ -121,21 +121,19 @@ public class StressForceFeedSystem {
         final double[] stressDist = solver.getStressDistribution();
         final int n = solver.blockCount();
 
-        // Only set crush depths, broadcast, and check failure on the LAST substep per game tick
+        // Only set crush depths, broadcast, and check failure on the LAST substep per game tick.
+        // Forces are NOT recorded here: the unconditional call below already runs on every
+        // substep including the last one, and recording in both places doubled every
+        // queued force on the final substep.
         if (isLastSubstep) {
             analyzer.setCrushDepths(ssl, solver.computeCrushDepth());
 
             checkStructuralFailure(ssl, solver, analyzer);
-
-            recordFaceForces(solver, queued, stressDist, n);
-            recordInternalForces(solver, internalQueued, n, stressDist, timeStep);
         }
 
         // Always record forces on every substep (drive the physics)
-        {
-            final int totalArrows = recordFaceForces(solver, queued, stressDist, n)
-                                  + recordInternalForces(solver, internalQueued, n, stressDist, timeStep);
-        }
+        recordFaceForces(solver, queued, stressDist, n);
+        recordInternalForces(solver, internalQueued, n, stressDist, timeStep);
 
         if (buoyancyGroup != null) {
             recordBuoyancyForce(ssl, buoyancyGroup, solver, timeStep);

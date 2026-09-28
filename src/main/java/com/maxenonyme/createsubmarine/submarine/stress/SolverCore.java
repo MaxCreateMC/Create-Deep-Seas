@@ -125,8 +125,12 @@ public class SolverCore {
         }
     }
 
+    // 21 bits per axis (63 bits total) so the three fields cannot overlap.
+    // Valid range: -1048575 .. 1048575 per axis, which comfortably covers
+    // sublevel-local coordinates. Do not shrink these fields: the previous
+    // 19-bit layout with shifts 18/36 aliased x and y on their shared bit 18.
     private static long pack(final int x, final int y, final int z) {
-        return ((long) x & 0x7FFFF) | (((long) y & 0x7FFFF) << 18) | (((long) z & 0x7FFFF) << 36);
+        return ((long) x & 0x1FFFFF) | (((long) y & 0x1FFFFF) << 21) | (((long) z & 0x1FFFFF) << 42);
     }
 
     // ============================================================
@@ -227,13 +231,19 @@ public class SolverCore {
     //  Jacobi preconditioner (diagonal of K + αI)
     // ============================================================
 
-    private void ensurePreconditioner() {
+    private void ensurePreconditioner(final double avgE) {
         if (diagPrecon != null) return;
         diagPrecon = new double[3 * n];
         for (int i = 0; i < n; i++) {
             for (int dir = 0; dir < MAX_NEIGHBORS; dir++) {
                 if (neighbors[i][dir] < 0) continue;
-                final double k = springK[i][dir];
+                // springK is stored NEGATIVE, so -springK is the positive
+                // contribution this spring makes to the diagonal of K. The
+                // preconditioner must approximate the POSITIVE diagonal:
+                // PCG requires M = C^T C to be symmetric positive definite,
+                // so accumulating springK directly yields diag(K) negated and
+                // makes the very first CG iteration break on pAp <= 0 / rz <= 0.
+                final double k = -springK[i][dir];
                 if (dir < 6) {
                     diagPrecon[3 * i + dir / 2] += k;
                 } else {
@@ -242,6 +252,13 @@ public class SolverCore {
                     diagPrecon[3 * i + 2] += k * DIR_COS[dir][2] * DIR_COS[dir][2];
                 }
             }
+        }
+        // A strictly positive diagonal is required. Blocks with no spring
+        // neighbours leave an exact zero, which would divide by tikhonovAlpha
+        // alone and blow up z.
+        final double floor = Math.max(avgE * 1e-6, 1e-12);
+        for (int k = 0; k < 3 * n; k++) {
+            if (!(diagPrecon[k] > floor)) diagPrecon[k] = floor;
         }
     }
 
@@ -278,7 +295,7 @@ public class SolverCore {
 
         final double avgE = n > 0 ? Arrays.stream(E).summaryStatistics().getAverage() : 0.0;
         final double tikhonovAlpha = tikhonovAlphaFraction * avgE;
-        ensurePreconditioner();
+        ensurePreconditioner(avgE);
 
         final double[] r = new double[N3];
         final double[] z = new double[N3];
