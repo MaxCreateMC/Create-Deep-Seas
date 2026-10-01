@@ -16,13 +16,17 @@ import dev.ryanhcode.sable.sublevel.SubLevel;
 import dev.ryanhcode.sable.sublevel.plot.LevelPlot;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.tags.TagKey;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.material.Fluid;
 import net.neoforged.neoforge.fluids.FluidStack;
 import net.neoforged.neoforge.fluids.capability.IFluidHandler;
 import net.neoforged.neoforge.fluids.capability.templates.FluidTank;
@@ -34,6 +38,9 @@ import java.util.UUID;
 
 @ParametersAreNonnullByDefault
 public class OxygeneDiffuserBlockEntity extends BlockEntity implements IHaveGoggleInformation {
+    /** Oxygen from other mods (e.g. GregTech's) that shares the common {@code c:oxygen} fluid tag. */
+    private static final TagKey<Fluid> OXYGEN_TAG =
+            TagKey.create(Registries.FLUID, ResourceLocation.fromNamespaceAndPath("c", "oxygen"));
 
     private static final int TANK_CAPACITY  = 1000;
     private static final int CONSUME_EVERY  = 20;
@@ -42,7 +49,7 @@ public class OxygeneDiffuserBlockEntity extends BlockEntity implements IHaveGogg
     private static final int STARTUP_TICKS  = 100;
 
     public final FluidTank oxygenTank = new FluidTank(TANK_CAPACITY,
-            fluid -> fluid.getFluid().isSame(CreateSubmarine.OXYGEN.get())) {
+            fluid -> fluid.getFluid().isSame(CreateSubmarine.OXYGEN.get()) || fluid.is(OXYGEN_TAG)) {
         @Override
         protected void onContentsChanged() {
             setChanged();
@@ -65,8 +72,10 @@ public class OxygeneDiffuserBlockEntity extends BlockEntity implements IHaveGogg
         LangBuilder mb = CreateLang.translate("generic.unit.millibuckets");
         CreateLang.translate("gui.goggles.fluid_container").forGoggles(tooltip);
 
-        FluidStack dummy = new FluidStack(CreateSubmarine.OXYGEN.get(), 1);
-        CreateLang.fluidName(dummy).style(ChatFormatting.GRAY).forGoggles(tooltip, 1);
+        FluidStack shown = oxygenTank.isEmpty()
+                ? new FluidStack(CreateSubmarine.OXYGEN.get(), 1)
+                : oxygenTank.getFluid();
+        CreateLang.fluidName(shown).style(ChatFormatting.GRAY).forGoggles(tooltip, 1);
 
         CreateLang.builder()
                 .add(CreateLang.number(oxygenTank.getFluidAmount()).add(mb).style(ChatFormatting.GOLD))
@@ -96,8 +105,8 @@ public class OxygeneDiffuserBlockEntity extends BlockEntity implements IHaveGogg
 
             if (!level.isClientSide) {
                 if (gameTick % CONSUME_EVERY == 0) {
-                    be.oxygenTank.drain(new FluidStack(CreateSubmarine.OXYGEN.get(), CONSUME_AMOUNT),
-                            IFluidHandler.FluidAction.EXECUTE);
+                    // Drain by amount: the tank may hold any oxygen in c:oxygen, not only ours
+                    be.oxygenTank.drain(CONSUME_AMOUNT, IFluidHandler.FluidAction.EXECUTE);
                     be.setChanged();
                 }
             }
