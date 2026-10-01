@@ -72,8 +72,10 @@ public class OxygeneDiffuserBlockEntity extends BlockEntity implements IHaveGogg
         LangBuilder mb = CreateLang.translate("generic.unit.millibuckets");
         CreateLang.translate("gui.goggles.fluid_container").forGoggles(tooltip);
 
-        FluidStack dummy = new FluidStack(CreateSubmarine.OXYGEN.get(), 1);
-        CreateLang.fluidName(dummy).style(ChatFormatting.GRAY).forGoggles(tooltip, 1);
+        FluidStack shown = oxygenTank.isEmpty()
+                ? new FluidStack(CreateSubmarine.OXYGEN.get(), 1)
+                : oxygenTank.getFluid();
+        CreateLang.fluidName(shown).style(ChatFormatting.GRAY).forGoggles(tooltip, 1);
 
         CreateLang.builder()
                 .add(CreateLang.number(oxygenTank.getFluidAmount()).add(mb).style(ChatFormatting.GOLD))
@@ -103,8 +105,8 @@ public class OxygeneDiffuserBlockEntity extends BlockEntity implements IHaveGogg
 
             if (!level.isClientSide) {
                 if (gameTick % CONSUME_EVERY == 0) {
-                    be.oxygenTank.drain(new FluidStack(CreateSubmarine.OXYGEN.get(), CONSUME_AMOUNT),
-                            IFluidHandler.FluidAction.EXECUTE);
+                    // Drain by amount: the tank may hold any oxygen in c:oxygen, not only ours
+                    be.oxygenTank.drain(CONSUME_AMOUNT, IFluidHandler.FluidAction.EXECUTE);
                     be.setChanged();
                 }
             }
