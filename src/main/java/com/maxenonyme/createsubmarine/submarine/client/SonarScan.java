@@ -24,6 +24,7 @@ public final class SonarScan {
 
     long lastDraw;
     long lastPing;
+    int idlePings;
     long lastSeen;
 
     float yaw;

@@ -131,21 +131,34 @@ public final class ImplosionSequence {
 
     public static Predicate<ServerPlayer> aboard(SubLevelAccess sub, SubLevelRegistry.PlotBounds bounds) {
         return player -> {
-            BlockPos local = local(sub, player);
-            return local.getX() >= bounds.minX() && local.getX() <= bounds.maxX()
-                    && local.getY() >= bounds.minY() && local.getY() <= bounds.maxY()
-                    && local.getZ() >= bounds.minZ() && local.getZ() <= bounds.maxZ();
+            for (BlockPos local : body(sub, player)) {
+                if (local.getX() >= bounds.minX() && local.getX() <= bounds.maxX()
+                        && local.getY() >= bounds.minY() && local.getY() <= bounds.maxY()
+                        && local.getZ() >= bounds.minZ() && local.getZ() <= bounds.maxZ())
+                    return true;
+            }
+            return false;
         };
     }
 
     public static Predicate<ServerPlayer> inside(SubLevelAccess sub, Set<BlockPos> cells) {
-        return player -> cells.contains(local(sub, player))
-                || cells.contains(local(sub, player).above());
+        return player -> {
+            for (BlockPos local : body(sub, player)) {
+                if (cells.contains(local))
+                    return true;
+            }
+            return false;
+        };
     }
 
-    private static BlockPos local(SubLevelAccess sub, ServerPlayer player) {
-        Vector3d p = new Vector3d(player.getX(), player.getY() + 0.1, player.getZ());
-        sub.logicalPose().transformPositionInverse(p);
-        return BlockPos.containing(p.x, p.y, p.z);
+    private static BlockPos[] body(SubLevelAccess sub, ServerPlayer player) {
+        double[] heights = { 0.1, player.getBbHeight() * 0.5, player.getEyeHeight() };
+        BlockPos[] out = new BlockPos[heights.length];
+        for (int i = 0; i < heights.length; i++) {
+            Vector3d p = new Vector3d(player.getX(), player.getY() + heights[i], player.getZ());
+            sub.logicalPose().transformPositionInverse(p);
+            out[i] = BlockPos.containing(p.x, p.y, p.z);
+        }
+        return out;
     }
 }

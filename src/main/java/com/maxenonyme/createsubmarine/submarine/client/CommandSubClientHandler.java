@@ -232,7 +232,7 @@ public final class CommandSubClientHandler {
 
             double limit = reach;
             if (hitPos != null && !hitPos.equals(pos) && sub == null)
-                limit = Math.min(limit, hit.getLocation().distanceTo(eye) + 0.05);
+                limit = Math.min(limit, hit.getLocation().distanceTo(eye) + 1.0);
 
             Matrix4f toCanvas = CommandSubRenderer.canvasToBlock(be.getBlockState()).invert();
             Vector3f a = toCanvas.transformPosition(new Vector3f(

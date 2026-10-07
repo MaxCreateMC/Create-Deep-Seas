@@ -1,6 +1,9 @@
 package com.maxenonyme.createsubmarine.submarine.config;
 
+import net.minecraft.ChatFormatting;
+import net.minecraft.network.chat.Component;
 import net.neoforged.neoforge.common.ModConfigSpec;
+import net.neoforged.neoforge.common.TranslatableEnum;
 import net.neoforged.fml.loading.FMLEnvironment;
 
 public class SubmarineConfig {
@@ -30,7 +33,30 @@ public class SubmarineConfig {
         public static final ModConfigSpec.BooleanValue ALARM_STEADY_LIGHT;
         public static final ModConfigSpec.BooleanValue PROGRESSIVE_FLOODING;
         public static final ModConfigSpec.IntValue IMPLOSION_DEPTH;
-        public static ModConfigSpec.BooleanValue WELCOME_SCREEN_SEEN;
+        public static final ModConfigSpec.EnumValue<PressureModel> PRESSURE_MODEL;
+        public static final ModConfigSpec.IntValue SHAPE_REFERENCE_SPAN;
+        public static final ModConfigSpec.DoubleValue SHAPE_FACTOR_MIN;
+        public static final ModConfigSpec.DoubleValue SHAPE_FACTOR_MAX;
+        public static final ModConfigSpec.IntValue SHAPE_MAX_BLOCKS;
+        public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> LIQUID_DENSITIES;
+        public static final ModConfigSpec.BooleanValue LAVA_BURNS_HULL;
+        public static final ModConfigSpec.BooleanValue EXPERIMENTAL_ABYSS_WORLDGEN;
+
+        public enum PressureModel implements TranslatableEnum {
+                CLASSIC(ChatFormatting.GREEN), HYBRID(ChatFormatting.AQUA);
+
+                private final ChatFormatting color;
+
+                PressureModel(ChatFormatting color) {
+                        this.color = color;
+                }
+
+                @Override
+                public Component getTranslatedName() {
+                        return Component.translatable("create_submarine.configuration.pressureModel." + name().toLowerCase())
+                                        .withStyle(color);
+                }
+        }
         public static ModConfigSpec.ConfigValue<String> IGNORED_UPDATE_VERSION;
 
         static {
@@ -47,6 +73,13 @@ public class SubmarineConfig {
                                                 "WARNING: large values generate and render far more terrain below the sea floor",
                                                 "and can badly hurt world-generation and rendering performance. Raise it carefully.")
                                 .defineInRange("deeperOceansDepth", 10, 1, 256);
+                common.pop();
+
+                common.push("experimental");
+                EXPERIMENTAL_ABYSS_WORLDGEN = common
+                                .comment("Experimental: replace the Abyss terrain with the tectonic seafloor (plates, trenches, ridges, three biomes).",
+                                                "Only new Abyss chunks change. The Abyss height range changes too, so test it on a new world.")
+                                .define("experimentalAbyssWorldgen", false);
                 common.pop();
 
                 COMMON_SPEC = common.build();
@@ -81,6 +114,34 @@ public class SubmarineConfig {
                                 .comment("Multiplier on every block's implosionChance at runtime.",
                                                 "Lower = slower cracking, higher = faster cracking.")
                                 .defineInRange("implosionChanceMultiplier", 1.0, 0.0, 10.0);
+                PRESSURE_MODEL = server
+                                .comment("CLASSIC: each block holds down to its own maxWaterDepth, whatever the shape of the hull.",
+                                                "HYBRID: that depth is scaled by the shape of the hull. Wide flat walls hold less,",
+                                                "small panels, thick walls, ribs and rounded hulls hold more.")
+                                .defineEnum("pressureModel", PressureModel.HYBRID);
+                SHAPE_REFERENCE_SPAN = server
+                                .comment("HYBRID only: free width, in blocks, of a single-thickness wall that keeps exactly its block's maxWaterDepth.",
+                                                "Wider panels hold less, narrower or thicker ones hold more.")
+                                .defineInRange("shapeReferenceSpan", 7, 2, 64);
+                SHAPE_FACTOR_MIN = server
+                                .comment("HYBRID only: lowest multiplier the shape of the hull can put on a block's maxWaterDepth.")
+                                .defineInRange("shapeFactorMin", 0.5, 0.1, 1.0);
+                SHAPE_FACTOR_MAX = server
+                                .comment("HYBRID only: highest multiplier the shape of the hull can put on a block's maxWaterDepth.")
+                                .defineInRange("shapeFactorMax", 2.0, 1.0, 5.0);
+                SHAPE_MAX_BLOCKS = server
+                                .comment("HYBRID only: ships with more solid blocks than this skip the shape analysis and use CLASSIC depths.",
+                                                "WARNING: the analysis of very large ships takes more memory and time.")
+                                .defineInRange("shapeMaxBlocks", 200_000, 1_000, 10_000_000);
+                LIQUID_DENSITIES = server
+                                .comment("Density of each liquid compared to water, as \"fluid=density\" or \"#tag=density\".",
+                                                "A denser liquid presses harder: at the same depth, lava (3.0) cracks a hull three times sooner than water.",
+                                                "Liquids not listed count as water (1.0).")
+                                .defineListAllowEmpty("liquidDensities", java.util.List.of("#minecraft:lava=3.0"),
+                                                () -> "#minecraft:lava=3.0", o -> o instanceof String str && str.contains("="));
+                LAVA_BURNS_HULL = server
+                                .comment("Flammable hull blocks (wood, wool...) touching lava catch fire.")
+                                .define("lavaBurnsHull", true);
                 server.pop();
 
                 server.push("mechanics");
@@ -146,7 +207,8 @@ public class SubmarineConfig {
                                                 "Highly recommended to set this to TRUE if you are creating a modpack to avoid annoying your players.")
                                 .define("disableStartupScreens", false);
                 VEIL_LIGHTS = client
-                                .comment("Coloured moving lights on the Sonar and the Industrial Alarm (Veil).",
+                                .comment("Coloured moving lights on the Sonar, the Industrial Alarm and the Submarine Staff (Veil).",
+                                                "Turn off to light every block and item with plain Minecraft light only.",
                                                 "Always off when Iris is installed: Veil cannot draw them next to Iris, even with shaders turned off.")
                                 .define("veilLights", true);
                 PHOTOSENSITIVE_MODE = client
@@ -154,16 +216,11 @@ public class SubmarineConfig {
                                                 "only normal Minecraft light. Other Veil lights are not affected.")
                                 .define("photosensitiveMode", false);
                 if (!FMLEnvironment.production) {
-                        WELCOME_SCREEN_SEEN = client
-                                        .comment("Internal: set to true once the Deep Seas welcome screen has been acknowledged.",
-                                                        "Set back to false to show the welcome screen again on the next main menu.")
-                                        .define("welcomeScreenSeen", false);
                         IGNORED_UPDATE_VERSION = client
                                         .comment("Internal: stores the version string of the last update notification dismissed by the user.",
                                                         "If the online version matches this, the update screen will not be shown.")
                                         .define("ignoredUpdateVersion", "");
                 } else {
-                        WELCOME_SCREEN_SEEN = null;
                         IGNORED_UPDATE_VERSION = null;
                 }
                 client.pop();
@@ -173,5 +230,9 @@ public class SubmarineConfig {
 
         public static boolean progressiveFlooding() {
                 return SERVER_SPEC.isLoaded() && PROGRESSIVE_FLOODING.get();
+        }
+
+        public static boolean hybridPressure() {
+                return SERVER_SPEC.isLoaded() && PRESSURE_MODEL.get() == PressureModel.HYBRID;
         }
 }

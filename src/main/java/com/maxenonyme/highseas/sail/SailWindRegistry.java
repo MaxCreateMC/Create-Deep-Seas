@@ -33,7 +33,7 @@ public final class SailWindRegistry {
         Vec3 rudder = null;
         Level blocks = ship.getLevel();
         if (blocks != null && ship.getPlot() != null) {
-            List<SailGroup> detected = SailDetector.detect(blocks, ship.getPlot().getBoundingBox());
+            List<SailGroup> detected = SailDetector.detect(blocks, ship.getPlot());
             
             if (cached != null) {
                 List<SailGroup> newResult = new ArrayList<>();
@@ -45,18 +45,18 @@ public final class SailWindRegistry {
                             break;
                         }
                     }
-                    newResult.add(new SailGroup(g.axis(), g.localCenter(), g.area(), g.min(), g.max(), g.supportSign(), st));
+                    newResult.add(g.startingAt(st));
                 }
                 result = newResult;
             } else {
                 List<SailGroup> newResult = new ArrayList<>();
                 for (SailGroup g : detected) {
-                    newResult.add(new SailGroup(g.axis(), g.localCenter(), g.area(), g.min(), g.max(), g.supportSign(), gameTime));
+                    newResult.add(g.startingAt(gameTime));
                 }
                 result = newResult;
             }
             
-            rudder = RudderDetector.centroid(blocks, ship.getPlot().getBoundingBox());
+            rudder = RudderDetector.centroid(ship.getPlot());
 
         }
         SAILS.put(id, result);

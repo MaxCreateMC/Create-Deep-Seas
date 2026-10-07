@@ -66,13 +66,111 @@ public class CompartmentTracker {
     private static final Map<UUID, Set<BlockPos>> SUNKEN = new ConcurrentHashMap<>();
     private static volatile AABB globalBounds = null;
 
-    private record SealedEntry(UUID id, SubLevelAccess access,
-            ResourceKey<Level> dimension,
-            LongOpenHashSet cells) {
+    private static final class SealedEntry {
+        final UUID id;
+        final SubLevelAccess access;
+        final ResourceKey<Level> dimension;
+        final LongOpenHashSet cells;
+        final int minX, minY, minZ, maxX, maxY, maxZ;
+        volatile Frame frame;
+
+        SealedEntry(UUID id, SubLevelAccess access, ResourceKey<Level> dimension, LongOpenHashSet cells, Set<BlockPos> sealed) {
+            this.id = id;
+            this.access = access;
+            this.dimension = dimension;
+            this.cells = cells;
+            int x0 = Integer.MAX_VALUE, y0 = Integer.MAX_VALUE, z0 = Integer.MAX_VALUE;
+            int x1 = Integer.MIN_VALUE, y1 = Integer.MIN_VALUE, z1 = Integer.MIN_VALUE;
+            for (BlockPos p : sealed) {
+                x0 = Math.min(x0, p.getX());
+                y0 = Math.min(y0, p.getY());
+                z0 = Math.min(z0, p.getZ());
+                x1 = Math.max(x1, p.getX());
+                y1 = Math.max(y1, p.getY());
+                z1 = Math.max(z1, p.getZ());
+            }
+            minX = x0;
+            minY = y0;
+            minZ = z0;
+            maxX = x1;
+            maxY = y1;
+            maxZ = z1;
+        }
+
+        Frame frame() {
+            Pose3dc pose = access.logicalPose();
+            Vector3dc p = pose.position();
+            Quaterniondc q = pose.orientation();
+            Vector3dc r = pose.rotationPoint();
+            Frame f = frame;
+            if (f != null && f.px == p.x() && f.py == p.y() && f.pz == p.z()
+                    && f.qx == q.x() && f.qy == q.y() && f.qz == q.z() && f.qw == q.w()
+                    && f.rx == r.x() && f.ry == r.y() && f.rz == r.z())
+                return f;
+            f = new Frame(pose, this);
+            frame = f;
+            return f;
+        }
+    }
+
+    private static final class Frame {
+        final double px, py, pz, qx, qy, qz, qw, rx, ry, rz;
+        final double ox, oy, oz, ax, ay, az, bx, by, bz, dx, dy, dz;
+        final double x0, y0, z0, x1, y1, z1;
+
+        Frame(Pose3dc pose, SealedEntry e) {
+            Vector3dc p = pose.position();
+            Quaterniondc q = pose.orientation();
+            Vector3dc r = pose.rotationPoint();
+            px = p.x();
+            py = p.y();
+            pz = p.z();
+            qx = q.x();
+            qy = q.y();
+            qz = q.z();
+            qw = q.w();
+            rx = r.x();
+            ry = r.y();
+            rz = r.z();
+            Vector3d o = pose.transformPositionInverse(new Vector3d());
+            Vector3d a = pose.transformPositionInverse(new Vector3d(1.0, 0.0, 0.0)).sub(o);
+            Vector3d b = pose.transformPositionInverse(new Vector3d(0.0, 1.0, 0.0)).sub(o);
+            Vector3d d = pose.transformPositionInverse(new Vector3d(0.0, 0.0, 1.0)).sub(o);
+            ox = o.x;
+            oy = o.y;
+            oz = o.z;
+            ax = a.x;
+            ay = a.y;
+            az = a.z;
+            bx = b.x;
+            by = b.y;
+            bz = b.z;
+            dx = d.x;
+            dy = d.y;
+            dz = d.z;
+            Vector3d c = new Vector3d();
+            double lx = Double.MAX_VALUE, ly = Double.MAX_VALUE, lz = Double.MAX_VALUE;
+            double hx = -Double.MAX_VALUE, hy = -Double.MAX_VALUE, hz = -Double.MAX_VALUE;
+            for (int i = 0; i < 8; i++) {
+                pose.transformPosition(c.set((i & 1) == 0 ? e.minX : e.maxX + 1, (i & 2) == 0 ? e.minY : e.maxY + 1,
+                        (i & 4) == 0 ? e.minZ : e.maxZ + 1));
+                lx = Math.min(lx, c.x);
+                ly = Math.min(ly, c.y);
+                lz = Math.min(lz, c.z);
+                hx = Math.max(hx, c.x);
+                hy = Math.max(hy, c.y);
+                hz = Math.max(hz, c.z);
+            }
+            x0 = lx - 0.01;
+            y0 = ly - 0.01;
+            z0 = lz - 0.01;
+            x1 = hx + 0.01;
+            y1 = hy + 0.01;
+            z1 = hz + 0.01;
+        }
     }
 
     private static volatile SealedEntry[] sealedSnapshot = new SealedEntry[0];
-    private static final ThreadLocal<Vector3d> LOCAL_POS = ThreadLocal.withInitial(Vector3d::new);
 
     private static void rebuildSealedSnapshot() {
         ArrayList<SealedEntry> list = new ArrayList<>();
@@ -88,12 +186,23 @@ public class CompartmentTracker {
             if (e.getValue() instanceof SubLevel sl && sl.getLevel() != null) {
                 dim = sl.getLevel().dimension();
             }
-            list.add(new SealedEntry(e.getKey(), e.getValue(), dim, cells));
+            list.add(new SealedEntry(e.getKey(), e.getValue(), dim, cells, sealed));
         }
         sealedSnapshot = list.toArray(new SealedEntry[0]);
     }
 
     public static void update(UUID id, SubLevelAccess sub, CompartmentDetector.Result result, long gameTick) {
+        Set<BlockPos> compromised = COMPROMISED_ANCHORS.get(id);
+        if (compromised != null) {
+            Set<BlockPos> sealedAnchors = new HashSet<>();
+            for (CompartmentDetector.Component c : result.components()) {
+                if (c.sealed() && c.anchor() != null)
+                    sealedAnchors.add(c.anchor());
+            }
+            compromised.retainAll(sealedAnchors);
+            if (compromised.isEmpty())
+                COMPROMISED_ANCHORS.remove(id);
+        }
         COMPARTMENTS.put(id, result.components());
         if (result.solidBlocks() != null) {
             SOLID_BLOCKS.put(id, result.solidBlocks());
@@ -543,21 +652,19 @@ public class CompartmentTracker {
             return null;
 
         SealedEntry[] snap = sealedSnapshot;
+        ResourceKey<Level> dimension = level.dimension();
         for (SealedEntry e : snap) {
-            if (e.dimension != null && e.dimension != level.dimension())
+            if (e.dimension != null && e.dimension != dimension)
                 continue;
-            AABB aabb = WORLD_AABB.get(e.id);
-            if (aabb == null || !aabb.contains(cx, cy, cz))
+            Frame f = e.frame();
+            if (cx < f.x0 || cx > f.x1 || cy < f.y0 || cy > f.y1 || cz < f.z0 || cz > f.z1)
                 continue;
-
-            Vector3d local = LOCAL_POS.get();
-            local.set(cx, cy, cz);
-            e.access.logicalPose().transformPositionInverse(local);
-            long key = BlockPos.asLong(
-                    Mth.floor(local.x),
-                    Mth.floor(local.y),
-                    Mth.floor(local.z));
-            if (e.cells.contains(key))
+            int lx = Mth.floor(f.ox + cx * f.ax + cy * f.bx + cz * f.dx);
+            int ly = Mth.floor(f.oy + cx * f.ay + cy * f.by + cz * f.dy);
+            int lz = Mth.floor(f.oz + cx * f.az + cy * f.bz + cz * f.dz);
+            if (lx < e.minX || lx > e.maxX || ly < e.minY || ly > e.maxY || lz < e.minZ || lz > e.maxZ)
+                continue;
+            if (e.cells.contains(BlockPos.asLong(lx, ly, lz)))
                 return e.id;
         }
         return null;
@@ -676,10 +783,9 @@ public class CompartmentTracker {
     }
 
     @Nullable
-    public static BlockState getLiedBlockState(Level level, BlockPos worldPos) {
-        UUID id = findSealedSublevel(level, worldPos);
-        if (id == null)
-            return null;
+    public static BlockState getLiedBlockState(Level level, BlockPos worldPos, BlockState real) {
+        if (real.isAir() || globalBounds == null || findSealedSublevel(level, worldPos) == null)
+            return real;
         return Blocks.AIR.defaultBlockState();
     }
 

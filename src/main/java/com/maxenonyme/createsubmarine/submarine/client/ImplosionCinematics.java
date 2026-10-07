@@ -31,7 +31,8 @@ public final class ImplosionCinematics {
     private static final int BLACKOUT_FADE = 20;
     private static final int EPITAPHS = 4;
     private static final float EPITAPH_STEP = 20f;
-    private static final float STRESS_PEAK = 16f;
+    private static final float STRESS_PEAK = 10f;
+    private static final int DEATH_SHAKE = 12;
     private static final float STRAIN_SWAY = 0.35f;
     private static final float STRAIN_JOLT = 0.9f;
     private static final int JOLT_TICKS = 12;
@@ -43,6 +44,7 @@ public final class ImplosionCinematics {
     private static boolean lightsOut;
     private static int nextFlicker;
     private static int blackout = -1;
+    private static int lead;
     private static int epitaph;
     private static int strainLeft;
     private static float strain;
@@ -77,8 +79,8 @@ public final class ImplosionCinematics {
             mc.getSoundManager().play(SimpleSoundInstance.forUI(CreateSubmarine.IMPLOSION_SOUND.get(), 1f, 1f));
             return;
         }
-        CameraShake.shake(14f, 12);
-        blackout = 0;
+        CameraShake.shake(14f, DEATH_SHAKE + 8);
+        lead = DEATH_SHAKE;
         epitaph = mc.level == null ? 0 : mc.level.random.nextInt(EPITAPHS);
         mc.getSoundManager().stop();
         DEATH_SOUNDS.clear();
@@ -93,7 +95,7 @@ public final class ImplosionCinematics {
 
     @SubscribeEvent
     public static void onPlaySound(PlaySoundEvent event) {
-        if (blackout >= 0 && !DEATH_SOUNDS.contains(event.getOriginalSound()))
+        if ((blackout >= 0 || lead > 0) && !DEATH_SOUNDS.contains(event.getOriginalSound()))
             event.setSound(null);
     }
 
@@ -130,6 +132,8 @@ public final class ImplosionCinematics {
                 jolt--;
             creak(mc);
         }
+        if (lead > 0 && --lead == 0)
+            blackout = 0;
         if (blackout >= 0) {
             blackout++;
             boolean alive = mc.player != null && !mc.player.isDeadOrDying();
@@ -169,7 +173,7 @@ public final class ImplosionCinematics {
         progress = Mth.clamp(progress, 0f, 1f);
         float amp = (0.25f + STRESS_PEAK * progress * progress * progress) * stressStrength;
         float t = mc.player.tickCount + (float) event.getPartialTick();
-        float fast = 9f + 26f * progress;
+        float fast = 9f + 18f * progress;
         event.setPitch(event.getPitch() + (Mth.sin(t * fast) + 0.5f * Mth.sin(t * fast * 2.3f)) * amp * 0.6f);
         event.setYaw(event.getYaw() + (Mth.cos(t * fast * 1.3f) + 0.4f * Mth.sin(t * fast * 3.1f)) * amp * 0.6f);
         event.setRoll(event.getRoll() + Mth.sin(t * fast * 0.8f) * amp);

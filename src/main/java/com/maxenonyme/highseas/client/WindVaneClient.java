@@ -33,5 +33,6 @@ public final class WindVaneClient {
         event.registerBlockEntityRenderer(CreateHighSeas.WIND_VANE_BE.get(), WindVaneRenderer::new);
         event.registerBlockEntityRenderer(CreateHighSeas.ANCHOR_BE.get(), RopeHolderRenderer::new);
         event.registerBlockEntityRenderer(CreateHighSeas.BUOY_BE.get(), RopeHolderRenderer::new);
+        event.registerBlockEntityRenderer(CreateHighSeas.HALYARD_BE.get(), RopeHolderRenderer::new);
     }
 }

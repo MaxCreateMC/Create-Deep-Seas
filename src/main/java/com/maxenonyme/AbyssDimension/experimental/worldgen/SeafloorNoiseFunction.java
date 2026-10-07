@@ -1,0 +1,42 @@
+package com.maxenonyme.AbyssDimension.experimental.worldgen;
+
+import com.mojang.serialization.MapCodec;
+import net.minecraft.util.KeyDispatchDataCodec;
+import net.minecraft.world.level.levelgen.DensityFunction;
+
+public class SeafloorNoiseFunction implements DensityFunction {
+    public static final MapCodec<SeafloorNoiseFunction> CODEC = MapCodec.unit(new SeafloorNoiseFunction());
+    public static final KeyDispatchDataCodec<SeafloorNoiseFunction> CODEC_HOLDER = KeyDispatchDataCodec.of(CODEC);
+
+    public SeafloorNoiseFunction() {}
+
+    @Override
+    public double compute(FunctionContext ctx) {
+        return -Math.abs(SeafloorGenerator.getNoiseAt(ctx.blockX(), ctx.blockZ()));
+    }
+
+    @Override
+    public void fillArray(double[] array, ContextProvider provider) {
+        provider.fillAllDirectly(array, this);
+    }
+
+    @Override
+    public DensityFunction mapAll(Visitor visitor) {
+        return visitor.apply(this);
+    }
+
+    @Override
+    public double minValue() {
+        return -1.0;
+    }
+
+    @Override
+    public double maxValue() {
+        return 0.0;
+    }
+
+    @Override
+    public KeyDispatchDataCodec<? extends DensityFunction> codec() {
+        return CODEC_HOLDER;
+    }
+}

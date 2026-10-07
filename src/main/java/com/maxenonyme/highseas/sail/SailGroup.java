@@ -4,7 +4,16 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.phys.Vec3;
 
-public record SailGroup(Direction.Axis axis, Vec3 localCenter, int area, BlockPos min, BlockPos max, int supportSign, long startTick) {
+public record SailGroup(Direction.Axis axis, Vec3 localCenter, int area, BlockPos min, BlockPos max, int supportSign,
+                        int cutH, int cutV, double cutReach, long startTick) {
+
+    public boolean triangle() {
+        return cutH != 0 && cutV != 0;
+    }
+
+    public SailGroup startingAt(long tick) {
+        return new SailGroup(axis, localCenter, area, min, max, supportSign, cutH, cutV, cutReach, tick);
+    }
 
     public Vec3 localNormal() {
         return switch (axis) {

@@ -15,14 +15,6 @@
             }
         ]
     },
-    "music_disc.hidden_between_fluent_waters": {
-        "sounds": [
-            {
-                "name": "create_abyss:musics/hidden_between_fluent_waters",
-                "stream": true
-            }
-        ]
-    },
     "music_disc.seafoam": {
         "sounds": [
             {

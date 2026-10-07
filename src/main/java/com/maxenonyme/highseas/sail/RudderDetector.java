@@ -3,15 +3,15 @@ package com.maxenonyme.highseas.sail;
 import com.maxenonyme.highseas.block.RudderBlock;
 import com.maxenonyme.highseas.wind.WindConfig;
 import dev.ryanhcode.sable.companion.math.BoundingBox3ic;
-import net.minecraft.core.BlockPos;
-import net.minecraft.world.level.BlockGetter;
+import dev.ryanhcode.sable.sublevel.plot.LevelPlot;
 import net.minecraft.world.phys.Vec3;
 
 public final class RudderDetector {
     private RudderDetector() {
     }
 
-    public static Vec3 centroid(BlockGetter level, BoundingBox3ic bounds) {
+    public static Vec3 centroid(LevelPlot plot) {
+        BoundingBox3ic bounds = plot.getBoundingBox();
         long volume = (long) (bounds.maxX() - bounds.minX() + 1)
                 * (bounds.maxY() - bounds.minY() + 1)
                 * (bounds.maxZ() - bounds.minZ() + 1);
@@ -19,25 +19,16 @@ public final class RudderDetector {
             return null;
         }
 
-        double sx = 0, sy = 0, sz = 0;
-        int count = 0;
-        BlockPos.MutableBlockPos m = new BlockPos.MutableBlockPos();
-        for (int x = bounds.minX(); x <= bounds.maxX(); x++) {
-            for (int y = bounds.minY(); y <= bounds.maxY(); y++) {
-                for (int z = bounds.minZ(); z <= bounds.maxZ(); z++) {
-                    m.set(x, y, z);
-                    if (level.getBlockState(m).getBlock() instanceof RudderBlock) {
-                        sx += x + 0.5;
-                        sy += y + 0.5;
-                        sz += z + 0.5;
-                        count++;
-                    }
-                }
-            }
-        }
-        if (count == 0) {
+        double[] sum = new double[4];
+        SailDetector.scan(plot, state -> state.getBlock() instanceof RudderBlock, (pos, state) -> {
+            sum[0] += pos.getX() + 0.5;
+            sum[1] += pos.getY() + 0.5;
+            sum[2] += pos.getZ() + 0.5;
+            sum[3]++;
+        });
+        if (sum[3] == 0) {
             return null;
         }
-        return new Vec3(sx / count, sy / count, sz / count);
+        return new Vec3(sum[0] / sum[3], sum[1] / sum[3], sum[2] / sum[3]);
     }
 }

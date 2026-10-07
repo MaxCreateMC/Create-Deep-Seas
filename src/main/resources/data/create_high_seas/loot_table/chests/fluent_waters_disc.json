@@ -1,0 +1,14 @@
+{
+  "type": "minecraft:chest",
+  "pools": [
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "create_high_seas:music_disc_hidden_between_fluent_waters"
+        }
+      ]
+    }
+  ]
+}

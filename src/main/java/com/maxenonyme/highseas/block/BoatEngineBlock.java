@@ -14,6 +14,10 @@ import net.minecraft.world.ItemInteractionResult;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.storage.loot.LootParams;
+import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
+import java.util.ArrayList;
+import java.util.List;
 import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
@@ -144,11 +148,22 @@ public class BoatEngineBlock extends HorizontalDirectionalBlock implements Entit
 
     @Override
     protected void onRemove(BlockState state, Level level, BlockPos pos, BlockState newState, boolean movedByPiston) {
-        if (!state.is(newState.getBlock()) && level.getBlockEntity(pos) instanceof BoatEngineBlockEntity be) {
+        if (!state.is(newState.getBlock()) && level.getBlockEntity(pos) instanceof BoatEngineBlockEntity)
             HelmServer.releaseAt(level, pos);
-            be.dropFuel();
-        }
         super.onRemove(state, level, pos, newState, movedByPiston);
+    }
+
+    @Override
+    protected List<ItemStack> getDrops(BlockState state, LootParams.Builder params) {
+        List<ItemStack> drops = super.getDrops(state, params);
+        if (params.getOptionalParameter(LootContextParams.BLOCK_ENTITY) instanceof BoatEngineBlockEntity be) {
+            ItemStack fuel = be.fuel();
+            if (!fuel.isEmpty()) {
+                drops = new ArrayList<>(drops);
+                drops.add(fuel.copy());
+            }
+        }
+        return drops;
     }
 
     public static void onBlockPlace(BlockEvent.EntityPlaceEvent event) {

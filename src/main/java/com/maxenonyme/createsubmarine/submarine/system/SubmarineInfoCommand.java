@@ -3,6 +3,9 @@ package com.maxenonyme.createsubmarine.submarine.system;
 import com.maxenonyme.createsubmarine.CreateSubmarine;
 import com.maxenonyme.createsubmarine.submarine.compartment.CompartmentDetector;
 import com.maxenonyme.createsubmarine.submarine.compartment.CompartmentTracker;
+import com.maxenonyme.createsubmarine.submarine.config.HullStrengthConfig;
+import com.maxenonyme.createsubmarine.submarine.config.SubmarineConfig;
+import com.maxenonyme.createsubmarine.submarine.stress.HullShapeAnalyzer;
 import com.mojang.brigadier.context.CommandContext;
 import dev.ryanhcode.sable.api.sublevel.SubLevelContainer;
 import dev.ryanhcode.sable.companion.math.BoundingBox3ic;
@@ -12,6 +15,7 @@ import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.Level;
@@ -34,7 +38,47 @@ public final class SubmarineInfoCommand {
                 Commands.literal("submarine")
                         .requires(source -> source.hasPermission(2))
                         .then(Commands.literal("info").executes(SubmarineInfoCommand::run))
-                        .then(Commands.literal("findhole").executes(SubmarineInfoCommand::findHoles)));
+                        .then(Commands.literal("findhole").executes(SubmarineInfoCommand::findHoles))
+                        .then(Commands.literal("repair").executes(SubmarineInfoCommand::repair)));
+    }
+
+    private static SubLevel around(ServerPlayer player) {
+        SubLevelContainer container = SubLevelContainer.getContainer(player.level());
+        if (container == null)
+            return null;
+        Vector3d ppos = new Vector3d(player.getX(), player.getY(), player.getZ());
+        for (SubLevel sub : container.getAllSubLevels()) {
+            if (sub.getPlot() == null)
+                continue;
+            BoundingBox3ic b = sub.getPlot().getBoundingBox();
+            if (b == null)
+                continue;
+            Vector3d local = sub.logicalPose().transformPositionInverse(new Vector3d(ppos));
+            if (local.x >= b.minX() - 2 && local.x <= b.maxX() + 2
+                    && local.y >= b.minY() - 2 && local.y <= b.maxY() + 2
+                    && local.z >= b.minZ() - 2 && local.z <= b.maxZ() + 2)
+                return sub;
+        }
+        return null;
+    }
+
+    private static int repair(CommandContext<CommandSourceStack> ctx) {
+        CommandSourceStack source = ctx.getSource();
+        ServerPlayer player = source.getPlayer();
+        if (player == null) {
+            source.sendFailure(Component.literal("Player only."));
+            return 0;
+        }
+        SubLevel found = around(player);
+        if (found == null || found.getLevel() == null) {
+            source.sendFailure(Component.literal("You are not in or on a sublevel."));
+            return 0;
+        }
+        SubmarinePressureSystem.Repair done = SubmarinePressureSystem.repairAll(found.getUniqueId(), found.getLevel(), found.getLevel());
+        source.sendSuccess(() -> Component.literal("Submarine repaired: ").withStyle(ChatFormatting.GREEN)
+                .append(Component.literal(done.restored() + " blocks restored, " + done.cracks() + " cracks sealed, "
+                        + done.drained() + " water blocks drained.").withStyle(ChatFormatting.GRAY)), true);
+        return 1;
     }
 
     private static int run(CommandContext<CommandSourceStack> ctx) {
@@ -119,6 +163,14 @@ public final class SubmarineInfoCommand {
         source.sendSuccess(() -> bool("Under pressure", underPressure), false);
         if (hullLimit > 0 && hullLimit < Integer.MAX_VALUE)
             source.sendSuccess(() -> line("Hull depth limit", String.valueOf(hullLimit)), false);
+        source.sendSuccess(() -> line("Pressure model", SubmarineConfig.PRESSURE_MODEL.get().name()), false);
+        SubmarinePressureSystem.WeakPoint weak = subLevel != null ? SubmarinePressureSystem.weakestHull(id, subLevel) : null;
+        if (weak != null) {
+            int base = HullStrengthConfig.getFor(weak.state()).map(HullStrengthConfig.HullProperty::maxWaterDepth).orElse(weak.depth());
+            double shape = HullShapeAnalyzer.factor(id, weak.pos());
+            String name = BuiltInRegistries.BLOCK.getKey(weak.state().getBlock()).toString();
+            source.sendSuccess(() -> line("Weakest block", String.format("%s %d m x %.2f (shape)", name, base, shape)), false);
+        }
         return 1;
     }
 

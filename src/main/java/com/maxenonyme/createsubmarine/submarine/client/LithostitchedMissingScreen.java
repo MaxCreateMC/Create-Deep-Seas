@@ -80,7 +80,7 @@ public class LithostitchedMissingScreen extends Screen {
                 .build());
 
         addRenderableWidget(Button.builder(
-                        Component.translatable("create_submarine.welcome.dismiss"),
+                        Component.translatable("create_submarine.ui.button.later"),
                         b -> { this.onClose(); })
                 .bounds(centerX + gap / 2, buttonsY, buttonW, 20)
                 .build());

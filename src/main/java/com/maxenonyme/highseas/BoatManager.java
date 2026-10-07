@@ -2,6 +2,7 @@ package com.maxenonyme.highseas;
 
 import com.maxenonyme.createsubmarine.submarine.compartment.CompartmentDetector;
 import com.maxenonyme.createsubmarine.submarine.compartment.CompartmentTracker;
+import com.maxenonyme.createsubmarine.submarine.system.GirderFailure;
 import com.maxenonyme.createsubmarine.submarine.config.SubmarineConfig;
 import dev.ryanhcode.sable.api.sublevel.SubLevelContainer;
 import dev.ryanhcode.sable.companion.math.BoundingBox3ic;
@@ -54,6 +55,10 @@ public final class BoatManager {
         int version = -1;
         long awaySince = -1;
         Map<BlockPos, Long> under = Map.of();
+        List<Probe> probes = List.of();
+    }
+
+    private record Probe(BlockPos anchor, BlockPos[] openings, BlockPos[] tops) {
     }
 
     private static final Map<UUID, Boat> CLIENT = new HashMap<>();
@@ -100,7 +105,7 @@ public final class BoatManager {
 
         for (SubLevel sub : container.getAllSubLevels()) {
             UUID id = sub.getUniqueId();
-            if (CompartmentTracker.isSubmarineManaged(id, now))
+            if (CompartmentTracker.isSubmarineManaged(id, now) || sub.getPlot() != null && GirderFailure.loose(level, sub))
                 continue;
             seen.add(id);
 
@@ -124,6 +129,7 @@ public final class BoatManager {
                         release(id, boat);
                     boat.scan = null;
                     boat.cover = null;
+                    boat.probes = List.of();
                     boat.version = -1;
                     continue;
                 }
@@ -135,7 +141,11 @@ public final class BoatManager {
                 boat.scanVersion = version;
             }
             if (boat.scan != null && CompartmentDetector.stepScan(boat.scan, SCAN_BUDGET)) {
-                boat.cover = underCover(sub, CompartmentDetector.finishScan(boat.scan));
+                CompartmentDetector.Result fresh = underCover(sub, CompartmentDetector.finishScan(boat.scan));
+                if (!same(boat.cover, fresh)) {
+                    boat.cover = fresh;
+                    boat.probes = probes(fresh);
+                }
                 boat.scan = null;
                 boat.coverTick = now;
                 boat.version = boat.scanVersion;
@@ -143,7 +153,7 @@ public final class BoatManager {
             CompartmentDetector.Result pushed = boat.cover;
 
             if (pushed != null) {
-                CompartmentTracker.setSunken(id, sunken(level, sub, pushed, boat, now));
+                CompartmentTracker.setSunken(id, sunken(level, sub, boat, now));
                 if (pushed != boat.pushed || !boat.registered
                         || CompartmentTracker.getCompartments(id) != pushed.components()) {
                     CompartmentTracker.update(id, sub, pushed, now);
@@ -174,6 +184,7 @@ public final class BoatManager {
 
     private static void release(UUID id, Boat boat) {
         boat.pushed = null;
+        boat.probes = List.of();
         boat.under = Map.of();
         CompartmentTracker.remove(id);
         boat.registered = false;
@@ -208,21 +219,20 @@ public final class BoatManager {
         return false;
     }
 
-    private static Set<BlockPos> sunken(Level level, SubLevel sub, CompartmentDetector.Result r, Boat boat, long now) {
+    private static Set<BlockPos> sunken(Level level, SubLevel sub, Boat boat, long now) {
         Pose3dc pose = sub.logicalPose();
         Map<BlockPos, Long> under = new HashMap<>();
         Set<BlockPos> sunk = new HashSet<>();
         boolean instant = !SubmarineConfig.progressiveFlooding();
-        Set<BlockPos> walls = r.solidBlocks() == null ? Set.of() : r.solidBlocks();
-        for (CompartmentDetector.Component c : r.components()) {
-            BlockPos anchor = c.anchor();
+        for (Probe probe : boat.probes) {
+            BlockPos anchor = probe.anchor();
             if (anchor == null)
                 continue;
-            if (instant && leaks(level, pose, c, walls)) {
+            if (instant && leaks(level, pose, probe.openings())) {
                 sunk.add(anchor);
                 continue;
             }
-            if (!topUnderwater(level, pose, c))
+            if (!topUnderwater(level, pose, probe.tops()))
                 continue;
             long since = boat.under.getOrDefault(anchor, now);
             under.put(anchor, since);
@@ -233,25 +243,58 @@ public final class BoatManager {
         return sunk;
     }
 
-    private static boolean leaks(Level level, Pose3dc pose, CompartmentDetector.Component c, Set<BlockPos> walls) {
+    private static boolean leaks(Level level, Pose3dc pose, BlockPos[] openings) {
         Vector3d w = new Vector3d();
-        for (BlockPos p : c.internal()) {
-            for (Direction dir : Direction.values()) {
-                BlockPos n = p.relative(dir);
-                if (c.internal().contains(n) || walls.contains(n))
-                    continue;
-                pose.transformPosition(w.set(n.getX() + 0.5, n.getY() + 0.5, n.getZ() + 0.5));
-                if (CompartmentTracker.realFluidState(level, BlockPos.containing(w.x, w.y, w.z)).is(FluidTags.WATER))
-                    return true;
-            }
+        for (BlockPos n : openings) {
+            pose.transformPosition(w.set(n.getX() + 0.5, n.getY() + 0.5, n.getZ() + 0.5));
+            if (CompartmentTracker.realFluidState(level, BlockPos.containing(w.x, w.y, w.z)).is(FluidTags.WATER))
+                return true;
         }
         return false;
     }
 
-    private static boolean topUnderwater(Level level, Pose3dc pose, CompartmentDetector.Component c) {
+    private static List<Probe> probes(CompartmentDetector.Result r) {
+        if (r == null)
+            return List.of();
+        Set<BlockPos> walls = r.solidBlocks() == null ? Set.of() : r.solidBlocks();
+        List<Probe> out = new ArrayList<>(r.components().size());
+        for (CompartmentDetector.Component c : r.components()) {
+            Set<BlockPos> openings = new HashSet<>();
+            List<BlockPos> tops = new ArrayList<>();
+            for (BlockPos p : c.internal()) {
+                for (Direction dir : Direction.values()) {
+                    BlockPos n = p.relative(dir);
+                    if (!c.internal().contains(n) && !walls.contains(n))
+                        openings.add(n);
+                }
+                if (!c.internal().contains(p.above()))
+                    tops.add(p);
+            }
+            out.add(new Probe(c.anchor(), openings.toArray(new BlockPos[0]), tops.toArray(new BlockPos[0])));
+        }
+        return out;
+    }
+
+    private static boolean same(CompartmentDetector.Result a, CompartmentDetector.Result b) {
+        if (a == null || b == null)
+            return a == b;
+        if (a.components().size() != b.components().size() || !java.util.Objects.equals(a.solidBlocks(), b.solidBlocks()))
+            return false;
+        Map<BlockPos, CompartmentDetector.Component> byAnchor = new HashMap<>();
+        for (CompartmentDetector.Component c : a.components())
+            byAnchor.put(c.anchor(), c);
+        for (CompartmentDetector.Component c : b.components()) {
+            CompartmentDetector.Component old = byAnchor.get(c.anchor());
+            if (old == null || !old.internal().equals(c.internal()))
+                return false;
+        }
+        return true;
+    }
+
+    private static boolean topUnderwater(Level level, Pose3dc pose, BlockPos[] tops) {
         Vector3d w = new Vector3d();
         Vector3d top = null;
-        for (BlockPos p : c.internal()) {
+        for (BlockPos p : tops) {
             w.set(p.getX() + 0.5, p.getY() + 0.95, p.getZ() + 0.5);
             pose.transformPosition(w);
             if (top == null || w.y > top.y)
@@ -301,12 +344,15 @@ public final class BoatManager {
             return null;
 
         List<CompartmentDetector.Component> comps = new ArrayList<>(holds.size());
-        for (Set<BlockPos> group : holds) {
+        for (Set<BlockPos> hold : holds) {
             BlockPos anchor = null;
-            Set<BlockPos> skin = new HashSet<>();
-            for (BlockPos p : group) {
+            for (BlockPos p : hold) {
                 if (anchor == null || lex(p, anchor) < 0)
                     anchor = p;
+            }
+            Set<BlockPos> group = brim(hold, walls);
+            Set<BlockPos> skin = new HashSet<>();
+            for (BlockPos p : group) {
                 for (Direction dir : Direction.values()) {
                     BlockPos n = p.relative(dir);
                     if (walls.contains(n))
@@ -316,6 +362,45 @@ public final class BoatManager {
             comps.add(new CompartmentDetector.Component(group, skin, true, anchor));
         }
         return new CompartmentDetector.Result(comps, r.totalScanned(), r.solidBlocks());
+    }
+
+    private static Set<BlockPos> brim(Set<BlockPos> hold, Set<BlockPos> walls) {
+        int top = Integer.MIN_VALUE;
+        Map<Long, Integer> columns = new HashMap<>();
+        for (BlockPos p : hold) {
+            top = Math.max(top, p.getY());
+            columns.merge(BlockPos.asLong(p.getX(), 0, p.getZ()), p.getY(), Math::min);
+        }
+        Map<Long, Integer> rim = new HashMap<>();
+        for (Map.Entry<Long, Integer> e : columns.entrySet()) {
+            int x = BlockPos.getX(e.getKey()), z = BlockPos.getZ(e.getKey());
+            for (Direction dir : Direction.Plane.HORIZONTAL) {
+                long key = BlockPos.asLong(x + dir.getStepX(), 0, z + dir.getStepZ());
+                if (!columns.containsKey(key))
+                    rim.merge(key, e.getValue(), Math::min);
+            }
+        }
+        Set<BlockPos> out = new HashSet<>(hold);
+        raise(out, columns, top, walls, true);
+        raise(out, rim, top, walls, false);
+        return out;
+    }
+
+    private static void raise(Set<BlockPos> out, Map<Long, Integer> columns, int top, Set<BlockPos> walls, boolean open) {
+        BlockPos.MutableBlockPos p = new BlockPos.MutableBlockPos();
+        for (Map.Entry<Long, Integer> e : columns.entrySet()) {
+            int x = BlockPos.getX(e.getKey()), z = BlockPos.getZ(e.getKey());
+            boolean held = open;
+            for (int y = e.getValue(); y <= top; y++) {
+                p.set(x, y, z);
+                if (walls.contains(p)) {
+                    held = true;
+                    continue;
+                }
+                if (held)
+                    out.add(p.immutable());
+            }
+        }
     }
 
     private static List<Set<BlockPos>> split(Set<BlockPos> cells) {

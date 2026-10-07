@@ -61,7 +61,7 @@ public class BallastVentBlockEntity extends BlockEntity {
 
         @Override
         public int getTankCapacity(int tank) {
-            return OCEAN;
+            return OCEAN * 2;
         }
 
         @Override

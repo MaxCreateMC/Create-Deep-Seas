@@ -1,0 +1,8 @@
+{
+  "parent": "create_abyss:block/geothermal_vent",
+  "render_type": "minecraft:cutout",
+  "textures": {
+    "vent": "create_abyss:block/geothermal/geothermal_deepslate",
+    "particle": "create_abyss:block/geothermal/geothermal_deepslate"
+  }
+}

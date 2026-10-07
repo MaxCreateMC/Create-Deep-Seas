@@ -51,7 +51,7 @@ public final class SailCollisionSystem {
     private static final Map<UUID, Long2DoubleOpenHashMap> SMOOTHED = new HashMap<>();
 
     private record Panel(Direction.Axis axis, double minA, double dimA, double minB, double dimB,
-                         double baseN, double bulgeSign, double depth) {
+                         double baseN, double bulgeSign, double depth, int cutA, int cutB, double reach) {
     }
 
     private record ShipSails(Pose3dc pose, List<Panel> panels, AABB worldBox) {
@@ -162,7 +162,7 @@ public final class SailCollisionSystem {
             if (g.axis() == Direction.Axis.Y) {
                 continue;
             }
-            if (FurlState.isFurled(ship.getUniqueId(), g.min())) {
+            if (FurlState.amount(ship.getUniqueId(), g.min()) > 0.9f) {
                 continue;
             }
             Panel p = buildPanel(level, sailPose, sailOrient, keel, g, gameTime, ship.getUniqueId());
@@ -198,21 +198,16 @@ public final class SailCollisionSystem {
         Vector3d worldNormal = sailOrient.transform(new Vector3d(axisVec.x, axisVec.y, axisVec.z));
 
         double along = keel != null ? worldNormal.x * keel.x + worldNormal.z * keel.z : 1.0;
-        double windSign = along < 0 ? -1.0 : 1.0;
+        Vector3d center = new Vector3d(
+                (mn.getX() + mx.getX() + 1) * 0.5,
+                (mn.getY() + mx.getY() + 1) * 0.5,
+                (mn.getZ() + mx.getZ() + 1) * 0.5);
+        sailPose.transformPosition(center);
+        Vec3 wind = WindManager.getWind(level, center.x, center.y, center.z).vector();
+        double windDotN = wind.x * worldNormal.x + wind.y * worldNormal.y + wind.z * worldNormal.z;
+        double windSign = Math.abs(windDotN) > 0.15 * WIND_REF ? Math.signum(windDotN) : along < 0 ? -1.0 : 1.0;
         double bulgeSign = g.supportSign() != 0 ? -g.supportSign() : windSign;
-
-        double target = 0.0;
-        if (keel != null) {
-            Vector3d center = new Vector3d(
-                    (mn.getX() + mx.getX() + 1) * 0.5,
-                    (mn.getY() + mx.getY() + 1) * 0.5,
-                    (mn.getZ() + mx.getZ() + 1) * 0.5);
-            sailPose.transformPosition(center);
-            Vec3 wind = WindManager.getWind(level, center.x, center.y, center.z).vector();
-            double tailwind = Math.max(0.0, wind.x * keel.x + wind.y * keel.y + wind.z * keel.z);
-            double across = Math.abs(along);
-            target = Mth.clamp(across * tailwind / WIND_REF, 0.0, 1.0);
-        }
+        double target = Mth.clamp(Math.abs(windDotN) / WIND_REF, 0.0, 1.0);
 
         Long2DoubleOpenHashMap fills = SMOOTHED.computeIfAbsent(shipId, id -> new Long2DoubleOpenHashMap());
         long key = mn.asLong() * 3 + g.axis().ordinal();
@@ -224,6 +219,8 @@ public final class SailCollisionSystem {
         double depth = fill * maxDepth(g.axis(), countX, countY, countZ);
 
         double minA, dimA, minB, dimB, baseN;
+        int cutA = g.axis() == Direction.Axis.X ? g.cutV() : g.cutH();
+        int cutB = g.axis() == Direction.Axis.X ? g.cutH() : g.cutV();
         if (g.axis() == Direction.Axis.X) {
             minA = mn.getY();
             dimA = countY;
@@ -237,7 +234,8 @@ public final class SailCollisionSystem {
             dimB = countY;
             baseN = (mn.getZ() + mx.getZ() + 1) * 0.5 + g.supportSign() * SUPPORT_SHIFT;
         }
-        return new Panel(g.axis(), minA, dimA, minB, dimB, baseN, bulgeSign, depth);
+        return new Panel(g.axis(), minA, dimA, minB, dimB, baseN, bulgeSign, depth, cutA, cutB,
+                g.triangle() ? g.cutReach() : 0.0);
     }
 
     private static boolean pushEntity(Entity entity, Vector3d worldPos, Pose3dc entityPose, ShipSails ship) {
@@ -305,6 +303,15 @@ public final class SailCollisionSystem {
         }
 
         double anchor = anchor(u, v);
+        if (p.reach() > 0.0) {
+            double qa = a - p.minA(), qb = b - p.minB();
+            double ma = p.cutA() > 0 ? qa : p.dimA() - qa;
+            double mb = p.cutB() > 0 ? qb : p.dimB() - qb;
+            double s = p.reach() - ma - mb;
+            if (s < -Math.max(marginA, marginB))
+                return null;
+            anchor *= Math.sqrt(Math.sin(Mth.clamp(s / Math.max(p.reach() * 0.5, 0.5), 0.0, 1.0) * PI * 0.5));
+        }
         double surfaceN = p.baseN() + p.bulgeSign() * p.depth() * anchor;
         double dist = n - surfaceN;
         double half = SAIL_HALF_THICK + r;

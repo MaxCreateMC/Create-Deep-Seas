@@ -1,4 +1,10 @@
 {
+  "neoforge:conditions": [
+    {
+      "type": "create_submarine:config_enabled",
+      "config_key": "enableAbyssDimension"
+    }
+  ],
   "comparator_output": 15,
   "description": {
     "translate": "jukebox_song.create_abyss.snells_window"

@@ -1,6 +1,0 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "create_abyss:item/music_disc_hidden_between_fluent_waters"
-  }
-}

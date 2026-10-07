@@ -41,6 +41,7 @@ public final class SonarView {
     static final long SWEEP_NANOS = 1_200_000_000L;
 
     private static final long PING_NANOS = 2_000_000_000L;
+    private static final int REBAKE_PINGS = 5;
     private static final long PREVIEW_NANOS = 50_000_000L;
     private static final long DETAIL_NANOS = 30_000_000L;
     private static final long FORGET_NANOS = 3_000_000_000L;
@@ -173,7 +174,10 @@ public final class SonarView {
         if (now - scan.lastPing >= PING_NANOS || scan.origin == null) {
             BlockPos sonarBlock = BlockPos.containing(sonar.x, sonar.y, sonar.z);
             scan.lastPing = now;
-            scan.replace(SonarTerrain.ping(mc, sub.getLevel(), sonarBlock), sonarBlock);
+            if (!sonarBlock.equals(scan.origin) || ++scan.idlePings >= REBAKE_PINGS) {
+                scan.idlePings = 0;
+                scan.replace(SonarTerrain.ping(mc, sub.getLevel(), sonarBlock), sonarBlock);
+            }
         }
         float front = scan.front(now);
 

@@ -5,6 +5,7 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.phys.Vec3;
 import org.joml.Quaterniondc;
 import org.joml.Vector3d;
+import org.joml.Vector3dc;
 
 import java.util.List;
 import com.maxenonyme.highseas.config.HighSeasConfig;
@@ -81,20 +82,44 @@ public final class SailForce {
         return keel;
     }
 
-    public static double pointOfSail(Vec3 wind, double nx, double ny, double nz,
-                                     double fx, double fy, double fz) {
+    private static final double[] SQUARE_AT = { 0.0, 45.0, 90.0, 120.0, 180.0 };
+    private static final double[] SQUARE = { 1.0, 0.8, 0.3, 0.0, 0.0 };
+    private static final double[] LATEEN_AT = { 0.0, 45.0, 90.0, 135.0, 140.0, 180.0 };
+    private static final double[] LATEEN = { 0.6, 0.9, 1.0, 0.6, 0.0, 0.0 };
+
+    public static double efficiency(Vec3 wind, double nx, double nz, Vector3dc keel) {
         double upwind = HighSeasConfig.sailUpwindEfficiency;
-        double windMag = Math.sqrt(wind.x * wind.x + wind.y * wind.y + wind.z * wind.z);
-        if (windMag < 1.0e-6) {
+        double windLen = Math.sqrt(wind.x * wind.x + wind.z * wind.z);
+        double normalLen = Math.sqrt(nx * nx + nz * nz);
+        if (windLen < 1.0e-6 || normalLen < 1.0e-6) {
             return upwind;
         }
-        double wx = wind.x / windMag;
-        double wy = wind.y / windMag;
-        double wz = wind.z / windMag;
+        double cos = Mth.clamp((wind.x * keel.x() + wind.z * keel.z()) / windLen, -1.0, 1.0);
+        double angle = Math.toDegrees(Math.acos(cos));
+        double across = (nx * keel.x() + nz * keel.z()) / normalLen;
+        double square = across * across;
+        double eff = square * curve(SQUARE_AT, SQUARE, angle) + (1.0 - square) * curve(LATEEN_AT, LATEEN, angle);
+        return upwind + (1.0 - upwind) * eff;
+    }
 
-        double trim = Math.max(0.5, Math.abs(nx * wx + ny * wy + nz * wz));
-        double reach = Math.max(0.0, 0.5 + 0.5 * (wx * fx + wy * fy + wz * fz));
-        return upwind + (1.0 - upwind) * reach * trim;
+
+    public static double facing(Vec3 wind, double nx, double nz) {
+        double windLen = Math.sqrt(wind.x * wind.x + wind.z * wind.z);
+        double normalLen = Math.sqrt(nx * nx + nz * nz);
+        if (windLen < 1.0e-6 || normalLen < 1.0e-6) {
+            return 0.0;
+        }
+        return Math.abs(wind.x * nx + wind.z * nz) / (windLen * normalLen);
+    }
+
+    private static double curve(double[] at, double[] values, double x) {
+        for (int i = 1; i < at.length; i++) {
+            if (x <= at[i]) {
+                double f = (x - at[i - 1]) / (at[i] - at[i - 1]);
+                return values[i - 1] + (values[i] - values[i - 1]) * f;
+            }
+        }
+        return values[values.length - 1];
     }
 
     public static double windFactor(Vec3 wind) {

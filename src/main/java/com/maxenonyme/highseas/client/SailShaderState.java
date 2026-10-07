@@ -40,6 +40,7 @@ public final class SailShaderState {
     private static final String[] SUPPORT_DIR = uniforms("supportDir");
     private static final String[] BULGE = uniforms("bulge");
     private static final String[] FURL = uniforms("furl");
+    private static final String[] CUT = uniforms("sailCut");
 
     private static String[] uniforms(String name) {
         String[] out = new String[MAX_SAILS];
@@ -66,6 +67,7 @@ public final class SailShaderState {
         final int minX, minY, minZ, maxX, maxY, maxZ;
         final float axisX, axisY, axisZ;
         final int supportSign, area;
+        float cutX, cutY, cutZ, cutReach;
         long startTick;
         double smoothedPower = -1.0;
         double bulgeSign = 0.0;
@@ -84,7 +86,7 @@ public final class SailShaderState {
             return minX == o.minX && minY == o.minY && minZ == o.minZ &&
                    maxX == o.maxX && maxY == o.maxY && maxZ == o.maxZ &&
                    axisX == o.axisX && axisY == o.axisY && axisZ == o.axisZ &&
-                   area == o.area;
+                   area == o.area && cutX == o.cutX && cutY == o.cutY && cutZ == o.cutZ;
         }
     }
 
@@ -159,7 +161,7 @@ public final class SailShaderState {
                 return;
             long age = level.getGameTime() - b.startTick;
             double factor = Math.min(1.0, age / 60.0);
-            b.furlTarget = FurlState.isFurled(subId, b.minX, b.minY, b.minZ) ? 1.0 : 0.0;
+            b.furlTarget = -FurlState.amount(subId, b.minX, b.minY, b.minZ);
             setUniformsForBox(shader, b, index, rp, renderPose, rot, level, keel, factor);
             index++;
         }
@@ -184,6 +186,7 @@ public final class SailShaderState {
                 (float) (b.maxY - rp.y()),
                 (float) (b.maxZ - rp.z()));
         shader.safeGetUniform(SAIL_AXIS[i]).set(b.axisX, b.axisY, b.axisZ);
+        shader.safeGetUniform(CUT[i]).set(b.cutX, b.cutY, b.cutZ, b.cutReach);
         shader.safeGetUniform(SUPPORT_DIR[i]).set(
                 b.axisX * b.supportSign, b.axisY * b.supportSign, b.axisZ * b.supportSign);
 
@@ -356,7 +359,7 @@ public final class SailShaderState {
         if (sub.getPlot() == null || sub.getLevel() == null) {
             return new SailData(List.of(), null, now);
         }
-        List<SailGroup> groups = new ArrayList<>(SailDetector.detect(sub.getLevel(), sub.getPlot().getBoundingBox()));
+        List<SailGroup> groups = new ArrayList<>(SailDetector.detect(sub.getLevel(), sub.getPlot()));
         groups.sort((a, b) -> Integer.compare(b.area(), a.area()));
 
         List<SailBox> boxes = new ArrayList<>();
@@ -370,13 +373,20 @@ public final class SailShaderState {
             BlockPos mn = g.min();
             BlockPos mx = g.max();
             Vec3 axis = g.localNormal();
-            boxes.add(new SailBox(
+            SailBox box = new SailBox(
                     mn.getX(), mn.getY(), mn.getZ(),
                     mx.getX() + 1, mx.getY() + 1, mx.getZ() + 1,
                     (float) axis.x, (float) axis.y, (float) axis.z,
-                    g.supportSign(), g.area(), now));
+                    g.supportSign(), g.area(), now);
+            if (g.triangle()) {
+                box.cutX = g.axis() == Direction.Axis.Z ? g.cutH() : 0;
+                box.cutY = g.cutV();
+                box.cutZ = g.axis() == Direction.Axis.X ? g.cutH() : 0;
+                box.cutReach = (float) g.cutReach();
+            }
+            boxes.add(box);
         }
-        Vec3 rudder = RudderDetector.centroid(sub.getLevel(), sub.getPlot().getBoundingBox());
+        Vec3 rudder = RudderDetector.centroid(sub.getPlot());
         return new SailData(boxes, rudder, now);
     }
 

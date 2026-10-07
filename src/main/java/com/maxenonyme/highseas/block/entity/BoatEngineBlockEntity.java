@@ -28,7 +28,6 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundSource;
-import net.minecraft.world.Containers;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.inventory.ContainerData;
 import net.minecraft.world.InteractionHand;
@@ -174,14 +173,8 @@ public class BoatEngineBlockEntity extends BlockEntity implements BlockEntitySub
         return true;
     }
 
-    public void dropFuel() {
-        if (level == null || level.isClientSide)
-            return;
-        ItemStack out = fuelSlot.removeItemNoUpdate(0);
-        if (!out.isEmpty()) {
-            Containers.dropItemStack(level, worldPosition.getX() + 0.5, worldPosition.getY() + 0.5,
-                    worldPosition.getZ() + 0.5, out);
-        }
+    public ItemStack fuel() {
+        return fuelSlot.getItem(0);
     }
 
     public boolean hasDriver() {

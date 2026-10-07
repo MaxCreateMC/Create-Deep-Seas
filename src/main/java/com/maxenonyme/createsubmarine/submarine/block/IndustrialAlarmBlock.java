@@ -27,9 +27,26 @@ import net.minecraft.world.phys.shapes.VoxelShape;
 import com.maxenonyme.createsubmarine.CreateSubmarine;
 import com.maxenonyme.createsubmarine.submarine.block.entity.IndustrialAlarmBlockEntity;
 import org.jetbrains.annotations.Nullable;
+import com.maxenonyme.createsubmarine.submarine.alarm.AlarmSounds;
+import com.maxenonyme.createsubmarine.submarine.network.AlarmOpenPayload;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.phys.BlockHitResult;
+import net.neoforged.neoforge.network.PacketDistributor;
 import org.joml.Vector3f;
 
 public class IndustrialAlarmBlock extends DirectionalBlock implements SimpleWaterloggedBlock, EntityBlock {
+
+    @Override
+    protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player, BlockHitResult hit) {
+        if (!(level.getBlockEntity(pos) instanceof IndustrialAlarmBlockEntity alarm))
+            return InteractionResult.PASS;
+        if (player instanceof ServerPlayer server)
+            PacketDistributor.sendToPlayer(server, new AlarmOpenPayload(pos, alarm.settings, AlarmSounds.list()));
+        return InteractionResult.sidedSuccess(level.isClientSide);
+    }
+
 
     private static final DustParticleOptions PARTICLE = new DustParticleOptions(new Vector3f(1.0f, 0.0f, 0.0f), 0.3f);
 

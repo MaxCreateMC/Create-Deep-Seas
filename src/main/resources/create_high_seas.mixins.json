@@ -13,6 +13,7 @@
     "ContraptionVisualSailBakeMixin",
     "HumanoidModelPoseMixin",
     "IrisSailPhaseMixin",
+    "PonderSailBakeMixin",
     "SailRenderLayerMixin",
     "SailSodiumMaterialMixin",
     "SailSubLevelRenderMixin",

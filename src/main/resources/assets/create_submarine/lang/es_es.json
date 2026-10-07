@@ -1,4 +1,5 @@
 {
+  "create_submarine.ui.button.later": "Quizás más tarde",
   "itemGroup.create_submarine": "Create Deep Seas",
   "fluid.create_submarine.oxygen": "Oxígeno",
   "block.create_submarine.creative_oxygenator": "Oxigenador Creativo",
@@ -83,10 +84,6 @@
   "create_submarine.configuration.enableDeeperOceans.tooltip": "Baja el nivel del suelo del océano debajo del vanilla. Apagado = profundidad de océanos vanilla. Selecciona la cantidad con Mayor profundidad de océanos.",
   "create_submarine.configuration.deeperOceansDepth": "Mayor profundidad de océanos",
   "create_submarine.configuration.deeperOceansDepth.tooltip": "Cuántos bloques más profundo se debe empujar al suelo del océano cuando Océanos más profundos está activado. ADVERTENCIA: valores altos generan y renderizan mucho más terreno y pueden afectar negativamente el rendimiento. Auméntalo cuidadosamente. Por defecto 10.",
-  "create_submarine.welcome.title": "Bienvenido a Create Deep Seas",
-  "create_submarine.welcome.message": "Está fuertemente recomendado ajustar tus preferencias antes de sumergirte — la fuerza del casco, la propulsión, la profundidad del océano y más pueden ser ajustadas a tu gusto.",
-  "create_submarine.welcome.configure": "Configura el mod",
-  "create_submarine.welcome.dismiss": "Quizás más tarde",
   "item.create_submarine.phycological_membrane": "Membrana ficológica",
   "item.create_submarine.phycological_membrane.tooltip.summary": "Puede ser llenado con aire.",
   "item.create_submarine.steel_cable": "Cable de Acero",

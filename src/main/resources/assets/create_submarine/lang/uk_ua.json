@@ -1,4 +1,5 @@
 {
+  "create_submarine.ui.button.later": "Можливо пізніше",
   "block.create_submarine.ballast_tank": "Баластна цистерна субмарини",
   "block.create_submarine.ballast_vent": "Баластний клапан",
   "block.create_submarine.copper_pressurizer": "Мідне міцне скло",
@@ -110,10 +111,6 @@
   "create_submarine.update.message": "Доступна нова версія Create Deep Seas: v%s! Завантажте її на %s.",
   "create_submarine.update.message_screen": "Доступна нова версія Create Deep Seas: v%s",
   "create_submarine.update.title": "Оновлення Deep Seas",
-  "create_submarine.welcome.configure": "Налаштувати мод",
-  "create_submarine.welcome.dismiss": "Можливо пізніше",
-  "create_submarine.welcome.message": "Настійно рекомендується налаштувати параметри Deep Seas перед зануренням — міцність корпусу, тягу, глибину океану та багато іншого можна змінити на свій смак.",
-  "create_submarine.welcome.title": "Ласкаво просимо до Create Deep Seas",
   "death.attack.create_submarine.suffocation": "%1$s задихнувся в густому диму",
   "effect.create_submarine.suffocation": "Задуха",
   "entity.create_submarine.amphistium": "Амфістіум",

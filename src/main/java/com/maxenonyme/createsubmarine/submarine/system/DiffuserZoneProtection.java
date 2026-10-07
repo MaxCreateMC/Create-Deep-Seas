@@ -30,6 +30,13 @@ public final class DiffuserZoneProtection {
         return state.is(CreateSubmarine.ELECTROLYZER.get()) || state.is(CreateSubmarine.OXYGENE_DIFFUSER.get());
     }
 
+    public static boolean evict(Level level, BlockPos pos) {
+        if (level.isClientSide || level.getBlockState(pos.above()).canBeReplaced())
+            return false;
+        level.destroyBlock(pos, true);
+        return true;
+    }
+
     public static boolean canPlaceMachine(BlockPlaceContext context) {
         if (context.getLevel().getBlockState(context.getClickedPos().above()).canBeReplaced())
             return true;

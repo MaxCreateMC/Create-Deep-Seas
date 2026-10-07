@@ -14,6 +14,7 @@ public class AllPartialModels {
     public static final PartialModel ELECTROLYZER_GLASS = PartialModel.of(ResourceLocation.fromNamespaceAndPath(CreateSubmarine.MOD_ID, "block/electrolyzer_glass"));
     public static final PartialModel STEEL_CABLE = PartialModel.of(ResourceLocation.fromNamespaceAndPath(CreateSubmarine.MOD_ID, "block/steel_cable/steel_cable"));
     public static final PartialModel STEEL_CABLE_KNOT = PartialModel.of(ResourceLocation.fromNamespaceAndPath(CreateSubmarine.MOD_ID, "block/steel_cable/knot"));
+    public static final PartialModel PRESSURE_GOGGLES = PartialModel.of(ResourceLocation.fromNamespaceAndPath(CreateSubmarine.MOD_ID, "block/pressure_goggles"));
     public static final PartialModel PULLEY_CORE = PartialModel.of(ResourceLocation.fromNamespaceAndPath(CreateSubmarine.MOD_ID, "block/pulley_core"));
     public static final PartialModel ARRESTING_HOOK_ARM = PartialModel.of(ResourceLocation.fromNamespaceAndPath(CreateSubmarine.MOD_ID, "block/arresting_hook/arm"));
     public static final PartialModel WINCH_STEEL_COIL = PartialModel.of(ResourceLocation.fromNamespaceAndPath(CreateSubmarine.MOD_ID, "block/steel_cable/winch_steel_coil"));

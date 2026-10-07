@@ -3,16 +3,19 @@ import com.maxenonyme.createsubmarine.submarine.compartment.CompartmentTracker;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.LevelChunk;
+import com.llamalad7.mixinextras.injector.ModifyReturnValue;
+import com.llamalad7.mixinextras.sugar.Local;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 @Mixin(LevelChunk.class)
 public abstract class LevelChunkMixin {
-    @Inject(method = "getBlockState", at = @At("HEAD"), cancellable = true)
-    private void createsubmarine$onGetBlockState(BlockPos pos, CallbackInfoReturnable<BlockState> cir) {
-        BlockState lied = CompartmentTracker.getLiedBlockState(((LevelChunk) (Object) this).getLevel(), pos);
-        if (lied != null) cir.setReturnValue(lied);
+    @ModifyReturnValue(method = "getBlockState", at = @At("RETURN"))
+    private BlockState createsubmarine$onGetBlockState(BlockState real, @Local(argsOnly = true) BlockPos pos) {
+        if (real.isAir())
+            return real;
+        return CompartmentTracker.getLiedBlockState(((LevelChunk) (Object) this).getLevel(), pos, real);
     }
     @Inject(method = "setBlockState", at = @At("RETURN"))
     private void createsubmarine$onSetBlockState(BlockPos pos, BlockState state, boolean isMoving, CallbackInfoReturnable<BlockState> cir) {

@@ -1,0 +1,27 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "SCS",
+    " B ",
+    "SIS"
+  ],
+  "key": {
+    "S": {
+      "item": "create:iron_sheet"
+    },
+    "C": {
+      "item": "minecraft:chain"
+    },
+    "B": {
+      "item": "minecraft:iron_block"
+    },
+    "I": {
+      "item": "minecraft:iron_ingot"
+    }
+  },
+  "result": {
+    "id": "create_high_seas:anchor",
+    "count": 1
+  }
+}

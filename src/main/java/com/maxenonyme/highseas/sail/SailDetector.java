@@ -3,9 +3,15 @@ package com.maxenonyme.highseas.sail;
 import com.maxenonyme.highseas.wind.WindConfig;
 import dev.ryanhcode.sable.companion.math.BoundingBox3ic;
 import com.maxenonyme.highseas.block.BoatSailBlock;
+import com.maxenonyme.highseas.block.SailCorner;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.level.BlockGetter;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.chunk.ChunkAccess;
+import net.minecraft.world.level.chunk.LevelChunkSection;
+import net.minecraft.world.level.ChunkPos;
+import dev.ryanhcode.sable.sublevel.plot.LevelPlot;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.phys.Vec3;
@@ -18,12 +24,50 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.BiConsumer;
+import java.util.function.Predicate;
 
 public final class SailDetector {
     private SailDetector() {
     }
 
-    public static List<SailGroup> detect(BlockGetter level, BoundingBox3ic bounds) {
+    private static final Predicate<BlockState> SAIL = state -> state.is(BoatSailBlock.SAILS)
+            && state.hasProperty(BlockStateProperties.AXIS);
+
+    static void scan(LevelPlot plot, Predicate<BlockState> wanted, BiConsumer<BlockPos.MutableBlockPos, BlockState> found) {
+        BoundingBox3ic b = plot.getBoundingBox();
+        BlockPos.MutableBlockPos m = new BlockPos.MutableBlockPos();
+        for (int cx = b.minX() >> 4; cx <= b.maxX() >> 4; cx++) {
+            for (int cz = b.minZ() >> 4; cz <= b.maxZ() >> 4; cz++) {
+                ChunkAccess chunk = plot.getChunk(plot.toLocal(new ChunkPos(cx, cz)));
+                if (chunk == null)
+                    continue;
+                for (int sy = b.minY() >> 4; sy <= b.maxY() >> 4; sy++) {
+                    int index = chunk.getSectionIndexFromSectionY(sy);
+                    if (index < 0 || index >= chunk.getSectionsCount())
+                        continue;
+                    LevelChunkSection section = chunk.getSection(index);
+                    if (section.hasOnlyAir() || !section.maybeHas(wanted))
+                        continue;
+                    int x0 = Math.max(b.minX(), cx << 4), x1 = Math.min(b.maxX(), (cx << 4) + 15);
+                    int y0 = Math.max(b.minY(), sy << 4), y1 = Math.min(b.maxY(), (sy << 4) + 15);
+                    int z0 = Math.max(b.minZ(), cz << 4), z1 = Math.min(b.maxZ(), (cz << 4) + 15);
+                    for (int y = y0; y <= y1; y++) {
+                        for (int z = z0; z <= z1; z++) {
+                            for (int x = x0; x <= x1; x++) {
+                                BlockState state = section.getBlockState(x & 15, y & 15, z & 15);
+                                if (wanted.test(state))
+                                    found.accept(m.set(x, y, z), state);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    public static List<SailGroup> detect(Level level, LevelPlot plot) {
+        BoundingBox3ic bounds = plot.getBoundingBox();
         long volume = (long) (bounds.maxX() - bounds.minX() + 1)
                 * (bounds.maxY() - bounds.minY() + 1)
                 * (bounds.maxZ() - bounds.minZ() + 1);
@@ -32,18 +76,7 @@ public final class SailDetector {
         }
 
         Map<BlockPos, Direction.Axis> sails = new HashMap<>();
-        BlockPos.MutableBlockPos m = new BlockPos.MutableBlockPos();
-        for (int x = bounds.minX(); x <= bounds.maxX(); x++) {
-            for (int y = bounds.minY(); y <= bounds.maxY(); y++) {
-                for (int z = bounds.minZ(); z <= bounds.maxZ(); z++) {
-                    m.set(x, y, z);
-                    BlockState state = level.getBlockState(m);
-                    if (state.is(BoatSailBlock.SAILS) && state.hasProperty(BlockStateProperties.AXIS)) {
-                        sails.put(m.immutable(), state.getValue(BlockStateProperties.AXIS));
-                    }
-                }
-            }
-        }
+        scan(plot, SAIL, (pos, state) -> sails.put(pos.immutable(), state.getValue(BlockStateProperties.AXIS)));
         if (sails.isEmpty()) {
             return List.of();
         }
@@ -111,8 +144,37 @@ public final class SailDetector {
             }
             int supportSign = plusSupport > minusSupport ? 1 : (minusSupport > plusSupport ? -1 : 0);
 
-            groups.add(new SailGroup(axis, center, count,
-                    new BlockPos(minX, minY, minZ), new BlockPos(maxX, maxY, maxZ), supportSign, 0L));
+            SailCorner cut = null;
+            int cuts = 0;
+            double reach = 0.0;
+            boolean mixed = false;
+            int width = axis == Direction.Axis.X ? maxZ - minZ + 1 : maxX - minX + 1;
+            int height = maxY - minY + 1;
+            for (BlockPos p : component) {
+                BlockState s = level.getBlockState(p);
+                SailCorner c = s.hasProperty(BoatSailBlock.CORNER) ? s.getValue(BoatSailBlock.CORNER) : SailCorner.NONE;
+                if (c == SailCorner.NONE)
+                    continue;
+                if (cut != null && cut != c)
+                    mixed = true;
+                cut = c;
+                cuts++;
+                int i = axis == Direction.Axis.X ? p.getZ() - minZ : p.getX() - minX;
+                int j = p.getY() - minY;
+                if (c.h < 0)
+                    i = width - 1 - i;
+                if (c.v < 0)
+                    j = height - 1 - j;
+                reach += i + j + 1;
+            }
+            int area = Math.max(1, (int) Math.round(count - cuts * 0.5));
+            if (cut == null || mixed) {
+                groups.add(new SailGroup(axis, center, area, new BlockPos(minX, minY, minZ),
+                        new BlockPos(maxX, maxY, maxZ), supportSign, 0, 0, 0.0, 0L));
+            } else {
+                groups.add(new SailGroup(axis, center, area, new BlockPos(minX, minY, minZ),
+                        new BlockPos(maxX, maxY, maxZ), supportSign, cut.h, cut.v, reach / cuts, 0L));
+            }
         }
         return groups;
     }

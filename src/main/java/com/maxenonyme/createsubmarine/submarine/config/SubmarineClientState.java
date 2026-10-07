@@ -13,7 +13,6 @@ public class SubmarineClientState {
     private static final Path PATH = FMLPaths.CONFIGDIR.get().resolve("create_submarine_client_state.json");
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 
-    public static boolean welcomeScreenSeen = false;
     public static boolean lithostitchedScreenSeen = false;
     public static boolean safetyScreenSeen = false;
     public static String ignoredUpdateVersion = "";
@@ -23,9 +22,6 @@ public class SubmarineClientState {
             try {
                 JsonObject json = GSON.fromJson(Files.readString(PATH), JsonObject.class);
                 if (json != null) {
-                    if (json.has("welcomeScreenSeen")) {
-                        welcomeScreenSeen = json.get("welcomeScreenSeen").getAsBoolean();
-                    }
                     if (json.has("lithostitchedScreenSeen")) {
                         lithostitchedScreenSeen = json.get("lithostitchedScreenSeen").getAsBoolean();
                     }
@@ -45,30 +41,12 @@ public class SubmarineClientState {
     public static void save() {
         try {
             JsonObject json = new JsonObject();
-            json.addProperty("welcomeScreenSeen", welcomeScreenSeen);
             json.addProperty("lithostitchedScreenSeen", lithostitchedScreenSeen);
             json.addProperty("safetyScreenSeen", safetyScreenSeen);
             json.addProperty("ignoredUpdateVersion", ignoredUpdateVersion);
             Files.writeString(PATH, GSON.toJson(json));
         } catch (Exception e) {
             CreateSubmarine.LOGGER.error("[CDS] Failed to save create_submarine_client_state.json", e);
-        }
-    }
-
-    public static boolean hasSeenWelcomeScreen() {
-        if (!net.neoforged.fml.loading.FMLEnvironment.production && SubmarineConfig.WELCOME_SCREEN_SEEN != null) {
-            return SubmarineConfig.WELCOME_SCREEN_SEEN.get();
-        }
-        return welcomeScreenSeen;
-    }
-
-    public static void setWelcomeScreenSeen(boolean seen) {
-        if (!net.neoforged.fml.loading.FMLEnvironment.production && SubmarineConfig.WELCOME_SCREEN_SEEN != null) {
-            SubmarineConfig.WELCOME_SCREEN_SEEN.set(seen);
-            SubmarineConfig.WELCOME_SCREEN_SEEN.save();
-        } else {
-            welcomeScreenSeen = seen;
-            save();
         }
     }
 

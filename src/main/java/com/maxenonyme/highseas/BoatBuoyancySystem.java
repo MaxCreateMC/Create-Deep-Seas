@@ -1,5 +1,6 @@
 package com.maxenonyme.highseas;
 
+import com.maxenonyme.highseas.config.HighSeasConfig;
 import com.maxenonyme.createsubmarine.submarine.compartment.CompartmentDetector;
 import com.maxenonyme.createsubmarine.submarine.compartment.CompartmentTracker;
 import com.maxenonyme.createsubmarine.submarine.compartment.FloodSystem;
@@ -158,6 +159,11 @@ public final class BoatBuoyancySystem {
         return hull == null ? Double.NEGATIVE_INFINITY : hull.surfaceY();
     }
 
+    public static boolean afloat(UUID id) {
+        Double wet = WET.get(id);
+        return wet != null && wet > 0.0;
+    }
+
     public static double keelLength(UUID id) {
         Hull hull = HULLS.get(id);
         return hull == null ? 0.0 : hull.length();
@@ -203,12 +209,16 @@ public final class BoatBuoyancySystem {
 
         Vector3d w = new Vector3d();
         Vector3d centre = new Vector3d();
+        double base = pose.transformPosition(w.set(0.0, 0.0, 0.0)).y;
+        double ax = pose.transformPosition(w.set(1.0, 0.0, 0.0)).y - base;
+        double ay = pose.transformPosition(w.set(0.0, 1.0, 0.0)).y - base;
+        double az = pose.transformPosition(w.set(0.0, 0.0, 1.0)).y - base;
+        double waterline = hull.surfaceY() + 0.5 - base;
         double volume = 0.0;
         double[] cells = hull.cells();
         for (int i = 0, k = 0; i < hull.count(); i++, k += 3) {
             double x = cells[k], y = cells[k + 1], z = cells[k + 2];
-            pose.transformPosition(w.set(x, y, z));
-            double immersion = Mth.clamp(hull.surfaceY() - w.y + 0.5, 0.0, 1.0);
+            double immersion = Mth.clamp(waterline - (ax * x + ay * y + az * z), 0.0, 1.0);
             if (immersion <= 0.0) {
                 continue;
             }
@@ -254,6 +264,12 @@ public final class BoatBuoyancySystem {
             damp.mul(wet * dt);
             pose.orientation().transform(damp);
             handle.addLinearAndAngularVelocity(new Vector3d(), damp);
+        }
+
+        if (HighSeasConfig.boatSelfRighting > 0.0) {
+            Vector3d up = pose.orientation().transform(new Vector3d(0.0, 1.0, 0.0));
+            Vector3d spin = new Vector3d(-up.z, 0.0, up.x).mul(HighSeasConfig.boatSelfRighting * wet * dt);
+            handle.addLinearAndAngularVelocity(new Vector3d(), spin);
         }
     }
 

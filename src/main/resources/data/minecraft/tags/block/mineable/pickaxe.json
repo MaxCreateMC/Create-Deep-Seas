@@ -19,6 +19,13 @@
     "create_submarine:sonar",
     "create_submarine:pump_controller",
     "create_high_seas:wind_vane",
-    "create_high_seas:rudder"
+    "create_high_seas:rudder",
+    "create_submarine:decompression_chamber",
+    "create_high_seas:anchor",
+    "create_high_seas:boat_engine",
+    "create_high_seas:buoy",
+    "create_abyss:geothermal_vent",
+    "create_abyss:foam_rock_geothermal_vent",
+    "create_abyss:deepslate_geothermal_vent"
   ]
 }

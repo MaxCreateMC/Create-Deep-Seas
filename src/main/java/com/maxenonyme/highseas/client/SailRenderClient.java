@@ -12,6 +12,8 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.level.block.Block;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
+import com.maxenonyme.highseas.ponder.HighSeasPonderPlugin;
+import net.createmod.ponder.foundation.PonderIndex;
 import net.neoforged.neoforge.client.ChunkRenderTypeSet;
 
 import java.util.List;
@@ -58,8 +60,12 @@ public final class SailRenderClient {
         ResourceLocation rudderLoc = ResourceLocation.fromNamespaceAndPath(CreateHighSeas.MOD_ID, "rudder");
         
         for (Map.Entry<ModelResourceLocation, BakedModel> entry : event.getModels().entrySet()) {
-            if (entry.getKey().id().equals(rudderLoc)) {
+            ResourceLocation id = entry.getKey().id();
+            if (id.equals(rudderLoc)) {
                 event.getModels().put(entry.getKey(), new RudderCopycatModel(entry.getValue()));
+            } else if (id.getNamespace().equals(CreateHighSeas.MOD_ID) && id.getPath().endsWith("_sail")
+                    && !ModelResourceLocation.INVENTORY_VARIANT.equals(entry.getKey().variant())) {
+                event.getModels().put(entry.getKey(), new SailTriangleModel(entry.getValue()));
             }
         }
     }
@@ -76,6 +82,7 @@ public final class SailRenderClient {
             ItemBlockRenderTypes.setRenderLayer(CreateHighSeas.RUDDER.get(), ChunkRenderTypeSet.all());
             fixChunkRenderTypeSet();
         });
+        PonderIndex.addPlugin(new HighSeasPonderPlugin());
     }
 
     private static void fixChunkRenderTypeSet() {

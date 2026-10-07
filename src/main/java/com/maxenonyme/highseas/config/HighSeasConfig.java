@@ -15,7 +15,7 @@ public final class HighSeasConfig {
 
     public static double sailHullSpeed = 4.0;
     public static double sailMaxSpeed = 14.0;
-    public static double sailUpwindEfficiency = 0.6;
+    public static double sailUpwindEfficiency = 0.1;
     public static double sailCanvasNeeded = 0.2;
     public static double sailResponseTime = 5.0;
     public static int sailScanInterval = 20;
@@ -28,11 +28,14 @@ public final class HighSeasConfig {
 
     public static double seaglideThrust = 0.045;
     public static double seaglideMaxSwim = 0.45;
+    public static double seaglideFlightSpeed = 0.425;
 
     public static double buoyRise = 9.0;
     public static double buoySink = 6.0;
 
     public static double anchorMass = 2000.0;
+
+    public static double boatSelfRighting = 4.0;
 
     public static int sailSubdivisions = 4;
     public static boolean seaglideScreenEffects = true;
@@ -61,11 +64,13 @@ public final class HighSeasConfig {
 
     private static final ModConfigSpec.DoubleValue SEAGLIDE_THRUST;
     private static final ModConfigSpec.DoubleValue SEAGLIDE_MAX_SWIM;
+    private static final ModConfigSpec.DoubleValue SEAGLIDE_FLIGHT_SPEED;
 
     private static final ModConfigSpec.DoubleValue BUOY_RISE;
     private static final ModConfigSpec.DoubleValue BUOY_SINK;
 
     private static final ModConfigSpec.DoubleValue ANCHOR_MASS;
+    private static final ModConfigSpec.DoubleValue BOAT_SELF_RIGHTING;
 
     private static final ModConfigSpec.IntValue SAIL_SUBDIVISIONS;
     private static final ModConfigSpec.BooleanValue SEAGLIDE_SCREEN_EFFECTS;
@@ -104,9 +109,10 @@ public final class HighSeasConfig {
                 .comment("Speed no sailing ship can go past, however big it is, in m/s.")
                 .defineInRange("sailMaxSpeed", 14.0, 0.5, 30.0);
         SAIL_UPWIND_EFFICIENCY = server
-                .comment("Share of its speed a ship keeps when sailing straight into the wind.",
-                        "0 = dead in the water against the wind, 1 = heading no longer matters.")
-                .defineInRange("sailUpwindEfficiency", 0.6, 0.0, 1.0);
+                .comment("Share of its speed a ship keeps on a heading none of its sails can use,",
+                        "such as square sails beating upwind or any sail straight into the wind.",
+                        "0 = dead in the water, 1 = heading and rig no longer matter.")
+                .defineInRange("sailUpwindEfficiency", 0.1, 0.0, 1.0);
         SAIL_CANVAS_NEEDED = server
                 .comment("How much canvas a ship needs for its size to reach full speed.",
                         "Higher means big ships need more sails before they get going.")
@@ -118,6 +124,13 @@ public final class HighSeasConfig {
                 .comment("Ticks between two sweeps looking for sails on a ship.",
                         "Higher is cheaper but slower to notice a sail being added or removed.")
                 .defineInRange("sailRescanInterval", 20, 1, 200);
+        server.pop();
+
+        server.push("hull");
+        BOAT_SELF_RIGHTING = server
+                .comment("How hard a floating boat swings back upright, like a weighted keel, in rad/s² at a full side tilt.",
+                        "Keeps tall masts from tipping narrow hulls over. 0 leaves only the buoyancy of the hold.")
+                .defineInRange("selfRighting", 4.0, 0.0, 20.0);
         server.pop();
 
         server.push("boatEngine");
@@ -146,6 +159,10 @@ public final class HighSeasConfig {
                 .comment("Top speed under the seaglide, in blocks per tick.",
                         "0.45 is about 9 blocks per second.")
                 .defineInRange("seaglideMaxSpeed", 0.45, 0.0, 5.0);
+        SEAGLIDE_FLIGHT_SPEED = server
+                .comment("Speed the seaglide pulls you to while gliding with an elytra, in blocks per tick.",
+                        "0.425 is about 8.5 blocks per second, a quarter of the speed of a firework rocket (about 1.7).")
+                .defineInRange("seaglideFlightSpeed", 0.425, 0.0, 5.0);
         server.pop();
 
         server.push("buoy");
@@ -216,11 +233,14 @@ public final class HighSeasConfig {
 
         seaglideThrust = SEAGLIDE_THRUST.get();
         seaglideMaxSwim = SEAGLIDE_MAX_SWIM.get();
+        seaglideFlightSpeed = SEAGLIDE_FLIGHT_SPEED.get();
 
         buoyRise = BUOY_RISE.get();
         buoySink = BUOY_SINK.get();
 
         anchorMass = ANCHOR_MASS.get();
+
+        boatSelfRighting = BOAT_SELF_RIGHTING.get();
     }
 
     private static void pullClient() {

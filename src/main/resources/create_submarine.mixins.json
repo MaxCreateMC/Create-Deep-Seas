@@ -21,6 +21,8 @@
     "compat.copycat.CopycatWrenchMixin"
   ],
   "client": [
+    "vanilla.BlockRenderDispatcherFluidMixin",
+    "vanilla.TerrainOcclusionMixin",
     "ClientRopeStrandMixin",
     "EntityPocketFogMixin",
     "FluidRenderHelperBuilderMixin",
@@ -44,6 +46,7 @@
     "compat.VeilShaderIncludeFixMixin",
     "compat.sable.SableSubLevelBEFogMixin",
     "compat.sable.SableSubLevelPocketFogMixin",
+    "compat.sable.SingleBlockSubLevelLightMixin",
     "compat.sable.VanillaSubLevelRenderDispatcherMixin",
     "compat.sable.SableWaterOcclusionPreProcessorMixin",
     "compat.sable.SableSnapshotPacketMixin",

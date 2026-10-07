@@ -1,4 +1,5 @@
 {
+  "create_submarine.ui.button.later": "之后再说",
   "block.create_submarine.ballast_tank": "潜艇压载水罐",
   "block.create_submarine.ballast_vent": "压载排口",
   "block.create_submarine.decompression_chamber": "减压舱",
@@ -136,10 +137,6 @@
   "create_submarine.update.message": "机械动力：深海的新版本可用：v%s！可前往 %s 下载。",
   "create_submarine.update.message_screen": "机械动力：深海新版本可用：v%s",
   "create_submarine.update.title": "机械动力：深海更新",
-  "create_submarine.welcome.configure": "设定模组",
-  "create_submarine.welcome.dismiss": "之后再说",
-  "create_submarine.welcome.message": "强烈建议您在下潜之前调整深海偏好设定——船体强度、推进力、海洋深度以及更多内容都可以根据您的喜好调整。",
-  "create_submarine.welcome.title": "欢迎来到机械动力：深海",
   "death.attack.create_submarine.suffocation": "%1$s在浓烟中窒息而死",
   "effect.create_submarine.suffocation": "窒息",
   "fluid.create_submarine.oxygen": "氧气",

@@ -33,7 +33,6 @@ public class CreateAbyss {
             .create(BuiltInRegistries.BLOCK_ENTITY_TYPE, MOD_ID);
     public static final boolean DEV_ONLY = true;
 
-    public static final Supplier<Item> MUSIC_DISC_HIDDEN_BETWEEN_FLUENT_WATERS = musicDisc("hidden_between_fluent_waters");
     public static final Supplier<Item> MUSIC_DISC_SEAFOAM = musicDisc("seafoam");
     public static final Supplier<Item> MUSIC_DISC_SNELLS_WINDOW = musicDisc("snells_window");
 
@@ -47,9 +46,17 @@ public class CreateAbyss {
                     .displayItems((parameters, output) -> {
                         output.accept(EntityRegistry.AMPHISTIUM_SPAWN_EGG.get());
                         output.accept(EntityRegistry.COOKIECUTTER_SHARK_SPAWN_EGG.get());
-                        output.accept(MUSIC_DISC_HIDDEN_BETWEEN_FLUENT_WATERS.get());
+                        output.accept(EntityRegistry.MAGMATIC_SNAIL_SPAWN_EGG.get());
+                        output.accept(EntityRegistry.ISOPOD_SPAWN_EGG.get());
+                        output.accept(EntityRegistry.ABYSSAL_CUTTLEFISH_SPAWN_EGG.get());
+                        output.accept(EntityRegistry.PELICAN_EEL_SPAWN_EGG.get());
+                        output.accept(GeothermalRegistry.GEOTHERMAL_VENT_ITEM.get());
+                        output.accept(GeothermalRegistry.FOAM_ROCK_GEOTHERMAL_VENT_ITEM.get());
+                        output.accept(GeothermalRegistry.DEEPSLATE_GEOTHERMAL_VENT_ITEM.get());
                         output.accept(MUSIC_DISC_SEAFOAM.get());
                         output.accept(MUSIC_DISC_SNELLS_WINDOW.get());
+                        if (com.maxenonyme.createsubmarine.CreateSubmarine.SUBMARINE_STAFF_ENABLED)
+                            output.accept(com.maxenonyme.createsubmarine.CreateSubmarine.SUBMARINE_STAFF.get());
                     })
                     .build());
 
@@ -59,13 +66,16 @@ public class CreateAbyss {
             return;
         }
         LianaRegistry.init();
+        GeothermalRegistry.init();
         EntityRegistry.init(modEventBus);
+        com.maxenonyme.AbyssDimension.experimental.worldgen.ExperimentalWorldgen.init(modEventBus);
         BLOCKS.register(modEventBus);
         ITEMS.register(modEventBus);
         BLOCK_ENTITIES.register(modEventBus);
         CREATIVE_MODE_TABS.register(modEventBus);
         modEventBus.addListener(this::registerPayloads);
         NeoForge.EVENT_BUS.addListener(com.maxenonyme.AbyssDimension.system.LianaLODOptimizer::onServerTick);
+        NeoForge.EVENT_BUS.addListener(com.maxenonyme.AbyssDimension.system.GeothermalBreathing::onPlayerTick);
         NeoForge.EVENT_BUS.addListener(com.maxenonyme.AbyssDimension.system.SubmarineLianaCommand::onServerTick);
         NeoForge.EVENT_BUS.addListener(com.maxenonyme.AbyssDimension.system.SubmarineLianaCommand::register);
 

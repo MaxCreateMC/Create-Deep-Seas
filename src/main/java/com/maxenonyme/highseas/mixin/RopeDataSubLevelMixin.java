@@ -25,6 +25,6 @@ public class RopeDataSubLevelMixin {
         if (!(access instanceof SubLevel sub) || sub.getPlot() == null) {
             return null;
         }
-        return sub.getPlot().getEmbeddedLevelAccessor().getBlockEntity(pos);
+        return sub.getPlot().getEmbeddedLevelAccessor().getBlockEntity(pos.subtract(sub.getPlot().getCenterBlock()));
     }
 }

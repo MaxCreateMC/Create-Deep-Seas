@@ -87,6 +87,9 @@ public class CreateSubmarine {
                         .register("ocean_depth_offset",
                                         () -> com.maxenonyme.createsubmarine.worldgen.OceanDepthOffset.CODEC);
 
+        public static final net.minecraft.tags.TagKey<net.minecraft.world.level.material.Fluid> OXYGEN_TAG = net.minecraft.tags.TagKey
+                        .create(Registries.FLUID, ResourceLocation.fromNamespaceAndPath(MOD_ID, "oxygen"));
+
         public static final net.neoforged.neoforge.registries.DeferredHolder<FluidType, FluidType> OXYGEN_TYPE = FLUID_TYPES
                         .register("oxygen",
                                         () -> new FluidType(net.neoforged.neoforge.fluids.FluidType.Properties.create()
@@ -310,7 +313,7 @@ public class CreateSubmarine {
                                         COPPER_PRESSURIZER.get(), new Item.Properties()));
 
         public static final Supplier<Block> FLOATER = BLOCKS.register("floater",
-                        () -> new FloaterBlock(BlockBehaviour.Properties.ofFullCopy(Blocks.WHITE_WOOL).noOcclusion()));
+                        () -> new FloaterBlock(BlockBehaviour.Properties.ofFullCopy(Blocks.WHITE_WOOL)));
         public static final Supplier<Item> FLOATER_ITEM = ITEMS.register("floater",
                         () -> new FloaterItem(FLOATER.get(),
                                         new Item.Properties()));
@@ -324,6 +327,9 @@ public class CreateSubmarine {
         public static final Supplier<Item> STEEL_CABLE = ITEMS.register("steel_cable",
                         () -> new SteelCableItem(
                                         new net.minecraft.world.item.Item.Properties()));
+        public static final Supplier<Item> PRESSURE_GOGGLES = ITEMS.register("pressure_goggles",
+                        () -> new com.maxenonyme.createsubmarine.submarine.item.PressureGogglesItem(
+                                        new net.minecraft.world.item.Item.Properties().stacksTo(1)));
         public static final boolean SUBMARINE_STAFF_ENABLED = !net.neoforged.fml.loading.FMLEnvironment.production;
         public static final Supplier<Item> SUBMARINE_STAFF = SUBMARINE_STAFF_ENABLED
                         ? ITEMS.register("submarine_staff",
@@ -394,10 +400,14 @@ public class CreateSubmarine {
                 DENSITY_FUNCTIONS.register(modEventBus);
                 CONDITION_CODECS.register(modEventBus);
                 SubmarineDisplaySources.register(modEventBus);
+                com.simibubi.create.content.equipment.goggles.GogglesItem.addIsWearingPredicate(
+                                com.maxenonyme.createsubmarine.submarine.item.PressureGogglesItem::isWearing);
                 modEventBus.addListener(this::onCommonSetup);
                 modEventBus.addListener(this::onConfigLoaded);
                 modEventBus.addListener(this::registerPayloads);
                 NeoForge.EVENT_BUS.addListener(SubmarinePressureSystem::onServerTick);
+                NeoForge.EVENT_BUS.addListener(com.maxenonyme.createsubmarine.submarine.system.GirderFailure::onServerTick);
+                NeoForge.EVENT_BUS.addListener(com.maxenonyme.createsubmarine.submarine.system.SubLevelFireSystem::onServerTick);
                 NeoForge.EVENT_BUS.addListener(SubmarinePressureSystem::onBlockBroken);
                 NeoForge.EVENT_BUS.addListener(SubmarineSinkingSystem::onServerTick);
                 NeoForge.EVENT_BUS.addListener(com.maxenonyme.createsubmarine.submarine.system.ImplosionSequence::onServerTick);
@@ -461,6 +471,26 @@ public class CreateSubmarine {
                                 com.maxenonyme.createsubmarine.submarine.network.CommandSubPayload.TYPE,
                                 com.maxenonyme.createsubmarine.submarine.network.CommandSubPayload.CODEC,
                                 com.maxenonyme.createsubmarine.submarine.network.CommandSubPayload::handle);
+                registrar.playToClient(
+                                com.maxenonyme.createsubmarine.submarine.network.AlarmOpenPayload.TYPE,
+                                com.maxenonyme.createsubmarine.submarine.network.AlarmOpenPayload.CODEC,
+                                com.maxenonyme.createsubmarine.submarine.network.AlarmOpenPayload::handle);
+                registrar.playToServer(
+                                com.maxenonyme.createsubmarine.submarine.network.AlarmConfigurePayload.TYPE,
+                                com.maxenonyme.createsubmarine.submarine.network.AlarmConfigurePayload.CODEC,
+                                com.maxenonyme.createsubmarine.submarine.network.AlarmConfigurePayload::handle);
+                registrar.playToServer(
+                                com.maxenonyme.createsubmarine.submarine.network.AlarmSoundRequestPayload.TYPE,
+                                com.maxenonyme.createsubmarine.submarine.network.AlarmSoundRequestPayload.CODEC,
+                                com.maxenonyme.createsubmarine.submarine.network.AlarmSoundRequestPayload::handle);
+                registrar.playToClient(
+                                com.maxenonyme.createsubmarine.submarine.network.AlarmSoundChunkPayload.TYPE,
+                                com.maxenonyme.createsubmarine.submarine.network.AlarmSoundChunkPayload.CODEC,
+                                com.maxenonyme.createsubmarine.submarine.network.AlarmSoundChunkPayload::handle);
+                registrar.playToServer(
+                                com.maxenonyme.createsubmarine.submarine.network.PressureModePayload.TYPE,
+                                com.maxenonyme.createsubmarine.submarine.network.PressureModePayload.CODEC,
+                                com.maxenonyme.createsubmarine.submarine.network.PressureModePayload::handle);
                 registrar.playToServer(
                                 com.maxenonyme.createsubmarine.submarine.network.ElectrolyzerTogglePayload.TYPE,
                                 com.maxenonyme.createsubmarine.submarine.network.ElectrolyzerTogglePayload.CODEC,
@@ -609,38 +639,27 @@ public class CreateSubmarine {
                         Map<ResourceLocation, ResourceLocation> itemToSection = (Map<ResourceLocation, ResourceLocation>) regClass
                                         .getField("ITEM_TO_SECTION").get(null);
 
-                        tabItems.add(CREATIVE_OXYGENATOR_ITEM::get);
-                        tabItems.add(BALLAST_TANK_ITEM::get);
-                        tabItems.add(BALLAST_VENT_ITEM::get);
-                        tabItems.add(DECOMPRESSION_CHAMBER_ITEM::get);
-                        tabItems.add(OXYGENE_DIFFUSER_ITEM::get);
                         ResourceLocation subSection = ResourceLocation.fromNamespaceAndPath(MOD_ID, "submarine");
-                        itemToSection.put(ResourceLocation.fromNamespaceAndPath(MOD_ID, "creative_oxygenator"),
-                                        subSection);
+                        tabItems.add(CREATIVE_OXYGENATOR_ITEM::get);
+                        itemToSection.put(ResourceLocation.fromNamespaceAndPath(MOD_ID, "creative_oxygenator"), subSection);
+                        tabItems.add(BALLAST_TANK_ITEM::get);
                         itemToSection.put(ResourceLocation.fromNamespaceAndPath(MOD_ID, "ballast_tank"), subSection);
+                        tabItems.add(BALLAST_VENT_ITEM::get);
                         itemToSection.put(ResourceLocation.fromNamespaceAndPath(MOD_ID, "ballast_vent"), subSection);
-                        itemToSection.put(ResourceLocation.fromNamespaceAndPath(MOD_ID, "decompression_chamber"),
-                                        subSection);
-                        itemToSection.put(ResourceLocation.fromNamespaceAndPath(MOD_ID, "oxygene_diffuser"),
-                                        subSection);
+                        tabItems.add(DECOMPRESSION_CHAMBER_ITEM::get);
+                        itemToSection.put(ResourceLocation.fromNamespaceAndPath(MOD_ID, "decompression_chamber"), subSection);
+                        tabItems.add(OXYGENE_DIFFUSER_ITEM::get);
+                        itemToSection.put(ResourceLocation.fromNamespaceAndPath(MOD_ID, "oxygene_diffuser"), subSection);
                         tabItems.add(ELECTROLYZER_ITEM::get);
                         itemToSection.put(ResourceLocation.fromNamespaceAndPath(MOD_ID, "electrolyzer"), subSection);
                         tabItems.add(WATER_THRUSTER_ITEM::get);
                         itemToSection.put(ResourceLocation.fromNamespaceAndPath(MOD_ID, "water_thruster"), subSection);
                         tabItems.add(IRON_PRESSURIZER_ITEM::get);
-                        itemToSection.put(ResourceLocation.fromNamespaceAndPath(MOD_ID, "iron_pressurizer"),
-                                        subSection);
+                        itemToSection.put(ResourceLocation.fromNamespaceAndPath(MOD_ID, "iron_pressurizer"), subSection);
                         tabItems.add(COPPER_PRESSURIZER_ITEM::get);
-                        itemToSection.put(ResourceLocation.fromNamespaceAndPath(MOD_ID, "copper_pressurizer"),
-                                        subSection);
+                        itemToSection.put(ResourceLocation.fromNamespaceAndPath(MOD_ID, "copper_pressurizer"), subSection);
                         tabItems.add(FLOATER_ITEM::get);
                         itemToSection.put(ResourceLocation.fromNamespaceAndPath(MOD_ID, "floater"), subSection);
-                        tabItems.add(PHYCOLOGICAL_MEMBRANE::get);
-                        itemToSection.put(ResourceLocation.fromNamespaceAndPath(MOD_ID, "phycological_membrane"),
-                                        subSection);
-                        tabItems.add(OXYGEN_BUCKET::get);
-                        itemToSection.put(ResourceLocation.fromNamespaceAndPath(MOD_ID, "oxygen_bucket"),
-                                        subSection);
                         tabItems.add(STEEL_CABLE::get);
                         itemToSection.put(ResourceLocation.fromNamespaceAndPath(MOD_ID, "steel_cable"), subSection);
                         tabItems.add(PULLEY_ITEM::get);
@@ -648,8 +667,7 @@ public class CreateSubmarine {
                         tabItems.add(UNDERWATER_MINE_ITEM::get);
                         itemToSection.put(ResourceLocation.fromNamespaceAndPath(MOD_ID, "underwater_mine"), subSection);
                         tabItems.add(SUBMARINE_PROPELLER_ITEM::get);
-                        itemToSection.put(ResourceLocation.fromNamespaceAndPath(MOD_ID, "submarine_propeller"),
-                                        subSection);
+                        itemToSection.put(ResourceLocation.fromNamespaceAndPath(MOD_ID, "submarine_propeller"), subSection);
                         tabItems.add(BAROMETER_ITEM::get);
                         itemToSection.put(ResourceLocation.fromNamespaceAndPath(MOD_ID, "barometer"), subSection);
                         tabItems.add(COMMAND_SUB_ITEM::get);
@@ -662,10 +680,12 @@ public class CreateSubmarine {
                         itemToSection.put(ResourceLocation.fromNamespaceAndPath(MOD_ID, "pump_controller"), subSection);
                         tabItems.add(ARRESTING_HOOK_ITEM::get);
                         itemToSection.put(ResourceLocation.fromNamespaceAndPath(MOD_ID, "arresting_hook"), subSection);
-                        if (SUBMARINE_STAFF_ENABLED) {
-                                tabItems.add(SUBMARINE_STAFF::get);
-                                itemToSection.put(ResourceLocation.fromNamespaceAndPath(MOD_ID, "submarine_staff"), subSection);
-                        }
+                        tabItems.add(PHYCOLOGICAL_MEMBRANE::get);
+                        itemToSection.put(ResourceLocation.fromNamespaceAndPath(MOD_ID, "phycological_membrane"), subSection);
+                        tabItems.add(OXYGEN_BUCKET::get);
+                        itemToSection.put(ResourceLocation.fromNamespaceAndPath(MOD_ID, "oxygen_bucket"), subSection);
+                        tabItems.add(PRESSURE_GOGGLES::get);
+                        itemToSection.put(ResourceLocation.fromNamespaceAndPath(MOD_ID, "pressure_goggles"), subSection);
                 } catch (Exception ignored) {
                 }
         }

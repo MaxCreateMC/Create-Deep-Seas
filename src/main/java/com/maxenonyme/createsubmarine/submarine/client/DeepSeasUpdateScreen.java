@@ -48,8 +48,7 @@ public class DeepSeasUpdateScreen extends Screen {
         if (!(event.getNewScreen() instanceof TitleScreen menu)) {
             return;
         }
-        if (!SubmarineConfig.CLIENT_SPEC.isLoaded() || !SubmarineClientState.hasSeenWelcomeScreen()
-                || !SubmarineClientState.hasSeenSafetyScreen()) {
+        if (!SubmarineConfig.CLIENT_SPEC.isLoaded() || !SubmarineClientState.hasSeenSafetyScreen()) {
             return;
         }
         if (SubmarineConfig.DISABLE_STARTUP_SCREENS.get()) {
@@ -141,7 +140,7 @@ public class DeepSeasUpdateScreen extends Screen {
                 .build());
 
         addRenderableWidget(Button.builder(
-                        Component.translatable("create_submarine.welcome.dismiss"),
+                        Component.translatable("create_submarine.ui.button.later"),
                         b -> { markAsSeenAndClose(); })
                 .bounds(centerX + gap / 2, buttonsY, buttonW, 20)
                 .build());

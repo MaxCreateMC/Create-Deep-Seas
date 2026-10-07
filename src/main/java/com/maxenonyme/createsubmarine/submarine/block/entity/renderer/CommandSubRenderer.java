@@ -1,5 +1,8 @@
 package com.maxenonyme.createsubmarine.submarine.block.entity.renderer;
 
+import java.util.HashMap;
+import java.util.Map;
+import net.minecraft.locale.Language;
 import com.maxenonyme.createsubmarine.submarine.block.CommandSubBlock;
 import com.maxenonyme.createsubmarine.submarine.block.entity.CommandSubBlockEntity;
 import com.maxenonyme.createsubmarine.submarine.block.entity.SonarBlockEntity;
@@ -152,7 +155,7 @@ public class CommandSubRenderer implements BlockEntityRenderer<CommandSubBlockEn
 
         fill(ms, buffer, 44, 4, 44.6f, 108, 0.5f, DULL, light);
 
-        text(ms, buffer, font, Component.translatable("create_submarine.command_sub.target").getString(),
+        text(ms, buffer, font, tr("create_submarine.command_sub.target"),
                 5, 5, 0.6f, INK, light, false);
         String typed = CommandSubClientHandler.typedFor(be);
         boolean fieldHover = typed == null && hovered == CommandSubClientHandler.FIELD;
@@ -162,7 +165,7 @@ public class CommandSubRenderer implements BlockEntityRenderer<CommandSubBlockEn
         text(ms, buffer, font, shown, (FIELD[0] + FIELD[2]) / 2, FIELD[1] + 4, 1f,
                 fieldHover ? PAPER : INK, light, true);
 
-        text(ms, buffer, font, Component.translatable("create_submarine.command_sub.speed").getString(),
+        text(ms, buffer, font, tr("create_submarine.command_sub.speed"),
                 5, 36, 0.6f, INK, light, false);
         for (int i = 0; i < 3; i++) {
             float[] r = SPEEDS[i];
@@ -170,24 +173,24 @@ public class CommandSubRenderer implements BlockEntityRenderer<CommandSubBlockEn
             boolean selected = be.speedMode == i;
             int back = hover ? INK : selected ? DULL : PAPER;
             box(ms, buffer, r, back, selected || hover ? LINE : BUTTON, light);
-            String label = Component.translatable("create_submarine.command_sub.speed." + SPEED_NAMES[i]).getString();
+            String label = tr("create_submarine.command_sub.speed." + SPEED_NAMES[i]);
             float scale = Math.min(0.75f, (r[2] - r[0] - 4) / font.width(label));
             text(ms, buffer, font, label, (r[0] + r[2]) / 2, (r[1] + r[3]) / 2 - 4.5f * scale, scale,
                     hover ? PAPER : INK, light, true);
         }
 
-        text(ms, buffer, font, Component.translatable("create_submarine.command_sub.vertical").getString(),
+        text(ms, buffer, font, tr("create_submarine.command_sub.vertical"),
                 5, 93, 0.6f, INK, light, false);
         text(ms, buffer, font, String.format(Locale.ROOT, "%+.1f m/s", be.shownVs), 5, 100, 0.75f, INK, light, false);
 
         drawTape(be, depth, ms, buffer, font, light);
 
         String ballast = be.syncedFill < 0
-                ? Component.translatable("create_submarine.command_sub.no_ballast").getString()
+                ? tr("create_submarine.command_sub.no_ballast")
                 : Component.translatable("create_submarine.command_sub.ballast", be.syncedFill).getString();
         text(ms, buffer, font, ballast, 123, 7, 0.5f, INK, light, false, true);
         String pumps = be.syncedPumps == 0
-                ? Component.translatable("create_submarine.command_sub.pump.none").getString()
+                ? tr("create_submarine.command_sub.pump.none")
                 : Component.translatable("create_submarine.command_sub.pump." + PUMP_STATES[Math.max(0, Math.min(2, be.syncedStatus))],
                         be.syncedPumps).getString();
         text(ms, buffer, font, pumps, 123, 12.5f, 0.5f, be.syncedPumps == 0 ? DANGER : INK, light, false, true);
@@ -207,7 +210,7 @@ public class CommandSubRenderer implements BlockEntityRenderer<CommandSubBlockEn
 
     private static void drawAutopilot(CommandSubBlockEntity be, int hovered, PoseStack ms, MultiBufferSource buffer,
             Font font, int light) {
-        text(ms, buffer, font, Component.translatable("create_submarine.command_sub.tab.autopilot").getString(),
+        text(ms, buffer, font, tr("create_submarine.command_sub.tab.autopilot"),
                 5, 5, 0.6f, INK, light, false);
         boolean sonar = SonarBlockEntity.onSameSub(be) != null;
         boolean hover = sonar && hovered == CommandSubClientHandler.AUTOPILOT;
@@ -215,8 +218,8 @@ public class CommandSubRenderer implements BlockEntityRenderer<CommandSubBlockEn
         int border = !sonar ? DULL : hover || be.autopilot ? INK : LINE;
         int ink = !sonar ? DULL : hover ? PAPER : INK;
         box(ms, buffer, AUTO, back, border, light);
-        String label = Component.translatable(be.autopilot && sonar ? "create_submarine.command_sub.autopilot.on"
-                : "create_submarine.command_sub.autopilot.off").getString();
+        String label = tr(be.autopilot && sonar ? "create_submarine.command_sub.autopilot.on"
+                : "create_submarine.command_sub.autopilot.off");
         float scale = Math.min(0.7f, (AUTO[2] - AUTO[0] - 4) / font.width(label));
         text(ms, buffer, font, label, (AUTO[0] + AUTO[2]) / 2, (AUTO[1] + AUTO[3]) / 2 - 4.5f * scale, scale, ink, light,
                 true);
@@ -224,12 +227,12 @@ public class CommandSubRenderer implements BlockEntityRenderer<CommandSubBlockEn
         String status;
         int color = INK;
         if (!sonar) {
-            status = Component.translatable("create_submarine.command_sub.no_sonar").getString();
+            status = tr("create_submarine.command_sub.no_sonar");
             color = DANGER;
         } else if (!be.autopilot) {
-            status = Component.translatable("create_submarine.command_sub.autopilot.idle").getString();
+            status = tr("create_submarine.command_sub.autopilot.idle");
         } else if (be.syncedAutoTarget < 0) {
-            status = Component.translatable("create_submarine.command_sub.autopilot.no_floor").getString();
+            status = tr("create_submarine.command_sub.autopilot.no_floor");
         } else {
             status = Component.translatable("create_submarine.command_sub.autopilot.following", be.syncedAutoTarget)
                     .getString();
@@ -250,7 +253,7 @@ public class CommandSubRenderer implements BlockEntityRenderer<CommandSubBlockEn
 
     private static void drawDiagnostic(CommandSubBlockEntity be, boolean hover, PoseStack ms, MultiBufferSource buffer,
             Font font, int light) {
-        text(ms, buffer, font, Component.translatable("create_submarine.command_sub.tab.diagnostic").getString(),
+        text(ms, buffer, font, tr("create_submarine.command_sub.tab.diagnostic"),
                 5, 5, 0.6f, INK, light, false);
         if (scanning(be)) {
             drawScan(be, ms, buffer, font, light);
@@ -261,11 +264,11 @@ public class CommandSubRenderer implements BlockEntityRenderer<CommandSubBlockEn
             box(ms, buffer, DIAG_RUN, hover ? INK : PAPER, hover ? INK : LINE, light, 0.6f);
             box(ms, buffer, new float[] { DIAG_RUN[0] + 1.4f, DIAG_RUN[1] + 1.4f, DIAG_RUN[2] - 1.4f, DIAG_RUN[3] - 1.4f },
                     hover ? INK : PAPER, hover ? PAPER : BUTTON, light, 0.9f);
-            String run = Component.translatable("create_submarine.command_sub.diag.run").getString();
+            String run = tr("create_submarine.command_sub.diag.run");
             float scale = Math.min(0.7f, (DIAG_RUN[2] - DIAG_RUN[0] - 8) / font.width(run));
             text(ms, buffer, font, run, (DIAG_RUN[0] + DIAG_RUN[2]) / 2, (DIAG_RUN[1] + DIAG_RUN[3]) / 2 - 4.5f * scale,
                     scale, hover ? PAPER : INK, light, true);
-            String[] hint = Component.translatable("create_submarine.command_sub.diag.hint").getString().split("\n");
+            String[] hint = tr("create_submarine.command_sub.diag.hint").split("\n");
             for (int i = 0; i < hint.length; i++)
                 text(ms, buffer, font, hint[i], 64, 72 + i * 5, 0.45f, BUTTON, light, true);
             drawTank(ms, buffer, light);
@@ -273,10 +276,10 @@ public class CommandSubRenderer implements BlockEntityRenderer<CommandSubBlockEn
         }
 
         box(ms, buffer, DIAG_RERUN, hover ? INK : PAPER, hover ? INK : LINE, light, 0.6f);
-        text(ms, buffer, font, Component.translatable("create_submarine.command_sub.diag.rerun").getString(),
+        text(ms, buffer, font, tr("create_submarine.command_sub.diag.rerun"),
                 (DIAG_RERUN[0] + DIAG_RERUN[2]) / 2, DIAG_RERUN[1] + 2.2f, 0.5f, hover ? PAPER : INK, light, true);
         if (!report.onVessel()) {
-            text(ms, buffer, font, Component.translatable("create_submarine.command_sub.diag.no_vessel").getString(),
+            text(ms, buffer, font, tr("create_submarine.command_sub.diag.no_vessel"),
                     64, 52, 0.7f, DANGER, light, true);
             return;
         }
@@ -374,8 +377,7 @@ public class CommandSubRenderer implements BlockEntityRenderer<CommandSubBlockEn
 
         int step = Math.min(SCAN_STEPS.length - 1, (int) (progress * SCAN_STEPS.length));
         String dots = ".".repeat(1 + (int) ((elapsed / 300) % 3));
-        text(ms, buffer, font, Component.translatable("create_submarine.command_sub.diag.step." + SCAN_STEPS[step])
-                .getString() + dots, SCAN_BAR[0], SCAN_BAR[3] + 2.5f, 0.5f, INK, light, false);
+        text(ms, buffer, font, tr("create_submarine.command_sub.diag.step." + SCAN_STEPS[step]) + dots, SCAN_BAR[0], SCAN_BAR[3] + 2.5f, 0.5f, INK, light, false);
         for (int i = 0; i < SCAN_STEPS.length; i++) {
             float cx = 50 + i * 9;
             int color = i < step ? INK : i == step && (elapsed / 250) % 2 == 0 ? DANGER : DULL;
@@ -459,10 +461,10 @@ public class CommandSubRenderer implements BlockEntityRenderer<CommandSubBlockEn
     private static void drawSonar(CommandSubBlockEntity be, boolean hover, PoseStack ms, MultiBufferSource buffer,
             Font font, int light) {
         box(ms, buffer, SONAR, PAPER, LINE, light, 0.3f);
-        text(ms, buffer, font, Component.translatable("create_submarine.command_sub.tab.sonar").getString(),
+        text(ms, buffer, font, tr("create_submarine.command_sub.tab.sonar"),
                 SONAR[0] + 2, SONAR[1] + 2, 0.55f, INK, light, false);
         if (SonarBlockEntity.onSameSub(be) == null) {
-            text(ms, buffer, font, Component.translatable("create_submarine.command_sub.no_sonar").getString(),
+            text(ms, buffer, font, tr("create_submarine.command_sub.no_sonar"),
                     (SONAR[0] + SONAR[2]) / 2, (SONAR[1] + SONAR[3]) / 2 - 3, 0.7f, DANGER, light, true);
             return;
         }
@@ -472,7 +474,7 @@ public class CommandSubRenderer implements BlockEntityRenderer<CommandSubBlockEn
             picture(ms, buffer.getBuffer(picture), new float[] { SONAR[0] + 0.6f, SONAR[1] + 0.6f, SONAR[2] - 0.6f,
                     SONAR[3] - 0.6f }, 0.9f, light, scan.u0());
         drawExpand(hover, ms, buffer, light);
-        String mineLabel = Component.translatable("create_submarine.command_sub.mine").getString();
+        String mineLabel = tr("create_submarine.command_sub.mine");
         for (SonarContact contact : scan.contacts()) {
             float cx = SONAR[0] + (SONAR[2] - SONAR[0]) * contact.u();
             float cy = SONAR[1] + (SONAR[3] - SONAR[1]) * contact.v();
@@ -515,7 +517,7 @@ public class CommandSubRenderer implements BlockEntityRenderer<CommandSubBlockEn
                 fill(ms, buffer, 48, top, 124, TAPE_BOTTOM, 0.2f, DANGER_WASH, light);
                 if (limitY >= TAPE_TOP) {
                     fill(ms, buffer, 48, limitY, 124, limitY + 0.6f, 0.5f, DANGER, light);
-                    text(ms, buffer, font, Component.translatable("create_submarine.command_sub.limit").getString(),
+                    text(ms, buffer, font, tr("create_submarine.command_sub.limit"),
                             123, limitY + 1.5f, 0.5f, DANGER, light, false, true);
                 }
             }
@@ -538,7 +540,7 @@ public class CommandSubRenderer implements BlockEntityRenderer<CommandSubBlockEn
         if (surfaceY >= TAPE_TOP && surfaceY <= TAPE_BOTTOM) {
             for (float x = 48; x < 124; x += 4)
                 fill(ms, buffer, x, surfaceY - 0.3f, x + 2, surfaceY + 0.3f, 0.6f, LINE, light);
-            text(ms, buffer, font, Component.translatable("create_submarine.command_sub.surface").getString(),
+            text(ms, buffer, font, tr("create_submarine.command_sub.surface"),
                     123, surfaceY - 5, 0.5f, INK, light, false, true);
         }
 
@@ -631,6 +633,18 @@ public class CommandSubRenderer implements BlockEntityRenderer<CommandSubBlockEn
         vc.addVertex(pose, x0, y1, z).setColor(argb).setLight(light);
         vc.addVertex(pose, x1, y1, z).setColor(argb).setLight(light);
         vc.addVertex(pose, x1, y0, z).setColor(argb).setLight(light);
+    }
+
+    private static final Map<String, String> LABELS = new HashMap<>();
+    private static Language labelsFor;
+
+    private static String tr(String key) {
+        Language language = Language.getInstance();
+        if (language != labelsFor) {
+            LABELS.clear();
+            labelsFor = language;
+        }
+        return LABELS.computeIfAbsent(key, k -> Component.translatable(k).getString());
     }
 
     private static void text(PoseStack ms, MultiBufferSource buffer, Font font, String s, float x, float y, float scale,

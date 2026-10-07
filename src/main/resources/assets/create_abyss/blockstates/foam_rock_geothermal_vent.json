@@ -1,0 +1,10 @@
+{
+  "variants": {
+    "waterlogged=false": {
+      "model": "create_abyss:block/foam_rock_geothermal_vent"
+    },
+    "waterlogged=true": {
+      "model": "create_abyss:block/foam_rock_geothermal_vent"
+    }
+  }
+}

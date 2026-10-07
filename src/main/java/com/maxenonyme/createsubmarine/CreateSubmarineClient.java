@@ -19,6 +19,10 @@ import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
 import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
 import net.neoforged.neoforge.client.event.EntityRenderersEvent;
+import net.neoforged.neoforge.client.event.ModelEvent;
+import net.minecraft.client.resources.model.ModelResourceLocation;
+import net.minecraft.resources.ResourceLocation;
+import com.maxenonyme.createsubmarine.submarine.client.renderer.PressureGogglesModel;
 import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent;
 import net.neoforged.neoforge.client.gui.ConfigurationScreen;
 import net.neoforged.neoforge.client.gui.IConfigScreenFactory;
@@ -39,7 +43,6 @@ import com.maxenonyme.createsubmarine.submarine.client.CommandSubDiagram;
 import com.maxenonyme.createsubmarine.submarine.client.SonarView;
 import com.maxenonyme.createsubmarine.submarine.client.DeepSeasUpdateScreen;
 import com.maxenonyme.createsubmarine.submarine.client.DeepSeasSafetyScreen;
-import com.maxenonyme.createsubmarine.submarine.client.DeepSeasWelcomeScreen;
 import com.maxenonyme.createsubmarine.submarine.client.HullStrengthConfigScreen;
 import com.maxenonyme.createsubmarine.submarine.client.LithostitchedMissingScreen;
 import com.maxenonyme.createsubmarine.submarine.item.SubmarineStaffItemRenderer;
@@ -65,6 +68,7 @@ public final class CreateSubmarineClient {
         modEventBus.addListener(CreateSubmarineClient::onRegisterRenderers);
         modEventBus.addListener(CreateSubmarineClient::onRegisterScreens);
         modEventBus.addListener(CreateSubmarineClient::onRegisterClientExtensions);
+        modEventBus.addListener(CreateSubmarineClient::onModifyBakingResult);
         com.maxenonyme.createsubmarine.submarine.util.CrackUtil.setChecker(SubLevelCrackRenderer::hasCrack);
         com.maxenonyme.createsubmarine.submarine.network.ImplosionFxPayload.handler = (payload, context) -> context
                 .enqueueWork(() -> com.maxenonyme.createsubmarine.submarine.client.ImplosionCinematics.accept(payload));
@@ -86,8 +90,6 @@ public final class CreateSubmarineClient {
 
         modEventBus.addListener(WatermarkOverlay::register);
 
-        NeoForge.EVENT_BUS.addListener(
-                DeepSeasWelcomeScreen::onScreenOpening);
         NeoForge.EVENT_BUS.addListener(
                 DeepSeasSafetyScreen::onScreenOpening);
         NeoForge.EVENT_BUS.addListener(
@@ -197,6 +199,12 @@ public final class CreateSubmarineClient {
                         SubmarinePropellerVisual::new)
                 .skipVanillaRender(be -> true)
                 .apply();
+    }
+
+    private static void onModifyBakingResult(ModelEvent.ModifyBakingResult event) {
+        ModelResourceLocation key = ModelResourceLocation.inventory(
+                ResourceLocation.fromNamespaceAndPath(CreateSubmarine.MOD_ID, "pressure_goggles"));
+        event.getModels().computeIfPresent(key, (k, model) -> new PressureGogglesModel(model));
     }
 
     private static void onRegisterScreens(RegisterMenuScreensEvent event) {

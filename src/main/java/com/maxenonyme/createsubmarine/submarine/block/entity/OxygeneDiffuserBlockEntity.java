@@ -1,5 +1,6 @@
 package com.maxenonyme.createsubmarine.submarine.block.entity;
 
+import com.maxenonyme.createsubmarine.submarine.system.DiffuserZoneProtection;
 import com.maxenonyme.createsubmarine.CreateSubmarine;
 import com.maxenonyme.createsubmarine.submarine.compartment.CompartmentTracker;
 import com.maxenonyme.createsubmarine.submarine.system.SubmarineDriverRegistry;
@@ -47,7 +48,7 @@ public class OxygeneDiffuserBlockEntity extends BlockEntity implements IHaveGogg
     private static final int STARTUP_TICKS  = 100;
 
     public final FluidTank oxygenTank = new FluidTank(TANK_CAPACITY,
-            fluid -> fluid.getFluid().isSame(CreateSubmarine.OXYGEN.get())) {
+            fluid -> fluid.getFluid().is(CreateSubmarine.OXYGEN_TAG)) {
         @Override
         protected void onContentsChanged() {
             setChanged();
@@ -70,7 +71,7 @@ public class OxygeneDiffuserBlockEntity extends BlockEntity implements IHaveGogg
         LangBuilder mb = CreateLang.translate("generic.unit.millibuckets");
         CreateLang.translate("gui.goggles.fluid_container").forGoggles(tooltip);
 
-        FluidStack dummy = new FluidStack(CreateSubmarine.OXYGEN.get(), 1);
+        FluidStack dummy = oxygenTank.isEmpty() ? new FluidStack(CreateSubmarine.OXYGEN.get(), 1) : oxygenTank.getFluid();
         CreateLang.fluidName(dummy).style(ChatFormatting.GRAY).forGoggles(tooltip, 1);
 
         CreateLang.builder()
@@ -83,7 +84,7 @@ public class OxygeneDiffuserBlockEntity extends BlockEntity implements IHaveGogg
     }
 
     public static void tick(Level level, BlockPos pos, BlockState state, OxygeneDiffuserBlockEntity be) {
-        if (level == null) return;
+        if (level == null || DiffuserZoneProtection.evict(level, pos)) return;
 
         boolean canRun = level.hasNeighborSignal(pos) && be.oxygenTank.getFluidAmount() > 0;
 
@@ -102,8 +103,7 @@ public class OxygeneDiffuserBlockEntity extends BlockEntity implements IHaveGogg
 
             if (!level.isClientSide) {
                 if (gameTick % CONSUME_EVERY == 0) {
-                    be.oxygenTank.drain(new FluidStack(CreateSubmarine.OXYGEN.get(), CONSUME_AMOUNT),
-                            IFluidHandler.FluidAction.EXECUTE);
+                    be.oxygenTank.drain(CONSUME_AMOUNT, IFluidHandler.FluidAction.EXECUTE);
                     be.setChanged();
                 }
             }

@@ -1,5 +1,6 @@
 package com.maxenonyme.createsubmarine.submarine.block.entity;
 
+import com.maxenonyme.createsubmarine.submarine.system.DiffuserZoneProtection;
 import com.maxenonyme.createsubmarine.CreateSubmarine;
 import com.maxenonyme.createsubmarine.submarine.block.ElectrolyzerBlock;
 import com.simibubi.create.content.kinetics.base.KineticBlockEntity;
@@ -137,6 +138,8 @@ public class ElectrolyzerBlockEntity extends KineticBlockEntity {
     @Override
     public void tick() {
         super.tick();
+        if (DiffuserZoneProtection.evict(level, worldPosition))
+            return;
         BlockState state = getBlockState();
         if (level.isClientSide) {
             if (state.getValue(ElectrolyzerBlock.POWERED) && level.random.nextInt(5) == 0) {

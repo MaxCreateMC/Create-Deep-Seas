@@ -122,6 +122,13 @@ Surface naval content for Create Deep Seas. Coming soon.
     ordering="AFTER"
     side="BOTH"
 
+[[dependencies.${mod_id}]]
+    modId="sodium"
+    type="required"
+    versionRange="*"
+    ordering="NONE"
+    side="CLIENT"
+
 
 [[dependencies.${mod_id}]]
     modId="fusion"

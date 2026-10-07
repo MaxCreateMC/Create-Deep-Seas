@@ -1,0 +1,118 @@
+{
+  "cell_size": 5000,
+  "seed": 420691337,
+  "plates": [
+    {
+      "name": "pacific",
+      "vx": 0.6,
+      "vz": -0.3,
+      "mass": 1.0,
+      "oceanic": true,
+      "weight": 12.0
+    },
+    {
+      "name": "nazca",
+      "vx": 0.8,
+      "vz": 0.1,
+      "mass": 0.8,
+      "oceanic": true,
+      "weight": 8.0
+    },
+    {
+      "name": "north_american",
+      "vx": -0.3,
+      "vz": 0.2,
+      "mass": 2.5,
+      "oceanic": false,
+      "weight": 6.0
+    },
+    {
+      "name": "south_american",
+      "vx": -0.2,
+      "vz": -0.1,
+      "mass": 2.0,
+      "oceanic": false,
+      "weight": 5.0
+    },
+    {
+      "name": "eurasian",
+      "vx": -0.1,
+      "vz": 0.3,
+      "mass": 3.0,
+      "oceanic": false,
+      "weight": 7.0
+    },
+    {
+      "name": "african",
+      "vx": 0.1,
+      "vz": 0.2,
+      "mass": 2.0,
+      "oceanic": false,
+      "weight": 5.0
+    },
+    {
+      "name": "indian",
+      "vx": 0.4,
+      "vz": -0.2,
+      "mass": 1.5,
+      "oceanic": false,
+      "weight": 4.0
+    },
+    {
+      "name": "antarctic",
+      "vx": 0.0,
+      "vz": 0.0,
+      "mass": 3.0,
+      "oceanic": false,
+      "weight": 6.0
+    },
+    {
+      "name": "caribbean",
+      "vx": -0.1,
+      "vz": 0.5,
+      "mass": 0.5,
+      "oceanic": true,
+      "weight": 3.0
+    },
+    {
+      "name": "scotia",
+      "vx": 0.3,
+      "vz": 0.4,
+      "mass": 0.4,
+      "oceanic": true,
+      "weight": 2.0
+    },
+    {
+      "name": "arabian",
+      "vx": 0.2,
+      "vz": -0.1,
+      "mass": 0.6,
+      "oceanic": false,
+      "weight": 2.0
+    },
+    {
+      "name": "philippine_sea",
+      "vx": 0.5,
+      "vz": -0.4,
+      "mass": 0.3,
+      "oceanic": true,
+      "weight": 3.0
+    },
+    {
+      "name": "cocos",
+      "vx": 0.7,
+      "vz": 0.0,
+      "mass": 0.4,
+      "oceanic": true,
+      "weight": 2.0
+    },
+    {
+      "name": "juan_de_fuca",
+      "vx": 0.5,
+      "vz": 0.3,
+      "mass": 0.2,
+      "oceanic": true,
+      "weight": 1.0
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "variants": {
+    "waterlogged=false": {
+      "model": "create_abyss:block/deepslate_geothermal_vent"
+    },
+    "waterlogged=true": {
+      "model": "create_abyss:block/deepslate_geothermal_vent"
+    }
+  }
+}

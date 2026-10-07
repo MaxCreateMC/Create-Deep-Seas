@@ -16,5 +16,13 @@
         "stream": false
       }
     ]
+  },
+  "music_disc.hidden_between_fluent_waters": {
+    "sounds": [
+      {
+        "name": "create_high_seas:musics/hidden_between_fluent_waters",
+        "stream": true
+      }
+    ]
   }
 }
