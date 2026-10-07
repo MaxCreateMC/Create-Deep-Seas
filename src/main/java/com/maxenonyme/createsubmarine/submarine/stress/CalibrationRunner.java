@@ -9,29 +9,31 @@ import java.util.*;
  * Run via Gradle:
  *   ./gradlew run -PmainClass=com.maxenonyme.createsubmarine.submarine.stress.CalibrationRunner
  *
- * Or from IDE: right-click → Run 'CalibrationRunner.main()'
+ * Or from IDE: right-click â†’ Run 'CalibrationRunner.main()'
  */
 public class CalibrationRunner {
 
     public static void main(String[] args) {
-        // Test geometries: (width, height, length, hollow)
+        // Test geometries: (width, height, length, hollow, ribbed)
         final int[][] geo = {
-            {3, 3, 5, 0},   // solid 3×3×5
-            {3, 3, 5, 1},   // hollow 3×3×5
-            {5, 5, 5, 0},   // solid 5×5×5
-            {5, 5, 5, 1},   // hollow 5×5×5
-            {7, 5, 11, 0},  // solid 7×5×11
-            {7, 5, 11, 1},  // hollow 7×5×11
+            {3, 3, 5, 0, 0},   // solid 3x3x5
+            {3, 3, 5, 1, 0},   // hollow 3x3x5
+            {5, 5, 5, 0, 0},   // solid 5x5x5
+            {5, 5, 5, 1, 0},   // hollow 5x5x5
+            {7, 5, 11, 0, 0},  // solid 7x5x11
+            {7, 5, 11, 1, 0},  // hollow 7x5x11
+            {7, 5, 11, 1, 1},  // hollow 7x5x11 with internal rib wall (wall at x=3)
+            {9, 5, 15, 1, 1},  // hollow 9x5x15 with 2 internal rib walls
         };
 
         for (int[] g : geo) {
-            runTest(g[0], g[1], g[2], g[3] == 1);
+            runTest(g[0], g[1], g[2], g[3] == 1, g[4] == 1);
         }
     }
 
-    private static void runTest(int width, int height, int length, boolean hollow) {
+    private static void runTest(int width, int height, int length, boolean hollow, boolean ribbed) {
         System.out.println();
-        System.out.println("=== " + (hollow ? "Hollow" : "Solid") + " " + width + "×" + height + "×" + length + " ===");
+        System.out.println("=== " + (hollow ? "Hollow" : "Solid") + " " + width + "x" + height + "x" + length + (ribbed ? " ribbed" : "") + " ===");
 
         // Iron properties
         final double youngsModulus = 2.0e11;
@@ -41,8 +43,11 @@ public class CalibrationRunner {
         for (int x = 0; x < width; x++) {
             for (int y = 0; y < height; y++) {
                 for (int z = 0; z < length; z++) {
-                    if (hollow && x > 0 && x < width - 1 && y > 0 && y < height - 1 && z > 0 && z < length - 1)
-                        continue;
+                    if (hollow && x > 0 && x < width - 1 && y > 0 && y < height - 1 && z > 0 && z < length - 1) {
+                        // leave internal rib walls across the middle longitudinal section
+                        final boolean isRib = ribbed && (x == width / 2 || (width >= 9 && (x == width / 3 || x == (2 * width) / 3)));
+                        if (!isRib) continue;
+                    }
                     blocks.add(new int[]{x, y, z});
                 }
             }
@@ -83,7 +88,7 @@ public class CalibrationRunner {
                     final double EiEff = E[i];
                     final double EjEff = E[j];
                     final double axialK = (2.0 * EiEff * EjEff / (EiEff + EjEff + 1e-30)) * kVol;
-                    springK[i][dir] = -(axialK * SolverCore.INV_DIST[dir] * SolverCore.INV_DIST[dir]);
+                    springK[i][dir] = -(axialK * SolverCore.INV_DIST[dir]);
                 } else {
                     neighbors[i][dir] = -1;
                     springK[i][dir] = 0.0;
@@ -102,7 +107,7 @@ public class CalibrationRunner {
             neighborCount[i] = cnt;
         }
 
-        final double[] u = new double[3 * n];
+        final double[] u = new double[6 * n];
         final double[] blockWaterDepths = new double[n];
 
         final SolverCore solver = new SolverCore(
@@ -110,27 +115,23 @@ public class CalibrationRunner {
             exposedFaceCount, isHull, hullCount, volFrac, u, blockWaterDepths
         );
 
-        // Test at depth 100
-        Arrays.fill(blockWaterDepths, 100);
-        solver.solve();
-
-        double maxVM = 0;
-        for (int i = 0; i < n; i++) {
-            final double vm = solver.computeVonMises(i);
-            if (vm > maxVM) maxVM = vm;
+        // Depth sweep: VM must scale linearly with depth (linear system).
+        // Print VM / (rho*g*depth) — a shape factor comparable across depths.
+        for (double depth : new double[]{25, 50, 100, 200, 400}) {
+            Arrays.fill(u, 0.0);
+            Arrays.fill(blockWaterDepths, depth);
+            solver.solve();
+            double maxVM = 0;
+            for (int i = 0; i < n; i++) {
+                final double vm = solver.computeVonMises(i);
+                if (vm > maxVM) maxVM = vm;
+            }
+            final double[] crush = solver.computeCrushDepth();
+            final int worstBlock = (int) crush[n];
+            final double globalCrush = worstBlock >= 0 ? crush[worstBlock] : Double.POSITIVE_INFINITY;
+            System.out.printf("  depth=%4d  MaxVM=%.3e  VM/P=%.3f  Crush=%.1f%n",
+                (int) depth, maxVM, maxVM / (10000.0 * depth), globalCrush);
         }
-
-        final double[] crush = solver.computeCrushDepth();
-        final int worstBlock = (int) crush[n];
-        final double globalCrush = worstBlock >= 0 ? crush[worstBlock] : Double.POSITIVE_INFINITY;
-
-        final double[] panelRatios = solver.computePanelBendingRatios();
-        double maxPanel = 0;
-        for (int i = 0; i < n; i++)
-            if (panelRatios[i] > maxPanel) maxPanel = panelRatios[i];
-
-        System.out.printf("Blocks: %d (hull: %d) | Max σ_vm: %.2e Pa | Max panel ratio: %.4f | Crush: %.1f blocks%n",
-            n, hullCount, maxVM, maxPanel, globalCrush);
     }
 
     private static long key(int x, int y, int z) {

@@ -268,15 +268,20 @@ public class SubLevelStressAnalyzer implements SubLevelObserver {
 
         int startY = Math.max(level.getMinBuildHeight(), (int) Math.round(pos.y()));
 
+        // scan upward, keep track of the top of the last fluid column;
+        // a water column that ends means we found the ocean surface.
+        boolean inFluid = false;
         for (int y = startY + 1; y < level.getMaxBuildHeight(); y++) {
             final FluidState fluid = level.getFluidState(new BlockPos(x, y, z));
             if (fluid.is(FluidTags.WATER) || fluid.is(FluidTags.LAVA)) {
                 final boolean lava = fluid.is(FluidTags.LAVA);
                 surfaceY = y + 1.0;
                 densityMultiplier = lava ? LAVA_DENSITY_MULTIPLIER : 1.0;
+                inFluid = true;
+            } else if (inFluid) {
+                // exited the fluid column -> this is the surface
                 break;
-            }
-            if (fluid.isEmpty() && y >= level.getSeaLevel()) {
+            } else if (fluid.isEmpty() && y >= level.getSeaLevel()) {
                 break;
             }
         }

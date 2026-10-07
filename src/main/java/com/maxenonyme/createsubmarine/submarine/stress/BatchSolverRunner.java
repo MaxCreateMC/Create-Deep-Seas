@@ -48,13 +48,13 @@ public class BatchSolverRunner {
             INV_DIST[d] = 1.0 / Math.sqrt(DX[d]*DX[d] + DY[d]*DY[d] + DZ[d]*DZ[d]);
     }
 
-    // ── shape abstraction ──────────────────────────────────────────────
+    // â”€â”€ shape abstraction â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     @FunctionalInterface
     interface Occ { boolean test(int x, int y, int z, int w, int h, int d); }
 
     record ShapeDef(String name, Function<Integer,int[]> dims, Occ solid, Occ hollow) {}
 
-    // ── main ───────────────────────────────────────────────────────────
+    // â”€â”€ main â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     public static void main(String[] args) throws Exception {
         System.out.println("BatchSolverRunner: building structures and running solver...");
         long t0 = System.currentTimeMillis();
@@ -74,13 +74,13 @@ public class BatchSolverRunner {
 
                     long estSolid = (long) w * h * d;
                     if (estSolid > 2_000_000) {
-                        System.out.printf("  ! %s sz=%d %dx%dx%d ~%d blk — skip (>2M estimate)%n",
+                        System.out.printf("  ! %s sz=%d %dx%dx%d ~%d blk â€” skip (>2M estimate)%n",
                             sd.name, baseSize, w, h, d, estSolid);
                         skipped += MAT_NAMES.length * 2;
                         continue;
                     }
                     if (estSolid > 100_000) {
-                        System.out.printf("  ~ %s sz=%d %dx%dx%d ~%d blk — may be slow%n",
+                        System.out.printf("  ~ %s sz=%d %dx%dx%d ~%d blk â€” may be slow%n",
                             sd.name, baseSize, w, h, d, estSolid);
                     }
 
@@ -93,11 +93,11 @@ public class BatchSolverRunner {
         }
 
         long dt = System.currentTimeMillis() - t0;
-        System.out.printf("Done! %d done / %d total (%d skipped) — test_battery.csv  (%d min %d sec)%n",
+        System.out.printf("Done! %d done / %d total (%d skipped) â€” test_battery.csv  (%d min %d sec)%n",
             done, total, skipped, dt/60000, (dt/1000)%60);
     }
 
-    // ── shape definitions ──────────────────────────────────────────────
+    // â”€â”€ shape definitions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     private static List<ShapeDef> buildShapeDefs() {
         List<ShapeDef> list = new ArrayList<>();
 
@@ -246,7 +246,7 @@ public class BatchSolverRunner {
         return list;
     }
 
-    // ── run one variant ────────────────────────────────────────────────
+    // â”€â”€ run one variant â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     private static int runVariant(PrintWriter pw, ShapeDef sd, int baseSize,
                                    int w, int h, int d, int mi, boolean hollow) {
         String struct = hollow ? "hollow" : "solid";
@@ -299,7 +299,7 @@ public class BatchSolverRunner {
                         neighbors[i][dir] = j;
                         double kVol = 1.0;
                         double axialK = 0.5 * (E + E_arr[j]) * kVol;
-                        springK[i][dir] = -(axialK * INV_DIST[dir] * INV_DIST[dir]);
+                        springK[i][dir] = -(axialK * INV_DIST[dir]);
                     } else {
                         neighbors[i][dir] = -1;
                         springK[i][dir] = 0.0;
@@ -327,7 +327,7 @@ public class BatchSolverRunner {
             for (BlockPos p : positions)
                 hash ^= BlockPos.asLong(p.getX(), p.getY(), p.getZ());
 
-            double[] u = new double[3 * n];
+            double[] u = new double[6 * n];
             double[] blockWaterDepths = new double[n];
             java.util.Arrays.fill(blockWaterDepths, UNIFORM_WATER_DEPTH);
 

@@ -36,7 +36,7 @@ public class StandaloneStressTest {
             INV_DIST[d] = 1.0 / Math.sqrt(DX[d]*DX[d] + DY[d]*DY[d] + DZ[d]*DZ[d]);
     }
 
-    // ── schematic data (block ID strings, no BlockState) ────────────────
+    // â”€â”€ schematic data (block ID strings, no BlockState) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     record SchemData(
         int width, int height, int length,
         String[] palette,       // block IDs like "minecraft:iron_block"
@@ -44,14 +44,14 @@ public class StandaloneStressTest {
         int[] offset
     ) { int volume() { return width * height * length; } }
 
-    // ── results ────────────────────────────────────────────────────────
+    // â”€â”€ results â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     record Result(
         String schemName, int n, int hullBlocks, double solveTimeMs,
         double avgStress, double maxStress, double minCrush, double hullRatio,
         long structureHash
     ) {}
 
-    // ── main ───────────────────────────────────────────────────────────
+    // â”€â”€ main â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     public static void main(String[] args) throws Exception {
         if (args.length == 0) {
             System.out.println("Usage: java " + StandaloneStressTest.class.getName() + " <schem-file> [--water-y <y>] [--csv] [--json] [--quiet]");
@@ -92,7 +92,7 @@ public class StandaloneStressTest {
         else        printHuman(r);
     }
 
-    // ── load schematic ─────────────────────────────────────────────────
+    // â”€â”€ load schematic â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     static SchemData loadSchem(File file) throws IOException {
         CompoundTag root;
         try (FileInputStream fis = new FileInputStream(file)) {
@@ -130,7 +130,7 @@ public class StandaloneStressTest {
         return new SchemData(width, height, length, palette, blockData, offset);
     }
 
-    // ── decode VarInt sequence (Sponge v2) ─────────────────────────────
+    // â”€â”€ decode VarInt sequence (Sponge v2) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     private static int[] decodeVarInts(byte[] data, int count) {
         int[] result = new int[count];
         int pos = 0;
@@ -147,7 +147,7 @@ public class StandaloneStressTest {
         return result;
     }
 
-    // ── run solver ─────────────────────────────────────────────────────
+    // â”€â”€ run solver â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     private static Result runSolver(SchemData data, String name, Double waterSurfaceY) {
         int vol = data.volume();
         int w = data.width, h = data.height, l = data.length;
@@ -211,7 +211,7 @@ public class StandaloneStressTest {
                     neighbors[i][dir] = j;
                     double kVol = 1.0;
                     double axialK = 0.5 * (E_arr[i] + E_arr[j]) * kVol;
-                    springK[i][dir] = -(axialK * INV_DIST[dir] * INV_DIST[dir]);
+                    springK[i][dir] = -(axialK * INV_DIST[dir]);
                 } else {
                     neighbors[i][dir] = -1;
                     springK[i][dir] = 0.0;
@@ -240,7 +240,7 @@ public class StandaloneStressTest {
         for (BlockPos p : positions)
             hash ^= BlockPos.asLong(p.getX(), p.getY(), p.getZ());
 
-        double[] u = new double[3 * n];
+        double[] u = new double[6 * n];
         double[] blockWaterDepths = new double[n];
         if (waterSurfaceY != null) {
             // computed during solve via buildRHS; initial guess is uniform depth = surface - minY
@@ -292,7 +292,7 @@ public class StandaloneStressTest {
                           avgStress, maxStress, globalMinCrush, (double) hullBlockCount / n, hash);
     }
 
-    // ── material lookup ────────────────────────────────────────────────
+    // â”€â”€ material lookup â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     private static double[] lookupProps(String blockId) {
         if (blockId == null || blockId.isEmpty()) return new double[]{5e9, 4e7};
         ResourceLocation rl;
@@ -317,7 +317,7 @@ public class StandaloneStressTest {
         return bracket >= 0 ? key.substring(0, bracket) : key;
     }
 
-    // ── output formatters ──────────────────────────────────────────────
+    // â”€â”€ output formatters â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     private static void printJson(Result r) {
         System.out.printf("{\"schem\":\"%s\",\"blocks\":%d,\"hull\":%d,\"solve_ms\":%.1f," +
             "\"avg_stress_pct\":%.6f,\"max_stress_pct\":%.6f,\"crush_m\":%.1f," +
@@ -342,7 +342,7 @@ public class StandaloneStressTest {
             System.out.println("  No blocks to analyze.");
             return;
         }
-        System.out.printf("  ── %s ──%n", r.schemName);
+        System.out.printf("  â”€â”€ %s â”€â”€%n", r.schemName);
         System.out.printf("  blocks:        %s%n", formatNum(r.n));
         System.out.printf("  hull blocks:   %s (%.1f%%)%n", formatNum(r.hullBlocks), r.hullRatio * 100);
         System.out.printf("  solve time:    %.1f ms%n", r.solveTimeMs);

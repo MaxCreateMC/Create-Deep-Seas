@@ -132,7 +132,7 @@ public class StressForceFeedSystem {
         }
 
         // Always record forces on every substep (drive the physics)
-        recordFaceForces(solver, queued, stressDist, n);
+        recordFaceForces(solver, queued, stressDist, n, timeStep);
         recordInternalForces(solver, internalQueued, n, stressDist, timeStep);
 
         if (buoyancyGroup != null) {
@@ -169,7 +169,10 @@ public class StressForceFeedSystem {
     }
 
     private static void recordBuoyancyForce(final ServerSubLevel ssl, final ForceGroup group, final LatticeStressSolver solver, final double timeStep) {
-        final double SABLE_BUOYANCY_CONST = 10.5;
+        // buoyancy constant derived from the effective hydrostatic scale:
+        //  F = rho * g * V, with rho*g = solver rhoG (10 000 Pa/m for water,
+        //  31 000 for lava) -> per-volume force ~ rhoG/1000 [N per block-volume].
+        final double SABLE_BUOYANCY_CONST = solver.getEffectiveRhoG() / 1000.0;
 
         double totalBuoyancy = 0;
         double sumX = 0, sumY = 0, sumZ = 0;
@@ -217,7 +220,7 @@ public class StressForceFeedSystem {
     }
 
     private static int recordFaceForces(final LatticeStressSolver solver, final QueuedForceGroup queued,
-                                         final double[] stressDist, final int n) {
+                                                                                                  final double[] stressDist, final int n, final double timeStep) {
         final double[][] faceOff = { {0,0.5,0.5}, {1,0.5,0.5}, {0.5,0,0.5}, {0.5,1,0.5}, {0.5,0.5,0}, {0.5,0.5,1} };
         final double[][] dirVec  = { {-1,0,0}, {1,0,0}, {0,-1,0}, {0,1,0}, {0,0,-1}, {0,0,1} };
 
@@ -231,7 +234,7 @@ public class StressForceFeedSystem {
             int any = 0;
             for (int d = 0; d < 6; d++) {
                 if (solver.isFaceExposed(i, d)) {
-                    ff[d] = frac * com.maxenonyme.createsubmarine.submarine.config.SubmarineConfig.STRESS_FORCE_MAX.get();
+                    ff[d] = frac * timeStep * com.maxenonyme.createsubmarine.submarine.config.SubmarineConfig.STRESS_FORCE_MAX.get();
                     any++;
                 }
             }
@@ -326,7 +329,7 @@ public class StressForceFeedSystem {
             if (frac <= 0) continue;
 
             final BlockPos pi = solver.getPosition(i);
-            final int i3 = 3 * i;
+            final int i3 = 6 * i;
             final double uix = u[i3], uiy = u[i3 + 1], uiz = u[i3 + 2];
 
             double netX = 0, netY = 0, netZ = 0;
@@ -338,7 +341,7 @@ public class StressForceFeedSystem {
                 final double Kij = solver.getSpringK(i, dir);
                 if (Math.abs(Kij) < 1e-15) continue;
 
-                final int j3 = 3 * j;
+                final int j3 = 6 * j;
                 final double dux = u[j3] - uix;
                 final double duy = u[j3 + 1] - uiy;
                 final double duz = u[j3 + 2] - uiz;
@@ -366,7 +369,7 @@ public class StressForceFeedSystem {
             final double netMag = Math.sqrt(netX * netX + netY * netY + netZ * netZ);
             if (netMag < 1e-6) continue;
 
-            // Uniform scale preserves Newton's 3rd law cancellation; 1e6 N → ~8000 displayed
+            // Uniform scale preserves Newton's 3rd law cancellation; 1e6 N Ã¢â€ â€™ ~8000 displayed
             final double UNIFORM_SCALE = 0.008;
             final double recordedMag = netMag * UNIFORM_SCALE * timeStep;
             if (recordedMag < 0.01) continue;

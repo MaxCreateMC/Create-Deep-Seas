@@ -14,9 +14,9 @@ public class SeafloorGenerator {
     static final int TILE_SIZE = 256;
     private static final int SEA_LEVEL = 0;
 
-    private static final int SHALLOW_HEIGHT = -50;
-    private static final int PLAINS_HEIGHT = -200;
-    private static final int MIN_FLOOR_HEIGHT = -52;
+    private static final int SHALLOW_HEIGHT = -60;
+    private static final int PLAINS_HEIGHT = -800;
+    private static final int MIN_FLOOR_HEIGHT = -1024;
     private static final double PLAINS_NOISE_AMP = 8.0;   // ±8 blocks (subtle abyssal hills)
     private static final double SHELF_NOISE_AMP = 15.0;   // ±15 blocks (moderate slope)
     private static final double SHALLOWS_NOISE_AMP = 4.0;  // ±4 blocks (gentle shelf)
@@ -90,6 +90,18 @@ public class SeafloorGenerator {
 
     private static final ConcurrentHashMap<Long, short[]> sharedHeightCache = new ConcurrentHashMap<>();
     private static final ConcurrentHashMap<Long, short[]> sharedNoiseCache = new ConcurrentHashMap<>();
+
+    // Single-flight guard: computeIfAbsent can compute the same 256x256 tile on several
+    // worker threads at once. These striped locks ensure each tile is generated exactly once.
+    private static final Object[] TILE_LOCKS = new Object[64];
+    static {
+        for (int i = 0; i < TILE_LOCKS.length; i++) TILE_LOCKS[i] = new Object();
+    }
+
+    private static Object tileLock(long key) {
+        int h = (int) (key ^ (key >>> 32));
+        return TILE_LOCKS[(h & 0x7fffffff) % TILE_LOCKS.length];
+    }
 
     private static PerlinNoise terrainNoise;
     private static PerlinNoise canyonNoise;
@@ -188,11 +200,16 @@ public class SeafloorGenerator {
 
     public static short[] getOrGenerateTile(int tileX, int tileZ) {
         long key = tileKey(tileX, tileZ);
-        return sharedHeightCache.computeIfAbsent(key, k -> {
+        short[] existing = sharedHeightCache.get(key);
+        if (existing != null) return existing;
+        synchronized (tileLock(key)) {
+            existing = sharedHeightCache.get(key);
+            if (existing != null) return existing;
             TileData td = computeTileData(tileX, tileZ);
-            sharedNoiseCache.put(k, td.noises);
+            sharedNoiseCache.put(key, td.noises);
+            sharedHeightCache.put(key, td.heights);
             return td.heights;
-        });
+        }
     }
 
     public static double getNoiseAt(int wx, int wz) {
@@ -759,7 +776,7 @@ public class SeafloorGenerator {
                 double absC = Math.abs(c);
 
                 // Three-band terrain with smoothly blended noise across all zones.
-                // |noise| ~ [0, 0.10) → shallows (30%, y=-250), [0.10, 0.50) → shelf (50%, y=-250→-800), [0.50, 1] → plains (20%, y=-800).
+                // |noise| ~ [0, 0.10) → shallows (30%, y=-60), [0.10, 0.50) → shelf (50%, y=-60→-800), [0.50, 1] → plains (20%, y=-800).
                 double transitionWidth = 0.40;
                 double shelfEdge = SHELF_BOUNDARY + transitionWidth; // 0.50
 
