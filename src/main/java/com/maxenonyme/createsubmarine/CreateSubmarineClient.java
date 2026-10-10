@@ -106,6 +106,12 @@ public final class CreateSubmarineClient {
         event.registerBlockEntityRenderer(
                 CreateSubmarine.BAROMETER_BE.get(),
                 com.maxenonyme.createsubmarine.submarine.block.entity.renderer.BarometerBlockEntityRenderer::new);
+        event.registerBlockEntityRenderer(
+                CreateSubmarine.BAROMETER_BE.get(),
+                com.maxenonyme.createsubmarine.submarine.block.entity.renderer.BarometerBlockEntityRenderer::new);
+        event.registerBlockEntityRenderer(
+                CreateSubmarine.WATER_THRUSTER_BE.get(),
+                com.maxenonyme.createsubmarine.submarine.block.entity.renderer.MultiblockWaterThrusterRenderer::new);
     }
 
     private static void onRegisterLayers(

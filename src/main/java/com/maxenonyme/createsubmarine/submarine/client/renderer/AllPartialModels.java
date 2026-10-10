@@ -17,6 +17,10 @@ public class AllPartialModels {
     public static final PartialModel SUBMARINE_PROPELLER_REVERSED = PartialModel.of(ResourceLocation.fromNamespaceAndPath(CreateSubmarine.MOD_ID, "block/submarine_propeller/propeller_reversed"));
     public static final PartialModel SUBMARINE_PROPELLER_CONTRA = PartialModel.of(ResourceLocation.fromNamespaceAndPath(CreateSubmarine.MOD_ID, "block/submarine_propeller/propeller_contra"));
     public static final PartialModel SUBMARINE_PROPELLER_REVERSED_CONTRA = PartialModel.of(ResourceLocation.fromNamespaceAndPath(CreateSubmarine.MOD_ID, "block/submarine_propeller/propeller_reversed_contra"));
+    public static final PartialModel WATER_THRUSTER_2X2_BASE = PartialModel.of(ResourceLocation.fromNamespaceAndPath(CreateSubmarine.MOD_ID, "block/water_thruster_2x2_base"));
+    public static final PartialModel WATER_THRUSTER_2X2_PROP = PartialModel.of(ResourceLocation.fromNamespaceAndPath(CreateSubmarine.MOD_ID, "block/water_thruster_2x2_prop"));
+    public static final PartialModel WATER_THRUSTER_3X3_BASE = PartialModel.of(ResourceLocation.fromNamespaceAndPath(CreateSubmarine.MOD_ID, "block/water_thruster_3x3_base"));
+    public static final PartialModel WATER_THRUSTER_3X3_PROP = PartialModel.of(ResourceLocation.fromNamespaceAndPath(CreateSubmarine.MOD_ID, "block/water_thruster_3x3_prop"));
     public static final PartialModel LEAK_DETECTOR_CORE = PartialModel.of(ResourceLocation.fromNamespaceAndPath(CreateSubmarine.MOD_ID, "item/leak_detector/core"));
     public static final PartialModel LEAK_DETECTOR_CASING = PartialModel.of(ResourceLocation.fromNamespaceAndPath(CreateSubmarine.MOD_ID, "item/leak_detector/casing"));
     public static final PartialModel LEAK_DETECTOR_EYE = PartialModel.of(ResourceLocation.fromNamespaceAndPath(CreateSubmarine.MOD_ID, "item/leak_detector/eye"));

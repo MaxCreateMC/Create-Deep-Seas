@@ -47,3 +47,6 @@ stress_details*
 discord-dump-*
 worldgen_preview
 stress-test
+classpath.txt
+
+src/main/java/com/maxenonyme/createsubmarine/submarine/stress/WarmStartProbe.java

@@ -1,10 +1,16 @@
 {
   "variants": {
-    "facing=north": { "model": "create_submarine:block/water_thruster", "x": 90, "y": 0 },
-    "facing=south": { "model": "create_submarine:block/water_thruster", "x": 90, "y": 180 },
-    "facing=east": { "model": "create_submarine:block/water_thruster", "x": 90, "y": 90 },
-    "facing=west": { "model": "create_submarine:block/water_thruster", "x": 90, "y": 270 },
-    "facing=up": { "model": "create_submarine:block/water_thruster", "x": 0 },
-    "facing=down": { "model": "create_submarine:block/water_thruster", "x": 180 }
+    "facing=north,controller=false": { "model": "create_submarine:block/water_thruster", "x": 90, "y": 0 },
+    "facing=south,controller=false": { "model": "create_submarine:block/water_thruster", "x": 90, "y": 180 },
+    "facing=east,controller=false":  { "model": "create_submarine:block/water_thruster", "x": 90, "y": 90 },
+    "facing=west,controller=false":  { "model": "create_submarine:block/water_thruster", "x": 90, "y": 270 },
+    "facing=up,controller=false":    { "model": "create_submarine:block/water_thruster", "x": 0 },
+    "facing=down,controller=false":  { "model": "create_submarine:block/water_thruster", "x": 180 },
+    "facing=north,controller=true":  { "model": "create_submarine:block/water_thruster_empty" },
+    "facing=south,controller=true":  { "model": "create_submarine:block/water_thruster_empty" },
+    "facing=east,controller=true":   { "model": "create_submarine:block/water_thruster_empty" },
+    "facing=west,controller=true":   { "model": "create_submarine:block/water_thruster_empty" },
+    "facing=up,controller=true":     { "model": "create_submarine:block/water_thruster_empty" },
+    "facing=down,controller=true":   { "model": "create_submarine:block/water_thruster_empty" }
   }
 }

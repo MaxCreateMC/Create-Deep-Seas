@@ -16,6 +16,7 @@ import net.minecraft.world.level.block.entity.BlockEntityTicker;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
+import net.minecraft.world.level.block.state.properties.BooleanProperty;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
@@ -26,6 +27,8 @@ import java.util.Map;
 
 public class WaterThrusterBlock extends DirectionalBlock implements EntityBlock {
     public static final MapCodec<WaterThrusterBlock> CODEC = simpleCodec(WaterThrusterBlock::new);
+    /** true on the corner block of a formed 2x2/3x3 multiblock; renders the multiblock model */
+    public static final BooleanProperty CONTROLLER = BooleanProperty.create("controller");
     private static final Map<Direction, VoxelShape> SHAPES = new HashMap<>();
 
     static {
@@ -94,12 +97,12 @@ public class WaterThrusterBlock extends DirectionalBlock implements EntityBlock 
 
     public WaterThrusterBlock(Properties properties) {
         super(properties);
-        this.registerDefaultState(this.stateDefinition.any().setValue(FACING, Direction.NORTH));
+        this.registerDefaultState(this.stateDefinition.any().setValue(FACING, Direction.NORTH).setValue(CONTROLLER, false));
     }
 
     @Override
     protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
-        builder.add(FACING);
+        builder.add(FACING, CONTROLLER);
     }
 
     @Override
@@ -110,6 +113,24 @@ public class WaterThrusterBlock extends DirectionalBlock implements EntityBlock 
     @Override
     public VoxelShape getShape(BlockState state, BlockGetter world, BlockPos pos, CollisionContext context) {
         return SHAPES.getOrDefault(state.getValue(FACING), SHAPES.get(Direction.UP));
+    }
+
+    @Override
+    public void onPlace(BlockState state, net.minecraft.world.level.Level level, BlockPos pos, BlockState oldState, boolean isMoving) {
+        super.onPlace(state, level, pos, oldState, isMoving);
+        if (level.isClientSide()) return;
+        if (level.getBlockEntity(pos) instanceof WaterThrusterBlockEntity be) {
+            be.markFormationDirty();
+        }
+    }
+
+    @Override
+    public void neighborChanged(BlockState state, net.minecraft.world.level.Level level, BlockPos pos, Block block, BlockPos fromPos, boolean isMoving) {
+        super.neighborChanged(state, level, pos, block, fromPos, isMoving);
+        if (level.isClientSide()) return;
+        if (level.getBlockEntity(pos) instanceof WaterThrusterBlockEntity be) {
+            be.markFormationDirty();
+        }
     }
 
     @Nullable
