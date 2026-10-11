@@ -170,10 +170,14 @@ public class SubmarineInfoCommand {
         source.sendSuccess(() -> line("Pressure model", SubmarineConfig.PRESSURE_MODEL.get().name()), false);
         SubmarinePressureSystem.WeakPoint weak = subLevel != null ? SubmarinePressureSystem.weakestHull(id, subLevel) : null;
         if (weak != null) {
-            int base = HullStrengthConfig.getFor(weak.state()).map(HullStrengthConfig.HullProperty::maxWaterDepth).orElse(weak.depth());
-            double shape = HullShapeAnalyzer.factor(id, weak.pos());
             String name = BuiltInRegistries.BLOCK.getKey(weak.state().getBlock()).toString();
-            source.sendSuccess(() -> line("Weakest block", String.format("%s %d m x %.2f (shape)", name, base, shape)), false);
+            if (SubmarineConfig.realisticPressure()) {
+                source.sendSuccess(() -> line("Weakest block", String.format("%s %d m (solver)", name, weak.depth())), false);
+            } else {
+                int base = HullStrengthConfig.getFor(weak.state()).map(HullStrengthConfig.HullProperty::maxWaterDepth).orElse(weak.depth());
+                double shape = HullShapeAnalyzer.factor(id, weak.pos());
+                source.sendSuccess(() -> line("Weakest block", String.format("%s %d m x %.2f (shape)", name, base, shape)), false);
+            }
         }
         return 1;
     }

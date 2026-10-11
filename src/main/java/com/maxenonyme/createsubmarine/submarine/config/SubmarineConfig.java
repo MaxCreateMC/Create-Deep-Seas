@@ -96,7 +96,8 @@ public class SubmarineConfig {
                                 .define("disableImplosion", false);
                 IMPLOSION_DEPTH = server
                                 .comment("Depth below the surface, in blocks, past which a hull block giving way to the pressure implodes the whole submarine.",
-                                                "Above it, the block only bursts and the room floods through the hole.")
+                                                "Above it, the block only bursts and the room floods through the hole.",
+                                                "Past it, a submarine more than 30 blocks beyond its hull limit also seizes its pump controllers and shakes its crew.")
                                 .defineInRange("implosionDepth", 120, 1, 2048);
                 OXYGEN_MAX_FILL_BLOCKS = server
                                 .comment("Maximum size, in blocks, of a creation that oxygen diffusers can scan and fill with breathable air.",

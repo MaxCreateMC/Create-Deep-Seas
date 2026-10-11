@@ -81,8 +81,13 @@ public class SubmarinePressureSystem {
     }
     private static final Map<UUID, Double> CACHED_DENSITY = new ConcurrentHashMap<>();
     private static final int MAX_FIRES_PER_TICK = 8;
-    private static final double STRAIN_START = 0.80;
     private static final double STRAIN_REACH = 24.0;
+    private static final int DOOM_MARGIN = 30;
+    private static final Set<UUID> DOOMED = ConcurrentHashMap.newKeySet();
+
+    public static boolean isDoomed(UUID id) {
+        return DOOMED.contains(id);
+    }
 
     public static void setSealedCompartments(UUID id, List<CompartmentDetector.Component> comps) {
         KNOWN_SEALED.put(id, comps);
@@ -97,6 +102,7 @@ public class SubmarinePressureSystem {
         CACHED_DENSITY.remove(id);
         MATERIALS.remove(id);
         WEAK_CACHE.remove(id);
+        DOOMED.remove(id);
         HullShapeAnalyzer.forget(id);
         RealisticHullAnalyzer.forget(id);
         GirderSupport.forget(id);
@@ -113,6 +119,7 @@ public class SubmarinePressureSystem {
         MATERIALS.clear();
         WEAK_CACHE.clear();
         ENVELOPES.clear();
+        DOOMED.clear();
         HullShapeAnalyzer.clear();
         RealisticHullAnalyzer.clear();
         GirderSupport.clear();
@@ -267,8 +274,10 @@ public class SubmarinePressureSystem {
     public static void onServerTick(ServerTickEvent.Post event) {
         if (++tickCounter % TICK_INTERVAL != 0)
             return;
-        if (SubmarineConfig.DISABLE_IMPLOSION.get())
+        if (SubmarineConfig.DISABLE_IMPLOSION.get()) {
+            DOOMED.clear();
             return;
+        }
 
         for (Map.Entry<UUID, SubLevelAccess> entry : SubLevelRegistry.getAll().entrySet()) {
             processSubmarine(entry.getKey(), entry.getValue());
@@ -297,6 +306,7 @@ public class SubmarinePressureSystem {
 
         if (surfaceY == Integer.MIN_VALUE) {
             BREACHED_PLOT.remove(id);
+            DOOMED.remove(id);
             return;
         }
 
@@ -422,19 +432,26 @@ public class SubmarinePressureSystem {
         if (!(oceanLevel instanceof ServerLevel server))
             return;
         int depth = getCachedDepth(id);
-        if (depth <= 0)
+        double floor = FloodSystem.crushDepth();
+        if (depth <= floor - 5) {
+            DOOMED.remove(id);
             return;
+        }
         Integer weakest = WEAKEST_HULL.get(id);
         if (weakest == null || tickCounter % (TICK_INTERVAL * 5) == 0) {
             weakest = getWeakestHullDepth(id, plotLevel);
             WEAKEST_HULL.put(id, weakest);
         }
-        if (weakest <= 0)
+        int beyond = depth - weakest - DOOM_MARGIN;
+        boolean doomed = weakest > 0 && (DOOMED.contains(id) ? beyond > -5 : beyond >= 0 && depth >= floor);
+        if (!doomed) {
+            DOOMED.remove(id);
             return;
-        double strain = (depth - weakest * STRAIN_START) / (weakest * (1 - STRAIN_START));
-        if (strain <= 0)
-            return;
-        float felt = (float) Math.min(1.0, strain);
+        }
+        DOOMED.add(id);
+
+        beyond = Math.max(0, beyond);
+        float felt = Math.min(1f, (beyond + 5) / 25f);
         int span = Math.max(bounds.maxX() - bounds.minX(), Math.max(bounds.maxY() - bounds.minY(), bounds.maxZ() - bounds.minZ()));
         double reach = Math.max(STRAIN_REACH, span);
         Vec3 origin = new Vec3(center.x(), center.y(), center.z());
@@ -444,7 +461,7 @@ public class SubmarinePressureSystem {
             PacketDistributor.sendToPlayer(player,
                     new ImplosionFxPayload(ImplosionFxPayload.STRAIN, felt, TICK_INTERVAL + 10));
             PacketDistributor.sendToPlayer(player,
-                    new ImplosionFxPayload(ImplosionFxPayload.PANIC, depth - weakest, TICK_INTERVAL + 10));
+                    new ImplosionFxPayload(ImplosionFxPayload.PANIC, beyond, TICK_INTERVAL + 10));
         }
     }
 
@@ -593,7 +610,7 @@ public class SubmarinePressureSystem {
             sendCrackPacket(oceanLevel, id, plotPos, 4, blockId);
             HullStressFx.popAt(serverOcean, id, subLevel, plotLevel, plotPos, 2f);
             LightFailure.onHullDamage(serverOcean, id, plotLevel, 3f);
-            ImplosionSequence.buildUp(serverOcean, id, origin, state, () -> {
+            ImplosionSequence.buildUp(serverOcean, id, origin, state, crush, () -> {
                 cracks.remove(plotPos);
                 sendCrackPacket(oceanLevel, id, plotPos, -1, 0);
                 if (subLevel instanceof SubLevel gone && gone.isRemoved())
