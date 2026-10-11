@@ -50,3 +50,4 @@ stress-test
 classpath.txt
 
 src/main/java/com/maxenonyme/createsubmarine/submarine/stress/WarmStartProbe.java
+docs
