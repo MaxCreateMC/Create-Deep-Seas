@@ -6,7 +6,9 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 public class DefaultMaterialProperties {
 
@@ -613,6 +615,55 @@ public class DefaultMaterialProperties {
             return props[2];
         }
         return 0.25;
+    }
+
+    /**
+     * Brittle materials do not yield in shear; they fail in tension, and a pressure hull
+     * made of them fails when the maximum principal stress reaches the tensile strength.
+     * The von Mises criterion returns 0 for any hydrostatic state and would let a glass
+     * viewport survive arbitrary depth.
+     */
+    private static final Set<ResourceLocation> BRITTLE = new HashSet<>();
+
+    static {
+        for (String g : new String[]{"glass", "tinted_glass"}) {
+            BRITTLE.add(ResourceLocation.withDefaultNamespace(g));
+        }
+        for (String c : new String[]{"white", "orange", "magenta", "light_blue", "yellow", "lime", "pink",
+                "gray", "light_gray", "cyan", "purple", "blue", "brown", "green", "red", "black"}) {
+            BRITTLE.add(ResourceLocation.withDefaultNamespace(c + "_stained_glass"));
+            BRITTLE.add(ResourceLocation.withDefaultNamespace(c + "_stained_glass_pane"));
+        }
+        BRITTLE.add(ResourceLocation.withDefaultNamespace("glass_pane"));
+        for (String g : new String[]{"framed_glass_door", "framed_glass_trapdoor"}) {
+            BRITTLE.add(ResourceLocation.fromNamespaceAndPath("create", g));
+        }
+        BRITTLE.add(ResourceLocation.withDefaultNamespace("obsidian"));
+        BRITTLE.add(ResourceLocation.withDefaultNamespace("crying_obsidian"));
+        BRITTLE.add(ResourceLocation.withDefaultNamespace("amethyst_block"));
+        BRITTLE.add(ResourceLocation.withDefaultNamespace("budding_amethyst"));
+        BRITTLE.add(ResourceLocation.withDefaultNamespace("calcite"));
+        BRITTLE.add(ResourceLocation.withDefaultNamespace("terracotta"));
+        for (String c : new String[]{"white", "orange", "magenta", "light_blue", "yellow", "lime", "pink",
+                "gray", "light_gray", "cyan", "purple", "blue", "brown", "green", "red", "black"}) {
+            BRITTLE.add(ResourceLocation.withDefaultNamespace(c + "_terracotta"));
+            BRITTLE.add(ResourceLocation.withDefaultNamespace(c + "_glazed_terracotta"));
+        }
+        // reinforced glass from the aeronautics line: still brittle, but tougher
+        BRITTLE.add(ResourceLocation.fromNamespaceAndPath("simulated", "reinforced_glass"));
+    }
+
+    public static boolean isBrittle(final BlockState state) {
+        return BRITTLE.contains(state.getBlock().builtInRegistryHolder().key().location());
+    }
+
+    /** Tensile strength used by the brittle failure criterion. */
+    public static double getTensileStress(final BlockState state) {
+        final ResourceLocation id = state.getBlock().builtInRegistryHolder().key().location();
+        if (id.equals(ResourceLocation.fromNamespaceAndPath("simulated", "reinforced_glass"))) {
+            return 1.20e8;
+        }
+        return getYieldStress(state);
     }
 
     public static double getDirectionalFactor(final BlockState state, final int dx, final int dy, final int dz) {

@@ -37,6 +37,11 @@ public class SubmarineConfig {
     public static final ModConfigSpec.DoubleValue WATER_DENSITY_GRAVITY;
     public static final ModConfigSpec.DoubleValue POISSON_RATIO;
     public static final ModConfigSpec.DoubleValue TIKHONOV_ALPHA_FRACTION;
+    public static final ModConfigSpec.DoubleValue LATTICE_MODULUS_SCALE;
+    public static final ModConfigSpec.DoubleValue LATTICE_SHEAR_SCALE;
+    public static final ModConfigSpec.DoubleValue LATTICE_BEND_SCALE;
+    public static final ModConfigSpec.DoubleValue SOLVER_TIME_BUDGET_MS;
+    public static final ModConfigSpec.DoubleValue SOLVER_INITIAL_BUDGET_MS;
     public static final ModConfigSpec.DoubleValue STRESS_FORCE_MAX;
 
     static {
@@ -134,6 +139,49 @@ public class SubmarineConfig {
                         "Default 0.3 matches the lattice's intrinsic Poisson ratio (~0.297).",
                         "Range: 0.0-0.5, Default: 0.3")
                 .defineInRange("poissonRatio", 0.3, 0.0, 0.49);
+        LATTICE_MODULUS_SCALE = builder
+                .comment("Axial stiffness scale of the block lattice.",
+                        "The raw lattice is ~2.4x too stiff relative to the modulus used",
+                        "for stress recovery, so every stress was ~2.4x too low and every",
+                        "crush depth ~2.4x too deep. The default 0.419 is calibrated so a",
+                        "uniform hydrostatic load reproduces sigma = -p.",
+                        "Range: 0.05-1.0, Default: 0.419")
+                .defineInRange("latticeModulusScale", 0.419, 0.05, 1.0);
+        LATTICE_SHEAR_SCALE = builder
+                .comment("Transverse spring scale of the block lattice.",
+                        "A 26-link central-force lattice already gets its shear stiffness from",
+                        "the 45-degree links; the default 0.1 avoids double-counting it and the",
+                        "spurious transverse stress that comes with it.",
+                        "Range: 0.01-2.0, Default: 0.1")
+                .defineInRange("latticeShearScale", 0.1, 0.01, 2.0);
+        LATTICE_BEND_SCALE = builder
+                .comment("Rotational spring scale of the block lattice.",
+                        "The rotational springs carry the dimensionally-correct k*L^2/12",
+                        "bending stiffness; the lattice reproduces the Euler-Bernoulli",
+                        "height scaling but is ~3x stiffer in absolute bending.",
+                        "Range: 0.1-10.0, Default: 1.0")
+                .defineInRange("latticeBendScale", 1.0, 0.1, 10.0);
+        SOLVER_TIME_BUDGET_MS = builder
+                .comment("Wall-clock budget in milliseconds for one incremental stress",
+                        "re-solve (the path that runs at 20 Hz).",
+                        "",
+                        "Measured cost of ONE CG iteration (26-link 6-DOF operator,",
+                        "16 cores): 5 ms at 64k blocks, 7 ms at 115k, 15 ms at 216k,",
+                        "35 ms at 512k. A solve cannot stop mid-iteration, so this budget",
+                        "effectively buys one iteration up to ~115k blocks, which is the",
+                        "size at which the solver keeps a true 20 Hz cadence:",
+                        "  <= ~115k blocks : solve ~1 iter / 4 ticks + ~10 ms/tick recording",
+                        "  ~216k blocks    : one solve costs a whole tick (a visible hitch",
+                        "                     on 1 tick in 4, but never unbounded)",
+                        "  >= ~512k blocks : one operator pass already exceeds a tick",
+                        "Range: 1-50, Default: 8")
+                .defineInRange("solverTimeBudgetMs", 8.0, 1.0, 50.0);
+        SOLVER_INITIAL_BUDGET_MS = builder
+                .comment("Wall-clock budget in milliseconds for the first solve of a newly",
+                        "built structure. Cold solves converge more slowly than warm",
+                        "re-solves, so this one may spend longer.",
+                        "Range: 5-500, Default: 150")
+                .defineInRange("solverInitialBudgetMs", 150.0, 5.0, 500.0);
         TIKHONOV_ALPHA_FRACTION = builder
                 .comment("Tikhonov regularization fraction relative to Young's modulus.",
                         "Added to stiffness matrix diagonal to suppress rigid-body modes.",

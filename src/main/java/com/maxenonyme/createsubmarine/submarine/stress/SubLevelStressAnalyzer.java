@@ -193,6 +193,7 @@ public class SubLevelStressAnalyzer implements SubLevelObserver {
                         ssl.getLevel(), bb, warmStartU, classification, ssl.logicalPose().orientation(),
                         ssl.logicalPose(), getWaterSurfaceWorldY(ssl));
                     newSolver.setFluidDensityMultiplier(getFluidDensityMultiplier(ssl));
+                    newSolver.resolve(); // the constructor solved with the default density
                     this.solvers.put(id, newSolver);
                     this.totalSolveTimeNanos += System.nanoTime() - t0;
                     this.solveCount++;
@@ -320,6 +321,7 @@ public class SubLevelStressAnalyzer implements SubLevelObserver {
                 subLevel.getLevel(), bb, warmStartU, classification, subLevel.logicalPose().orientation(),
                 subLevel.logicalPose(), getWaterSurfaceWorldY(subLevel));
             newSolver.setFluidDensityMultiplier(getFluidDensityMultiplier(subLevel));
+                    newSolver.resolve(); // the constructor solved with the default density
             this.solvers.put(id, newSolver);
             this.totalSolveTimeNanos += System.nanoTime() - t0;
             this.solveCount++;

@@ -147,23 +147,49 @@ public class StressForceFeedSystem {
         if (n <= 1) return;
 
         final Level plotLevel = ssl.getLevel();
-        boolean brokeAny = false;
-        int brokeCount = 0;
 
+        // Progressive collapse, not an all-at-once delete: at most a fraction of the hull
+        // may give way per check, worst blocks first. Physically the remaining load is
+        // redistributed onto the surviving structure and the next solve re-evaluates it;
+        // deleting every over-stressed block in a single pass skipped that redistribution
+        // entirely and could empty a whole hull in one tick.
+        // Ratios are computed once (an O(n) pass) and the offenders are then selected, so
+        // the cost does not grow with the number of broken blocks.
+        final double[] ratios = new double[n];
+        final int[] offenders = new int[Math.min(n, Math.max(1, n / 64))];
+        int offenderCount = 0;
         for (int i = 0; i < n; i++) {
             final double ratio = solver.getStressRatio(i);
             if (ratio < 1.0) continue;
+            // keep the `offenders` slots filled with the most over-stressed blocks
+            if (offenderCount < offenders.length) {
+                offenders[offenderCount++] = i;
+            } else {
+                int minSlot = 0;
+                for (int s = 1; s < offenders.length; s++) {
+                    if (ratios[offenders[s]] < ratios[offenders[minSlot]]) minSlot = s;
+                }
+                if (ratio > ratios[offenders[minSlot]]) offenders[minSlot] = i;
+            }
+            ratios[i] = ratio;
+        }
+        if (offenderCount == 0) return;
 
+        // worst first
+        final int[] top = java.util.Arrays.copyOf(offenders, offenderCount);
+        java.util.Arrays.sort(top);
+        int brokeCount = 0;
+        for (int s = top.length - 1; s >= 0; s--) {
+            final int i = top[s];
+            if (ratios[i] < 1.0) continue;
             final BlockPos pos = solver.getPosition(i);
             final BlockState state = plotLevel.getBlockState(pos);
             if (state.isAir()) continue;
-
             plotLevel.setBlock(pos, Blocks.AIR.defaultBlockState(), 3);
-            brokeAny = true;
             brokeCount++;
         }
 
-        if (brokeAny) {
+        if (brokeCount > 0) {
             analyzer.markDirty(ssl);
         }
     }
@@ -321,17 +347,22 @@ public class StressForceFeedSystem {
         final double[] invDist = LatticeStressSolver.getInvDist();
         final int maxDir = LatticeStressSolver.getMaxNeighbors();
 
-        final double maxForce = com.maxenonyme.createsubmarine.submarine.config.SubmarineConfig.STRESS_FORCE_MAX.get();
-        int arrows = 0;
+        // Uniform scale preserves Newton's 3rd law cancellation; 1e6 N -> ~8000 displayed
+        final double UNIFORM_SCALE = 0.008;
 
-        for (int i = 0; i < n; i++) {
-            final double frac = stressDist[i];
-            if (frac <= 0) continue;
+        // This 26-link spring-force pass is the most expensive thing on the hot path: it
+        // runs on every physics substep (40 Hz), not just when the grid is re-solved. It is
+        // embarrassingly parallel per block, so it is folded over the common pool; only the
+        // cheap recording pass stays serial, because the queued force group is shared.
+        final double[] forceX = new double[n];
+        final double[] forceY = new double[n];
+        final double[] forceZ = new double[n];
+        final int[] arrowCount = new int[1];
+        java.util.stream.IntStream.range(0, n).parallel().forEach(i -> {
+            if (stressDist[i] <= 0) return;
 
-            final BlockPos pi = solver.getPosition(i);
             final int i3 = 6 * i;
             final double uix = u[i3], uiy = u[i3 + 1], uiz = u[i3 + 2];
-
             double netX = 0, netY = 0, netZ = 0;
 
             for (int dir = 0; dir < maxDir; dir++) {
@@ -349,7 +380,7 @@ public class StressForceFeedSystem {
                 if (dir < 6) {
                     final int comp = dir / 2;
                     final double sign = (dir % 2 == 0) ? 1.0 : -1.0;
-                    final double du = sign * (u[j3 + comp] - (comp == 0 ? uix : comp == 1 ? uiy : uiz));
+                    final double du = sign * (u[j3 + comp] - u[i3 + comp]);
                     final double fComp = Kij * du * sign;
                     if (comp == 0) netX += fComp;
                     else if (comp == 1) netY += fComp;
@@ -367,23 +398,28 @@ public class StressForceFeedSystem {
             }
 
             final double netMag = Math.sqrt(netX * netX + netY * netY + netZ * netZ);
-            if (netMag < 1e-6) continue;
-
-            // Uniform scale preserves Newton's 3rd law cancellation; 1e6 N Ã¢â€ â€™ ~8000 displayed
-            final double UNIFORM_SCALE = 0.008;
+            if (netMag < 1e-6) return;
             final double recordedMag = netMag * UNIFORM_SCALE * timeStep;
-            if (recordedMag < 0.01) continue;
+            if (recordedMag < 0.01) return;
 
-            final double cx = pi.getX() + 0.5;
-            final double cy = pi.getY() + 0.5;
-            final double cz = pi.getZ() + 0.5;
-
+            // normalised direction times the recorded magnitude
             final double scale = recordedMag / netMag;
-            queued.recordPointForce(new Vector3d(cx, cy, cz),
-                new Vector3d(netX * scale, netY * scale, netZ * scale));
+            forceX[i] = netX * scale;
+            forceY[i] = netY * scale;
+            forceZ[i] = netZ * scale;
+            arrowCount[0]++;
+        });
+
+        final BlockPos[] positions = solver.getPositions();
+        int arrows = 0;
+        for (int i = 0; i < n; i++) {
+            if (forceX[i] == 0.0 && forceY[i] == 0.0 && forceZ[i] == 0.0) continue;
+            final BlockPos pi = positions[i];
+            queued.recordPointForce(
+                new Vector3d(pi.getX() + 0.5, pi.getY() + 0.5, pi.getZ() + 0.5),
+                new Vector3d(forceX[i], forceY[i], forceZ[i]));
             arrows++;
         }
         return arrows;
     }
-
 }
