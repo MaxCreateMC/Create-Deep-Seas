@@ -190,7 +190,7 @@ public class CommandSubBlockEntity extends BlockEntity {
             for (int s = 0; s < 5; s++) {
                 int x = Mth.floor(xs[s] + dx * ahead);
                 int z = Mth.floor(zs[s] + dz * ahead);
-                ChunkAccess chunk = ocean.getChunk(x >> 4, z >> 4, ChunkStatus.FULL, false);
+                ChunkAccess chunk = ocean.getChunkSource().getChunkNow(x >> 4, z >> 4);
                 if (chunk == null)
                     continue;
                 for (int y = top; y >= bottom && y >= highest; y--) {
