@@ -1,8 +1,6 @@
 package com.maxenonyme.highseas.wind;
 
-public final class WindConfig {
-    private WindConfig() {
-    }
+public class WindConfig {
 
     public static final int ZONE_SIZE = 32;
 

@@ -31,9 +31,7 @@ import java.util.UUID;
 import com.maxenonyme.highseas.CreateHighSeas;
 import com.maxenonyme.highseas.config.HighSeasConfig;
 
-public final class OarPropulsionSystem {
-    private OarPropulsionSystem() {
-    }
+public class OarPropulsionSystem {
 
 
     private static final int STROKE_PERIOD = 24;
@@ -106,8 +104,8 @@ public final class OarPropulsionSystem {
             return false;
         Level level = player.level();
 
-        SubLevel sub = resolveBoat(level, player);
-        if (sub == null)
+        SubLevel subLevel = resolveBoat(level, player);
+        if (subLevel == null)
             return false;
 
         if (CompartmentTracker.isInSealedExact(level, player.position())
@@ -117,7 +115,7 @@ public final class OarPropulsionSystem {
         if (!waterNearby(level, player))
             return false;
 
-        Object handle = SablePhysicsHelper.getHandle(sub);
+        Object handle = SablePhysicsHelper.getHandle(subLevel);
         if (handle == null)
             return false;
 
@@ -143,10 +141,10 @@ public final class OarPropulsionSystem {
         }
 
         Vector3d impulse = new Vector3d(forward).mul(magnitude);
-        sub.logicalPose().orientation().conjugate(new Quaterniond()).transform(impulse);
+        subLevel.logicalPose().orientation().conjugate(new Quaterniond()).transform(impulse);
 
         Vector3d point = new Vector3d(player.getX(), player.getY(), player.getZ());
-        sub.logicalPose().transformPositionInverse(point);
+        subLevel.logicalPose().transformPositionInverse(point);
 
         SablePhysicsHelper.wakeUp(handle);
         if (!SablePhysicsHelper.applyImpulseAtPoint(handle, point, impulse))
@@ -163,13 +161,13 @@ public final class OarPropulsionSystem {
         SubLevel best = null;
         double bestDistSq = Double.MAX_VALUE;
         Vector3d local = new Vector3d();
-        for (SubLevel sub : container.getAllSubLevels()) {
-            LevelPlot plot = sub.getPlot();
+        for (SubLevel subLevel : container.getAllSubLevels()) {
+            LevelPlot plot = subLevel.getPlot();
             if (plot == null)
                 continue;
             BoundingBox3ic bb = plot.getBoundingBox();
             local.set(px, py, pz);
-            sub.logicalPose().transformPositionInverse(local);
+            subLevel.logicalPose().transformPositionInverse(local);
             if (local.x < bb.minX() - 0.6 || local.x > bb.maxX() + 1.6
                     || local.z < bb.minZ() - 0.6 || local.z > bb.maxZ() + 1.6
                     || local.y < bb.minY() - 1.0 || local.y > bb.maxY() + 2.6)
@@ -179,7 +177,7 @@ public final class OarPropulsionSystem {
             double d = (local.x - cx) * (local.x - cx) + (local.z - cz) * (local.z - cz);
             if (d < bestDistSq) {
                 bestDistSq = d;
-                best = sub;
+                best = subLevel;
             }
         }
         return best;
@@ -190,12 +188,12 @@ public final class OarPropulsionSystem {
         int px = Mth.floor(player.getX());
         int py = Mth.floor(player.getY());
         int pz = Mth.floor(player.getZ());
-        BlockPos.MutableBlockPos m = new BlockPos.MutableBlockPos();
+        BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
         for (int dx = -1; dx <= 1; dx++) {
             for (int dz = -1; dz <= 1; dz++) {
                 for (int dy = 0; dy >= -2; dy--) {
-                    m.set(px + dx, py + dy, pz + dz);
-                    if (CompartmentTracker.realFluidState(parent, m).is(FluidTags.WATER))
+                    pos.set(px + dx, py + dy, pz + dz);
+                    if (CompartmentTracker.realFluidState(parent, pos).is(FluidTags.WATER))
                         return true;
                 }
             }

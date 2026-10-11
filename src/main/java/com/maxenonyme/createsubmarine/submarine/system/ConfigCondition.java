@@ -1,5 +1,6 @@
 package com.maxenonyme.createsubmarine.submarine.system;
 
+import com.maxenonyme.AbyssDimension.CreateAbyss;
 import com.maxenonyme.createsubmarine.CreateSubmarine;
 import com.maxenonyme.createsubmarine.submarine.config.SubmarineConfig;
 import com.mojang.serialization.Codec;
@@ -30,7 +31,7 @@ public class ConfigCondition implements ICondition {
     @Override
     public boolean test(IContext context) {
         if (configKey.equalsIgnoreCase("enableAbyssDimension")) {
-            return com.maxenonyme.AbyssDimension.CreateAbyss.enabled();
+            return CreateAbyss.enabled();
         }
         if (!SubmarineConfig.COMMON_SPEC.isLoaded()) {
             return false;

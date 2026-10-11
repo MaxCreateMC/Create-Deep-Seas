@@ -20,9 +20,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-public final class BreachLedger {
-    private BreachLedger() {
-    }
+public class BreachLedger {
 
     private static final String NAME = "create_submarine_breaches";
     private static final Map<UUID, Set<BlockPos>> BREACHES = new ConcurrentHashMap<>();
@@ -55,7 +53,7 @@ public final class BreachLedger {
                 PacketDistributor.sendToPlayer(player, new BreachSyncPayload(id, List.copyOf(plugs))));
     }
 
-    private static final class Data extends SavedData {
+    private static class Data extends SavedData {
         static Data load(CompoundTag tag, HolderLookup.Provider provider) {
             for (String key : tag.getAllKeys()) {
                 UUID id;
@@ -77,8 +75,8 @@ public final class BreachLedger {
         public CompoundTag save(CompoundTag tag, HolderLookup.Provider provider) {
             BREACHES.forEach((id, plugs) -> {
                 ListTag list = new ListTag();
-                for (BlockPos p : plugs)
-                    list.add(LongTag.valueOf(p.asLong()));
+                for (BlockPos pos : plugs)
+                    list.add(LongTag.valueOf(pos.asLong()));
                 tag.put(id.toString(), list);
             });
             return tag;

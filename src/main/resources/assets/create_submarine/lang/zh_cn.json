@@ -1,4 +1,5 @@
 {
+  "create_submarine.ui.button.later": "之后再说",
   "block.create_submarine.ballast_tank": "潜艇压载水罐",
   "block.create_submarine.ballast_vent": "压载排口",
   "block.create_submarine.decompression_chamber": "减压舱",

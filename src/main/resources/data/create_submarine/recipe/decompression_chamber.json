@@ -1,0 +1,24 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "SGS",
+    "GPG",
+    "SGS"
+  ],
+  "key": {
+    "S": {
+      "item": "create:copper_sheet"
+    },
+    "G": {
+      "tag": "c:glass_blocks"
+    },
+    "P": {
+      "item": "create:mechanical_pump"
+    }
+  },
+  "result": {
+    "id": "create_submarine:decompression_chamber",
+    "count": 1
+  }
+}

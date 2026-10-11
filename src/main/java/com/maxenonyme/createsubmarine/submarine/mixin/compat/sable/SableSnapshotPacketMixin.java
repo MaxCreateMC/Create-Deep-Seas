@@ -37,8 +37,8 @@ public abstract class SableSnapshotPacketMixin {
             return;
 
         for (ClientboundSableSnapshotDualPacket.Entry e : this.entries) {
-            SubLevel sub = cc.getSubLevel(ChunkPos.getX(e.plotCoordinate()), ChunkPos.getZ(e.plotCoordinate()));
-            if (sub instanceof ClientSubLevel csub) {
+            SubLevel subLevel = cc.getSubLevel(ChunkPos.getX(e.plotCoordinate()), ChunkPos.getZ(e.plotCoordinate()));
+            if (subLevel instanceof ClientSubLevel csub) {
                 cc.getInterpolation().receiveSnapshot(csub, this.interpolationTick, e.pose(), mode);
             } else {
                 SableSnapshotQueue.enqueue(e.plotCoordinate(), this.interpolationTick, e.pose(), mode);

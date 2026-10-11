@@ -34,9 +34,7 @@ import java.util.Map;
 import java.util.UUID;
 
 @EventBusSubscriber(modid = CreateHighSeas.MOD_ID, value = Dist.CLIENT)
-public final class WindDebugRenderer {
-    private WindDebugRenderer() {
-    }
+public class WindDebugRenderer {
 
     private static final int SCAN_INTERVAL = 5;
     private static long lastScan = Long.MIN_VALUE;
@@ -80,7 +78,7 @@ public final class WindDebugRenderer {
                 continue;
             }
             List<SailGroup> groups = CACHE.computeIfAbsent(ship.getUniqueId(),
-                    k -> SailDetector.detect(ship.getLevel(), ship.getPlot().getBoundingBox()));
+                    k -> SailDetector.detect(ship.getLevel(), ship.getPlot()));
             if (groups.isEmpty()) {
                 continue;
             }
@@ -88,7 +86,7 @@ public final class WindDebugRenderer {
             Pose3dc pose = ship.logicalPose();
             Quaterniondc orientation = pose.orientation();
             BoundingBox3ic bb = ship.getPlot().getBoundingBox();
-            Vec3 rudder = RudderDetector.centroid(ship.getLevel(), bb);
+            Vec3 rudder = RudderDetector.centroid(ship.getPlot());
             Vec3 rcenter = new Vec3((bb.minX() + bb.maxX()) * 0.5, (bb.minY() + bb.maxY()) * 0.5, (bb.minZ() + bb.maxZ()) * 0.5);
             Vector3d forward = SailForce.forward(orientation, rudder, rcenter, bb.maxX() - bb.minX(), bb.maxZ() - bb.minZ(), groups);
 
@@ -115,7 +113,7 @@ public final class WindDebugRenderer {
                     orientation.transform(wn);
                     if (wn.lengthSquared() > 1.0e-9) {
                         wn.normalize();
-                        double power = SailForce.pointOfSail(windVec, wn.x, wn.y, wn.z, forward.x, forward.y, forward.z)
+                        double power = SailForce.efficiency(windVec, wn.x, wn.z, forward)
                                 * SailForce.windFactor(windVec) * group.area();
                         double len = Mth.clamp(power * 0.5, -6.0, 6.0);
                         if (Math.abs(len) < 0.5) {

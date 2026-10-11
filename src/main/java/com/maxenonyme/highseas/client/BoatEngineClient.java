@@ -10,9 +10,7 @@ import com.maxenonyme.highseas.helm.HelmSeatRenderer;
 import dev.simulated_team.simulated.index.SimClickInteractions;
 import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent;
 
-public final class BoatEngineClient {
-    private BoatEngineClient() {
-    }
+public class BoatEngineClient {
 
     public static void init(IEventBus modEventBus) {
         AllHighSeasPartialModels.init();

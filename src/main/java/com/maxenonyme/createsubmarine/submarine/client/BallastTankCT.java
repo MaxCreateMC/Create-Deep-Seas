@@ -21,9 +21,7 @@ import java.util.ArrayDeque;
 import java.util.HashSet;
 import java.util.Set;
 
-public final class BallastTankCT {
-    private BallastTankCT() {
-    }
+public class BallastTankCT {
 
     private static final int SCAN_LIMIT = 512;
     private static final int REACH = 16;
@@ -39,7 +37,7 @@ public final class BallastTankCT {
                         "block/ballast/" + name + "_connected"));
     }
 
-    private static final class Behaviour extends ConnectedTextureBehaviour.Base {
+    private static class Behaviour extends ConnectedTextureBehaviour.Base {
         @Override
         public CTSpriteShiftEntry getShift(BlockState state, Direction direction, TextureAtlasSprite sprite) {
             if (direction.getAxis().isHorizontal())

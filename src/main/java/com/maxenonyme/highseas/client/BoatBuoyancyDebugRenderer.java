@@ -28,9 +28,7 @@ import java.util.Map;
 import java.util.UUID;
 
 @EventBusSubscriber(modid = CreateHighSeas.MOD_ID, value = Dist.CLIENT)
-public final class BoatBuoyancyDebugRenderer {
-    private BoatBuoyancyDebugRenderer() {
-    }
+public class BoatBuoyancyDebugRenderer {
 
     @SubscribeEvent
     public static void onRenderLevel(RenderLevelStageEvent event) {
@@ -54,22 +52,22 @@ public final class BoatBuoyancyDebugRenderer {
             UUID id = e.getKey();
             if (!BoatManager.boatSubs().containsKey(id))
                 continue;
-            SubLevelAccess sub = e.getValue();
+            SubLevelAccess ship = e.getValue();
             List<CompartmentDetector.Component> comps = CompartmentTracker.getCompartments(id);
             if (comps == null || comps.isEmpty())
                 continue;
 
-            Pose3dc pose = (sub instanceof ClientSubLevel csl) ? csl.renderPose() : sub.logicalPose();
+            Pose3dc pose = (ship instanceof ClientSubLevel subLevel) ? subLevel.renderPose() : ship.logicalPose();
             Quaterniondc q = pose.orientation();
             poseStack.pushPose();
             poseStack.translate(pose.position().x() - cam.x, pose.position().y() - cam.y, pose.position().z() - cam.z);
             poseStack.mulPose(new Quaternionf((float) q.x(), (float) q.y(), (float) q.z(), (float) q.w()));
             Matrix4f mat = poseStack.last().pose();
 
-            for (CompartmentDetector.Component c : comps) {
-                if (!c.sealed())
+            for (CompartmentDetector.Component compartment : comps) {
+                if (!compartment.sealed())
                     continue;
-                for (BlockPos cell : c.internal()) {
+                for (BlockPos cell : compartment.internal()) {
                     w.set(cell.getX() + 0.5, cell.getY() + 0.5, cell.getZ() + 0.5);
                     pose.transformPosition(w);
                     if (CompartmentTracker.realFluidState(mc.level, BlockPos.containing(w.x, w.y, w.z)).is(FluidTags.WATER))

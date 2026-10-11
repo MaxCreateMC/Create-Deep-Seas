@@ -1,5 +1,7 @@
 package com.maxenonyme.createsubmarine.submarine.mixin.compat;
 
+import net.minecraft.client.renderer.RenderType;
+import net.neoforged.neoforge.client.ChunkRenderTypeSet;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Redirect;
@@ -13,11 +15,11 @@ public class AeronauticsRenderTypeCrashFixMixin {
         remap = false,
         require = 0
     )
-    private static net.neoforged.neoforge.client.ChunkRenderTypeSet createsubmarine$redirectChunkRenderType(net.minecraft.client.renderer.RenderType[] renderTypes) {
+    private static ChunkRenderTypeSet createsubmarine$redirectChunkRenderType(RenderType[] renderTypes) {
         try {
-            return net.neoforged.neoforge.client.ChunkRenderTypeSet.of(renderTypes);
+            return ChunkRenderTypeSet.of(renderTypes);
         } catch (IllegalArgumentException e) {
-            return net.neoforged.neoforge.client.ChunkRenderTypeSet.of(net.minecraft.client.renderer.RenderType.translucent());
+            return ChunkRenderTypeSet.of(RenderType.translucent());
         }
     }
 }

@@ -11,9 +11,7 @@ import com.maxenonyme.highseas.BoatBuoyancySystem;
 import com.maxenonyme.highseas.BoatManager;
 import com.maxenonyme.highseas.helm.HelmServer;
 
-public final class HighSeasLifecycleHandler {
-    private HighSeasLifecycleHandler() {
-    }
+public class HighSeasLifecycleHandler {
 
     public static void onServerStopping(ServerStoppingEvent event) {
         SailWindRegistry.clearAll();

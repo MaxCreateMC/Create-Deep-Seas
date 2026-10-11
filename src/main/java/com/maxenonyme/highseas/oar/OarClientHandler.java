@@ -8,9 +8,7 @@ import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.client.event.RenderHandEvent;
 import net.neoforged.neoforge.network.PacketDistributor;
 
-public final class OarClientHandler {
-    private OarClientHandler() {
-    }
+public class OarClientHandler {
 
     public static void onClientTick(ClientTickEvent.Post event) {
         Minecraft mc = Minecraft.getInstance();

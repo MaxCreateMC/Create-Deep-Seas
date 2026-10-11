@@ -22,9 +22,9 @@ public class RopeDataSubLevelMixin {
             return direct;
         }
         SubLevelAccess access = SableCompanion.INSTANCE.getContaining(level, pos);
-        if (!(access instanceof SubLevel sub) || sub.getPlot() == null) {
+        if (!(access instanceof SubLevel subLevel) || subLevel.getPlot() == null) {
             return null;
         }
-        return sub.getPlot().getEmbeddedLevelAccessor().getBlockEntity(pos);
+        return subLevel.getPlot().getEmbeddedLevelAccessor().getBlockEntity(pos.subtract(subLevel.getPlot().getCenterBlock()));
     }
 }

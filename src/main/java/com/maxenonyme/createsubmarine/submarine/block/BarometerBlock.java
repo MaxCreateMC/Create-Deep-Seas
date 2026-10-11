@@ -3,14 +3,28 @@ package com.maxenonyme.createsubmarine.submarine.block;
 import com.maxenonyme.createsubmarine.submarine.block.entity.BarometerBlockEntity;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
+import net.minecraft.util.RandomSource;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.ItemInteractionResult;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.item.context.BlockPlaceContext;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.EntityBlock;
 import net.minecraft.world.level.block.HorizontalDirectionalBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.entity.BlockEntityTicker;
+import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.DirectionProperty;
+import net.minecraft.world.phys.BlockHitResult;
 import org.jetbrains.annotations.Nullable;
 
 public class BarometerBlock extends Block implements EntityBlock {
@@ -41,9 +55,9 @@ public class BarometerBlock extends Block implements EntityBlock {
 
     @Nullable
     @Override
-    public <T extends BlockEntity> net.minecraft.world.level.block.entity.BlockEntityTicker<T> getTicker(
-            net.minecraft.world.level.Level level, BlockState state,
-            net.minecraft.world.level.block.entity.BlockEntityType<T> type) {
+    public <T extends BlockEntity> BlockEntityTicker<T> getTicker(
+            Level level, BlockState state,
+            BlockEntityType<T> type) {
         if (level.isClientSide)
             return null;
         return (lvl, p, st, be) -> {
@@ -54,14 +68,14 @@ public class BarometerBlock extends Block implements EntityBlock {
     }
 
     @Override
-    public void animateTick(BlockState state, net.minecraft.world.level.Level level, BlockPos pos,
-            net.minecraft.util.RandomSource random) {
+    public void animateTick(BlockState state, Level level, BlockPos pos,
+            RandomSource random) {
         if (random.nextFloat() < 0.40f) {
             Direction facing = state.hasProperty(FACING) ? state.getValue(FACING) : Direction.NORTH;
 
             level.playLocalSound(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5,
-                    net.minecraft.sounds.SoundEvents.BUBBLE_COLUMN_WHIRLPOOL_AMBIENT,
-                    net.minecraft.sounds.SoundSource.BLOCKS,
+                    SoundEvents.BUBBLE_COLUMN_WHIRLPOOL_AMBIENT,
+                    SoundSource.BLOCKS,
                     2.0F, 0.8F + random.nextFloat() * 0.4F, false);
 
             int count = random.nextInt(3) + 2;
@@ -72,24 +86,24 @@ public class BarometerBlock extends Block implements EntityBlock {
 
                 double speedY = 0.01 + random.nextDouble() * 0.02;
 
-                level.addParticle(net.minecraft.core.particles.ParticleTypes.BUBBLE, x, y, z, 0.0, speedY, 0.0);
+                level.addParticle(ParticleTypes.BUBBLE, x, y, z, 0.0, speedY, 0.0);
             }
         }
     }
 
     @Override
-    protected net.minecraft.world.ItemInteractionResult useItemOn(net.minecraft.world.item.ItemStack stack,
-            BlockState state, net.minecraft.world.level.Level level, BlockPos pos,
-            net.minecraft.world.entity.player.Player player, net.minecraft.world.InteractionHand hand,
-            net.minecraft.world.phys.BlockHitResult hitResult) {
-        if (stack.is(net.minecraft.world.item.Items.NAME_TAG)
-                && stack.has(net.minecraft.core.component.DataComponents.CUSTOM_NAME)) {
+    protected ItemInteractionResult useItemOn(ItemStack stack,
+            BlockState state, Level level, BlockPos pos,
+            Player player, InteractionHand hand,
+            BlockHitResult hitResult) {
+        if (stack.is(Items.NAME_TAG)
+                && stack.has(DataComponents.CUSTOM_NAME)) {
             if (level.getBlockEntity(pos) instanceof BarometerBlockEntity be) {
-                be.setCustomName(stack.get(net.minecraft.core.component.DataComponents.CUSTOM_NAME));
+                be.setCustomName(stack.get(DataComponents.CUSTOM_NAME));
                 if (!player.getAbilities().instabuild) {
                     stack.shrink(1);
                 }
-                return net.minecraft.world.ItemInteractionResult.sidedSuccess(level.isClientSide);
+                return ItemInteractionResult.sidedSuccess(level.isClientSide);
             }
         }
         return super.useItemOn(stack, state, level, pos, player, hand, hitResult);

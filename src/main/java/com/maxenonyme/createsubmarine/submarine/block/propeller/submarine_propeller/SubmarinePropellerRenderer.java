@@ -16,6 +16,7 @@ import net.minecraft.core.Direction;
 import net.minecraft.util.Mth;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
+import org.joml.Quaternionf;
 
 import static dev.eriksonn.aeronautics.content.blocks.propeller.small.BasePropellerBlock.REVERSED;
 
@@ -40,7 +41,8 @@ public class SubmarinePropellerRenderer extends KineticBlockEntityRenderer<Subma
     }
 
     public float getAngle(float partialTicks, Direction dir, SubmarinePropellerBlockEntity be) {
-        float angle = 2 * Mth.lerp(partialTicks, be.getPreviousAngle(), be.getAngle()) * Mth.DEG_TO_RAD;
+        SubmarinePropellerBlockEntity source = be.clusterDriver();
+        float angle = 2 * Mth.lerp(partialTicks, source.getPreviousAngle(), source.getAngle()) * Mth.DEG_TO_RAD;
         return angle + getRotationOffsetForPosition(be, be.getBlockPos(), dir.getAxis());
     }
 
@@ -49,29 +51,60 @@ public class SubmarinePropellerRenderer extends KineticBlockEntityRenderer<Subma
         if (VisualizationManager.supportsVisualization(be.getLevel()))
             return;
 
-        super.renderSafe(be, partialTicks, ms, buffer, light, overlay);
-        if (be.isGroupMember())
+        int size = be.getClusterSize();
+        if (size != 0) {
+            if (size == 2 || be.isGroupMaster())
+                super.renderSafe(be, partialTicks, ms, buffer, light, overlay);
+            if (be.isGroupMaster()) {
+                renderCluster(be, size, partialTicks, ms, buffer, light);
+            }
             return;
+        }
+
+        super.renderSafe(be, partialTicks, ms, buffer, light, overlay);
 
         BlockState state = be.getBlockState();
         Direction dir = state.getValue(BlockStateProperties.FACING);
         VertexConsumer vb = buffer.getBuffer(RenderType.solid());
         float angle = getAngle(partialTicks, dir, be);
+        renderBlades(CachedBuffers.partialFacing(getCurrentModel(be), state), be, dir, angle, light).renderInto(ms, vb);
+        renderBlades(CachedBuffers.partialFacing(getContraModel(be), state), be, dir, -angle, light).renderInto(ms, vb);
+    }
+
+    private void renderCluster(SubmarinePropellerBlockEntity be, int size, float partialTicks, PoseStack ms, MultiBufferSource buffer, int light) {
+        VertexConsumer vb = buffer.getBuffer(RenderType.solid());
+        BlockState state = be.getBlockState();
+        Direction dir = state.getValue(BlockStateProperties.FACING);
+        Quaternionf facing = dir.getRotation();
+        float angle = getAngle(partialTicks, dir, be);
+        Direction axis = Direction.get(Direction.AxisDirection.POSITIVE, dir.getAxis());
 
         ms.pushPose();
-        if (be.isGroupMaster()) {
+        ms.translate(0.5, 0.5, 0.5);
+        float halfWidth = 0.5f;
+        if (size == 2) {
             Direction[] plane = SubmarinePropellerBlockEntity.planeAxes(dir);
             ms.translate((plane[0].getStepX() + plane[1].getStepX()) * 0.5,
                     (plane[0].getStepY() + plane[1].getStepY()) * 0.5,
                     (plane[0].getStepZ() + plane[1].getStepZ()) * 0.5);
-            ms.translate(0.5, 0.5, 0.5);
-            ms.scale(dir.getAxis() == Direction.Axis.X ? 1 : 2,
-                    dir.getAxis() == Direction.Axis.Y ? 1 : 2,
-                    dir.getAxis() == Direction.Axis.Z ? 1 : 2);
-            ms.translate(-0.5, -0.5, -0.5);
+            halfWidth = 1.0f;
         }
-        renderBlades(CachedBuffers.partialFacing(getCurrentModel(be), state), be, dir, angle, light).renderInto(ms, vb);
-        renderBlades(CachedBuffers.partialFacing(getContraModel(be), state), be, dir, -angle, light).renderInto(ms, vb);
+
+        ms.pushPose();
+        ms.mulPose(facing);
+        ms.translate(-halfWidth, -0.5f, -halfWidth);
+        CachedBuffers.partial(size == 2 ? AllPartialModels.SUBMARINE_PROPELLER_2X2_BASE : AllPartialModels.SUBMARINE_PROPELLER_3X3_BASE, state)
+                .light(light).renderInto(ms, size == 2 ? buffer.getBuffer(RenderType.cutout()) : vb);
+        ms.popPose();
+
+        ms.mulPose(new Quaternionf().rotateAxis(angle, axis.step()).mul(facing));
+        ms.translate(0, -0.5, 0);
+        if (size == 2) {
+            CachedBuffers.partial(AllPartialModels.SUBMARINE_PROPELLER_2X2_BLADES, state).light(light).renderInto(ms, vb);
+        } else {
+            CachedBuffers.partial(AllPartialModels.SUBMARINE_PROPELLER_3X3_GEAR, state).light(light).renderInto(ms, vb);
+            CachedBuffers.partial(AllPartialModels.SUBMARINE_PROPELLER_3X3_BLADES, state).light(light).renderInto(ms, vb);
+        }
         ms.popPose();
     }
 

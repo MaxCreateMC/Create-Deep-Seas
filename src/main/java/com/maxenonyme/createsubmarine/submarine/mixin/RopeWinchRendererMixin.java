@@ -2,6 +2,7 @@ package com.maxenonyme.createsubmarine.submarine.mixin;
 
 import com.maxenonyme.createsubmarine.submarine.client.renderer.AllPartialModels;
 import com.maxenonyme.createsubmarine.submarine.util.SteelCableHolderAccessor;
+import com.mojang.blaze3d.vertex.PoseStack;
 import com.simibubi.create.foundation.blockEntity.SmartBlockEntity;
 import net.createmod.catnip.render.SpriteShiftEntry;
 import dev.engine_room.flywheel.lib.model.baked.PartialModel;
@@ -11,6 +12,7 @@ import dev.simulated_team.simulated.content.blocks.rope.rope_winch.RopeWinchRend
 import dev.simulated_team.simulated.index.SimPartialModels;
 import net.createmod.catnip.render.CachedBuffers;
 import net.createmod.catnip.render.SuperByteBuffer;
+import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.world.level.block.state.BlockState;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -26,8 +28,8 @@ public class RopeWinchRendererMixin {
     @Inject(method = "renderComponents", at = @At("HEAD"))
     private void createsubmarine$captureSteel(
         RopeWinchBlockEntity be, float partialTicks,
-        com.mojang.blaze3d.vertex.PoseStack ms,
-        net.minecraft.client.renderer.MultiBufferSource buffer,
+        PoseStack ms,
+        MultiBufferSource buffer,
         int light, int overlay,
         org.spongepowered.asm.mixin.injection.callback.CallbackInfo ci
     ) {

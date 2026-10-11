@@ -27,6 +27,8 @@ public class CompatMixinPlugin implements IMixinConfigPlugin {
 
     @Override
     public boolean shouldApplyMixin(String targetClassName, String mixinClassName) {
+        if (mixinClassName.contains(".vanilla."))
+            return LoadingModList.get().getModFileById("sodium") == null;
         for (Map.Entry<String, String> entry : OPTIONAL_MODS.entrySet())
             if (mixinClassName.contains(entry.getKey()))
                 return LoadingModList.get().getModFileById(entry.getValue()) != null;

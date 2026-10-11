@@ -15,7 +15,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 
-public final class SodiumWaterOcclusionBridge {
+public class SodiumWaterOcclusionBridge {
     public static final int CLOSE_TEXTURE_UNIT = 6;
     public static final int FAR_TEXTURE_UNIT = 7;
 
@@ -32,9 +32,6 @@ public final class SodiumWaterOcclusionBridge {
         boolean hasOcclusion() {
             return enabled >= 0;
         }
-    }
-
-    private SodiumWaterOcclusionBridge() {
     }
 
     private static ProgramUniforms locations(int programHandle) {
@@ -61,32 +58,26 @@ public final class SodiumWaterOcclusionBridge {
         }
 
         if (!translucentPass) {
-            GL20.glUniform1f(u.enabled, 0.0f);
+            GL20.glUniform1f(u.enabled, PIXEL_PERFECT_ACTIVE && bind(u) ? 1.0f : 0.0f);
             return;
         }
 
-        if (!WaterOcclusionRenderer.isEnabled()) {
-            GL20.glUniform1f(u.enabled, 0.0f);
-            setPixelPerfect(false);
-            return;
-        }
+        boolean bound = WaterOcclusionRenderer.isEnabled() && bind(u);
+        GL20.glUniform1f(u.enabled, bound ? 1.0f : 0.0f);
+        setPixelPerfect(bound);
+    }
 
+    private static boolean bind(ProgramUniforms u) {
         try {
             WaterOcclusionRendererAccessor acc = (WaterOcclusionRendererAccessor) (Object) SableClient.WATER_OCCLUSION_RENDERER;
             AdvancedFbo close = acc.createsubmarine$getCloseBuffer();
             AdvancedFbo far = acc.createsubmarine$getFarBuffer();
-            if (close == null || far == null) {
-                GL20.glUniform1f(u.enabled, 0.0f);
-                setPixelPerfect(false);
-                return;
-            }
+            if (close == null || far == null)
+                return false;
             AdvancedFboTextureAttachment closeDepth = close.getDepthTextureAttachment();
             AdvancedFboTextureAttachment farDepth = far.getDepthTextureAttachment();
-            if (closeDepth == null || farDepth == null) {
-                GL20.glUniform1f(u.enabled, 0.0f);
-                setPixelPerfect(false);
-                return;
-            }
+            if (closeDepth == null || farDepth == null)
+                return false;
 
             RenderSystem.activeTexture(GL13.GL_TEXTURE0 + CLOSE_TEXTURE_UNIT);
             RenderSystem.bindTexture(closeDepth.getId());
@@ -98,11 +89,9 @@ public final class SodiumWaterOcclusionBridge {
                 GL20.glUniform1i(u.closeSampler, CLOSE_TEXTURE_UNIT);
             if (u.farSampler >= 0)
                 GL20.glUniform1i(u.farSampler, FAR_TEXTURE_UNIT);
-            GL20.glUniform1f(u.enabled, 1.0f);
-            setPixelPerfect(true);
-        } catch (Throwable t) {
-            GL20.glUniform1f(u.enabled, 0.0f);
-            setPixelPerfect(false);
+            return true;
+        } catch (RuntimeException e) {
+            return false;
         }
     }
 

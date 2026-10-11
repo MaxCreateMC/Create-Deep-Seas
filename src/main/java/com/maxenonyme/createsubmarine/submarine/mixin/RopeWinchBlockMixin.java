@@ -25,9 +25,12 @@ public class RopeWinchBlockMixin {
 
     @Inject(method = "useItemOn", at = @At("HEAD"), cancellable = true, remap = true)
     private void createsubmarine$steelCableToWinch(ItemStack stack, BlockState state, Level level, BlockPos pos, Player player, InteractionHand hand, BlockHitResult hit, CallbackInfoReturnable<ItemInteractionResult> cir) {
-        if (!stack.is(CreateSubmarine.STEEL_CABLE.get())) return;
-        if (player.isShiftKeyDown()) return;
-        if (!stack.has(SimDataComponents.ROPE_FIRST_CONNECTION)) return;
+        if (!stack.is(CreateSubmarine.STEEL_CABLE.get()))
+            return;
+        if (player.isShiftKeyDown())
+            return;
+        if (!stack.has(SimDataComponents.ROPE_FIRST_CONNECTION))
+            return;
 
         BlockPos firstPos = stack.get(SimDataComponents.ROPE_FIRST_CONNECTION);
         if (!level.isClientSide) {

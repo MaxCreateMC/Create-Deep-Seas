@@ -1,5 +1,6 @@
 package com.maxenonyme.createsubmarine.submarine.compartment;
 
+import com.maxenonyme.createsubmarine.submarine.config.SubmarineConfig;
 import dev.ryanhcode.sable.companion.SubLevelAccess;
 import dev.ryanhcode.sable.sublevel.SubLevel;
 import dev.ryanhcode.sable.sublevel.plot.LevelPlot;
@@ -7,6 +8,7 @@ import dev.ryanhcode.sable.companion.math.BoundingBox3ic;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.EmptyBlockGetter;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.block.DoorBlock;
 import net.minecraft.world.level.block.FenceGateBlock;
@@ -17,9 +19,9 @@ import java.util.*;
 
 public class CompartmentDetector {
     private static int maxBlocks() {
-        var spec = com.maxenonyme.createsubmarine.submarine.config.SubmarineConfig.SERVER_SPEC;
+        var spec = SubmarineConfig.SERVER_SPEC;
         return spec.isLoaded()
-                ? com.maxenonyme.createsubmarine.submarine.config.SubmarineConfig.OXYGEN_MAX_FILL_BLOCKS.get()
+                ? SubmarineConfig.OXYGEN_MAX_FILL_BLOCKS.get()
                 : 500_000;
     }
 
@@ -29,7 +31,7 @@ public class CompartmentDetector {
     public record Result(List<Component> components, int totalScanned, Set<BlockPos> solidBlocks) {
     }
 
-    public static final class IncrementalScanState {
+    public static class IncrementalScanState {
         final SubLevel sub;
         final LevelPlot plot;
         final int minX, maxX, minY, maxY, minZ, maxZ;
@@ -117,18 +119,21 @@ public class CompartmentDetector {
     }
 
     public static boolean stepScan(IncrementalScanState st, int budget) {
-        if (st == null || st.done) return true;
+        if (st == null || st.done)
+            return true;
 
         int max = maxBlocks();
         for (int spent = 0; spent < budget; spent++) {
             if (st.total >= max) {
-                if (st.hasActiveBfs()) st.finishBfs();
+                if (st.hasActiveBfs())
+                    st.finishBfs();
                 st.done = true;
                 return true;
             }
 
             if (st.hasActiveBfs()) {
-                if (!stepActiveBfs(st, max)) st.finishBfs();
+                if (!stepActiveBfs(st, max))
+                    st.finishBfs();
                 continue;
             }
 
@@ -148,7 +153,8 @@ public class CompartmentDetector {
             }
 
             if (!st.advanceCursor()) {
-                if (st.hasActiveBfs()) st.finishBfs();
+                if (st.hasActiveBfs())
+                    st.finishBfs();
                 st.done = true;
                 return true;
             }
@@ -229,8 +235,8 @@ public class CompartmentDetector {
                 || state.getBlock() instanceof FenceGateBlock)
             return state.getValue(BlockStateProperties.OPEN);
         return state.getCollisionShape(
-                net.minecraft.world.level.EmptyBlockGetter.INSTANCE,
-                net.minecraft.core.BlockPos.ZERO).isEmpty();
+                EmptyBlockGetter.INSTANCE,
+                BlockPos.ZERO).isEmpty();
     }
 
     private static BlockState getStateInPlot(LevelPlot plot, BlockPos pos, ChunkCache cache) {

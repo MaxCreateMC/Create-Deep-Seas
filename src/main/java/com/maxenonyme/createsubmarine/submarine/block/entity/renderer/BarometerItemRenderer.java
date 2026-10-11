@@ -10,6 +10,7 @@ import net.minecraft.client.renderer.block.BlockRenderDispatcher;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
+import net.neoforged.neoforge.client.model.data.ModelData;
 
 public class BarometerItemRenderer extends BlockEntityWithoutLevelRenderer {
     private BarometerBlockEntity dummyBE;
@@ -26,7 +27,7 @@ public class BarometerItemRenderer extends BlockEntityWithoutLevelRenderer {
         }
 
         BlockRenderDispatcher blockRenderer = Minecraft.getInstance().getBlockRenderer();
-        blockRenderer.renderSingleBlock(CreateSubmarine.BAROMETER.get().defaultBlockState(), ms, buffer, light, overlay, net.neoforged.neoforge.client.model.data.ModelData.EMPTY, null);
+        blockRenderer.renderSingleBlock(CreateSubmarine.BAROMETER.get().defaultBlockState(), ms, buffer, light, overlay, ModelData.EMPTY, null);
 
         Minecraft.getInstance().getBlockEntityRenderDispatcher().renderItem(dummyBE, ms, buffer, light, overlay);
     }

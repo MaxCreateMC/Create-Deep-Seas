@@ -45,7 +45,8 @@ public class WaterThrusterBlock extends DirectionalBlock implements EntityBlock 
     }
 
     private static VoxelShape rotateShape(VoxelShape shape, Direction from, Direction to) {
-        if (from == to) return shape;
+        if (from == to)
+            return shape;
         switch (to) {
             case DOWN:
                 return Shapes.or(

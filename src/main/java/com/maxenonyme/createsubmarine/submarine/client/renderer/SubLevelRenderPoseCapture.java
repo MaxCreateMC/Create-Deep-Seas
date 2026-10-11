@@ -8,11 +8,8 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 
-public final class SubLevelRenderPoseCapture {
+public class SubLevelRenderPoseCapture {
     private static final Map<UUID, Pose3d> POSES = new ConcurrentHashMap<>();
-
-    private SubLevelRenderPoseCapture() {
-    }
 
     public static void capture(UUID subId, Pose3dc pose) {
         POSES.computeIfAbsent(subId, k -> new Pose3d()).set(pose);

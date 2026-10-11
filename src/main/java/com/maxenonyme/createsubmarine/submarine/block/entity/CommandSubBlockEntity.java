@@ -96,13 +96,13 @@ public class CommandSubBlockEntity extends BlockEntity {
         if (level == null || level.isClientSide)
             return;
         tickCount++;
-        SubLevelAccess sub = SableCompanion.INSTANCE.getContaining(level, worldPosition);
-        claim(sub == null ? null : sub.getUniqueId());
+        SubLevelAccess subLevel = SableCompanion.INSTANCE.getContaining(level, worldPosition);
+        claim(subLevel == null ? null : subLevel.getUniqueId());
         if (tickCount % 10 == 0)
-            measure(sub);
+            measure(subLevel);
         if (tickCount % 5 == 0)
-            steer(sub);
-        trim(sub);
+            steer(subLevel);
+        trim(subLevel);
     }
 
     private void claim(UUID subId) {
@@ -120,23 +120,23 @@ public class CommandSubBlockEntity extends BlockEntity {
         return computer == null || computer.isRemoved() ? null : computer;
     }
 
-    private void measure(SubLevelAccess sub) {
+    private void measure(SubLevelAccess subLevel) {
         int depth = 0;
         int weakest = -1;
         int surface = Integer.MIN_VALUE;
-        if (sub != null) {
-            Level ocean = sub instanceof SubLevel sl && sl.getLevel() != null ? sl.getLevel() : level;
-            Vector3dc center = sub.logicalPose().position();
+        if (subLevel != null) {
+            Level ocean = subLevel instanceof SubLevel sl && sl.getLevel() != null ? sl.getLevel() : level;
+            Vector3dc center = subLevel.logicalPose().position();
             surface = SubmarinePressureSystem.measureSurfaceY(ocean, center);
             if (surface != Integer.MIN_VALUE)
                 depth = Math.max(0, surface - (int) Math.floor(center.y()));
             if (tickCount % 40 == 0)
-                cachedWeakest = SubmarinePressureSystem.getWeakestHullDepth(sub.getUniqueId(), level);
+                cachedWeakest = SubmarinePressureSystem.getWeakestHullDepth(subLevel.getUniqueId(), level);
             weakest = cachedWeakest;
         }
 
         int auto = -1;
-        if (autopilot && sub instanceof SubLevel sl && surface != Integer.MIN_VALUE
+        if (autopilot && subLevel instanceof SubLevel sl && surface != Integer.MIN_VALUE
                 && SonarBlockEntity.onSameSub(this) != null)
             auto = followFloor(sl, surface, weakest);
 
@@ -150,10 +150,10 @@ public class CommandSubBlockEntity extends BlockEntity {
         }
     }
 
-    private int followFloor(SubLevel sub, int surface, int weakest) {
-        Level ocean = sub.getLevel();
-        Pose3dc pose = sub.logicalPose();
-        BoundingBox3ic box = sub.getPlot().getBoundingBox();
+    private int followFloor(SubLevel subLevel, int surface, int weakest) {
+        Level ocean = subLevel.getLevel();
+        Pose3dc pose = subLevel.logicalPose();
+        BoundingBox3ic box = subLevel.getPlot().getBoundingBox();
         Vector3d corner = new Vector3d();
         double keel = Double.MAX_VALUE;
         double[] xs = new double[5];
@@ -174,7 +174,7 @@ public class CommandSubBlockEntity extends BlockEntity {
         xs[4] = corner.x;
         zs[4] = corner.z;
 
-        Vector3dc velocity = SablePhysicsHelper.getVelocity(sub);
+        Vector3dc velocity = SablePhysicsHelper.getVelocity(subLevel);
         double vx = velocity == null ? 0 : velocity.x();
         double vz = velocity == null ? 0 : velocity.z();
         double speed = Math.sqrt(vx * vx + vz * vz);
@@ -185,7 +185,7 @@ public class CommandSubBlockEntity extends BlockEntity {
         int top = (int) Math.floor(keel) + FLOOR_ABOVE;
         int bottom = Math.max(ocean.getMinBuildHeight(), (int) Math.floor(keel) - FLOOR_BELOW);
         int highest = Integer.MIN_VALUE;
-        BlockPos.MutableBlockPos p = new BlockPos.MutableBlockPos();
+        BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
         for (double ahead = 0; ahead <= reach; ahead += 2) {
             for (int s = 0; s < 5; s++) {
                 int x = Mth.floor(xs[s] + dx * ahead);
@@ -194,8 +194,8 @@ public class CommandSubBlockEntity extends BlockEntity {
                 if (chunk == null)
                     continue;
                 for (int y = top; y >= bottom && y >= highest; y--) {
-                    p.set(x, y, z);
-                    if (CompartmentTracker.realBlockState(chunk, p).blocksMotion()) {
+                    cursor.set(x, y, z);
+                    if (CompartmentTracker.realBlockState(chunk, cursor).blocksMotion()) {
                         highest = Math.max(highest, y + 1);
                         break;
                     }
@@ -219,12 +219,12 @@ public class CommandSubBlockEntity extends BlockEntity {
         return autopilot && syncedAutoTarget >= 0 ? syncedAutoTarget : targetDepth;
     }
 
-    private void steer(SubLevelAccess sub) {
+    private void steer(SubLevelAccess subLevel) {
         long now = level.getGameTime();
         pumps.values().removeIf(seen -> now - seen > 40);
 
         int wanted = PumpControllerBlockEntity.HOLD;
-        double fill = sub == null ? Double.NaN : BallastTankBlockEntity.fillRatio(sub.getUniqueId());
+        double fill = subLevel == null ? Double.NaN : BallastTankBlockEntity.fillRatio(subLevel.getUniqueId());
         if (!Double.isNaN(fill)) {
             if (!Double.isNaN(lastFill) && command != PumpControllerBlockEntity.HOLD && now > lastFillTick) {
                 double sample = Math.abs(fill - lastFill) / ((now - lastFillTick) / 20.0);
@@ -234,8 +234,8 @@ public class CommandSubBlockEntity extends BlockEntity {
             lastFill = fill;
             lastFillTick = now;
         }
-        if (sub != null && !Double.isNaN(fill)) {
-            double error = depth(sub) - activeTarget();
+        if (subLevel != null && !Double.isNaN(fill)) {
+            double error = depth(subLevel) - activeTarget();
             double maxSpeed = SubmarineConfig.BALLAST_VERTICAL_SPEED.get();
             double modeSpeed = maxSpeed * RATES[speedMode];
             double braking = Math.max(0.02, 2 * maxSpeed * fillRate) * BRAKING_MARGIN;
@@ -258,26 +258,26 @@ public class CommandSubBlockEntity extends BlockEntity {
         }
     }
 
-    private void trim(SubLevelAccess sub) {
-        if (sub == null || pumps.isEmpty() || Double.isNaN(lastFill) || activeTarget() == 0)
+    private void trim(SubLevelAccess subLevel) {
+        if (subLevel == null || pumps.isEmpty() || Double.isNaN(lastFill) || activeTarget() == 0)
             return;
-        double error = depth(sub) - activeTarget();
+        double error = depth(subLevel) - activeTarget();
         if (Math.abs(error) > TRIM_RANGE)
             return;
-        Object handle = SablePhysicsHelper.getHandle(sub);
+        Object handle = SablePhysicsHelper.getHandle(subLevel);
         Vector3dc velocity = SablePhysicsHelper.getVelocity(handle);
         if (handle == null || velocity == null)
             return;
         double want = Mth.clamp(error * 0.6, -0.6, 0.6);
         double change = Mth.clamp(want - velocity.y(), -TRIM_ACCEL / 20, TRIM_ACCEL / 20);
-        Vector3d impulse = new Vector3d(0, change * SablePhysicsHelper.readMass(sub), 0);
-        sub.logicalPose().orientation().conjugate(new Quaterniond()).transform(impulse);
+        Vector3d impulse = new Vector3d(0, change * SablePhysicsHelper.readMass(subLevel), 0);
+        subLevel.logicalPose().orientation().conjugate(new Quaterniond()).transform(impulse);
         SablePhysicsHelper.wakeUp(handle);
         SablePhysicsHelper.applyLinearImpulse(handle, impulse);
     }
 
-    private double depth(SubLevelAccess sub) {
-        return surfaceY == Integer.MIN_VALUE ? 0 : Math.max(0, surfaceY + 1 - sub.logicalPose().position().y());
+    private double depth(SubLevelAccess subLevel) {
+        return surfaceY == Integer.MIN_VALUE ? 0 : Math.max(0, surfaceY + 1 - subLevel.logicalPose().position().y());
     }
 
     public boolean mayDiagnose() {

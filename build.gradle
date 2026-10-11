@@ -124,11 +124,7 @@ dependencies {
             prefer project.sable_companion_version
         }
     }
-    jarJar(implementation("maven.modrinth:XaDC71GB:1.4.8-neoforge-1.21")) {
-        version {
-            prefer "1.4.8-neoforge-1.21"
-        }
-    }
+    implementation "maven.modrinth:XaDC71GB:1.4.8-neoforge-1.21"
     implementation "maven.modrinth:T9PomCSv:1L6XJqnY"
 
     jarJar(implementation("maven.modrinth:p19vrgc2:1.2.12-neoforge-mc1.21.1")) {
@@ -180,4 +176,19 @@ idea {
         downloadSources = true
         downloadJavadoc = true
     }
+}
+
+def modrinthMods = file("C:/Users/maxen/AppData/Roaming/ModrinthApp/profiles/Create_ Deep Seas (High Seas Update)/mods")
+
+tasks.register("copyToModrinth", Copy) {
+    onlyIf { modrinthMods.directory }
+    from tasks.named("jar")
+    into modrinthMods
+    doFirst {
+        fileTree(modrinthMods) { include "${mod_id}-*.jar" }.each { it.delete() }
+    }
+}
+
+tasks.named("build") {
+    finalizedBy "copyToModrinth"
 }

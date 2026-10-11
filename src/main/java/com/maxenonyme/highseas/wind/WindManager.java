@@ -16,9 +16,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import com.maxenonyme.highseas.config.HighSeasConfig;
 
-public final class WindManager {
-    private WindManager() {
-    }
+public class WindManager {
 
     private static final long SEED = 0x5EA1_C0DEL;
     private static final SimplexNoise DIR_NOISE = new SimplexNoise(RandomSource.create(SEED));

@@ -1,6 +1,9 @@
 package com.maxenonyme.createsubmarine.submarine.mixin.compat;
 
 import com.mojang.logging.LogUtils;
+import foundry.veil.api.event.VeilRegisterBlockLayersEvent;
+import foundry.veil.api.event.VeilRegisterFixedBuffersEvent;
+import foundry.veil.api.event.VeilRenderLevelStageEvent;
 import org.slf4j.Logger;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -15,7 +18,7 @@ public class AeronauticsVeilCrashFixMixin {
 
     @Redirect(method = "registerEvents", at = @At(value = "INVOKE", target = "Lfoundry/veil/platform/VeilEventPlatform;onVeilRegisterBlockLayers(Lfoundry/veil/api/event/VeilRegisterBlockLayersEvent;)V", remap = false), remap = false, require = 0)
     private static void createsubmarine$redirectBlockLayers(VeilEventPlatform instance,
-            foundry.veil.api.event.VeilRegisterBlockLayersEvent event) {
+            VeilRegisterBlockLayersEvent event) {
         try {
             instance.onVeilRegisterBlockLayers(event);
         } catch (IllegalArgumentException e) {
@@ -28,7 +31,7 @@ public class AeronauticsVeilCrashFixMixin {
 
     @Redirect(method = "registerEvents", at = @At(value = "INVOKE", target = "Lfoundry/veil/platform/VeilEventPlatform;onVeilRenderLevelStage(Lfoundry/veil/api/event/VeilRenderLevelStageEvent;)V", remap = false), remap = false, require = 0)
     private static void createsubmarine$redirectRenderLevelStage(VeilEventPlatform instance,
-            foundry.veil.api.event.VeilRenderLevelStageEvent event) {
+            VeilRenderLevelStageEvent event) {
         try {
             instance.onVeilRenderLevelStage(event);
         } catch (IllegalArgumentException e) {
@@ -37,7 +40,7 @@ public class AeronauticsVeilCrashFixMixin {
 
     @Redirect(method = "registerEvents", at = @At(value = "INVOKE", target = "Lfoundry/veil/platform/VeilEventPlatform;onVeilRegisterFixedBuffers(Lfoundry/veil/api/event/VeilRegisterFixedBuffersEvent;)V", remap = false), remap = false, require = 0)
     private static void createsubmarine$redirectFixedBuffers(VeilEventPlatform instance,
-            foundry.veil.api.event.VeilRegisterFixedBuffersEvent event) {
+            VeilRegisterFixedBuffersEvent event) {
         try {
             instance.onVeilRegisterFixedBuffers(event);
         } catch (IllegalArgumentException e) {

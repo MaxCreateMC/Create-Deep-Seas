@@ -26,10 +26,10 @@ public class BoatEngineSoundInstance extends AbstractTickableSoundInstance {
     }
 
     private void updatePosition() {
-        Vec3 p = BoatEngineSoundHandler.worldPos(blockEntity);
-        this.x = p.x;
-        this.y = p.y;
-        this.z = p.z;
+        Vec3 point = BoatEngineSoundHandler.worldPos(blockEntity);
+        this.x = point.x;
+        this.y = point.y;
+        this.z = point.z;
     }
 
     @Override

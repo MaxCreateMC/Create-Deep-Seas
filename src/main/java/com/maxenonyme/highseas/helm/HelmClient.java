@@ -5,9 +5,7 @@ import net.minecraft.core.BlockPos;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-public final class HelmClient {
-    private HelmClient() {
-    }
+public class HelmClient {
 
     private static final Map<Long, float[]> STATE = new ConcurrentHashMap<>();
 

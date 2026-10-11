@@ -3,6 +3,9 @@ package com.maxenonyme.createsubmarine.submarine.system;
 import com.maxenonyme.createsubmarine.CreateSubmarine;
 import com.maxenonyme.createsubmarine.submarine.compartment.CompartmentDetector;
 import com.maxenonyme.createsubmarine.submarine.compartment.CompartmentTracker;
+import com.maxenonyme.createsubmarine.submarine.config.HullStrengthConfig;
+import com.maxenonyme.createsubmarine.submarine.config.SubmarineConfig;
+import com.maxenonyme.createsubmarine.submarine.stress.HullShapeAnalyzer;
 import com.mojang.brigadier.context.CommandContext;
 import dev.ryanhcode.sable.api.sublevel.SubLevelContainer;
 import dev.ryanhcode.sable.companion.math.BoundingBox3ic;
@@ -12,6 +15,7 @@ import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.Level;
@@ -26,15 +30,54 @@ import java.util.List;
 import java.util.Queue;
 import java.util.UUID;
 
-public final class SubmarineInfoCommand {
-    private SubmarineInfoCommand() {}
+public class SubmarineInfoCommand {
 
     public static void register(RegisterCommandsEvent event) {
         event.getDispatcher().register(
                 Commands.literal("submarine")
                         .requires(source -> source.hasPermission(2))
                         .then(Commands.literal("info").executes(SubmarineInfoCommand::run))
-                        .then(Commands.literal("findhole").executes(SubmarineInfoCommand::findHoles)));
+                        .then(Commands.literal("findhole").executes(SubmarineInfoCommand::findHoles))
+                        .then(Commands.literal("repair").executes(SubmarineInfoCommand::repair)));
+    }
+
+    private static SubLevel around(ServerPlayer player) {
+        SubLevelContainer container = SubLevelContainer.getContainer(player.level());
+        if (container == null)
+            return null;
+        Vector3d ppos = new Vector3d(player.getX(), player.getY(), player.getZ());
+        for (SubLevel ship : container.getAllSubLevels()) {
+            if (ship.getPlot() == null)
+                continue;
+            BoundingBox3ic bounds = ship.getPlot().getBoundingBox();
+            if (bounds == null)
+                continue;
+            Vector3d local = ship.logicalPose().transformPositionInverse(new Vector3d(ppos));
+            if (local.x >= bounds.minX() - 2 && local.x <= bounds.maxX() + 2
+                    && local.y >= bounds.minY() - 2 && local.y <= bounds.maxY() + 2
+                    && local.z >= bounds.minZ() - 2 && local.z <= bounds.maxZ() + 2)
+                return ship;
+        }
+        return null;
+    }
+
+    private static int repair(CommandContext<CommandSourceStack> ctx) {
+        CommandSourceStack source = ctx.getSource();
+        ServerPlayer player = source.getPlayer();
+        if (player == null) {
+            source.sendFailure(Component.literal("Player only."));
+            return 0;
+        }
+        SubLevel found = around(player);
+        if (found == null || found.getLevel() == null) {
+            source.sendFailure(Component.literal("You are not in or on a sublevel."));
+            return 0;
+        }
+        SubmarinePressureSystem.Repair done = SubmarinePressureSystem.repairAll(found.getUniqueId(), found.getLevel(), found.getLevel());
+        source.sendSuccess(() -> Component.literal("Submarine repaired: ").withStyle(ChatFormatting.GREEN)
+                .append(Component.literal(done.restored() + " blocks restored, " + done.cracks() + " cracks sealed, "
+                        + done.drained() + " water blocks drained.").withStyle(ChatFormatting.GRAY)), true);
+        return 1;
     }
 
     private static int run(CommandContext<CommandSourceStack> ctx) {
@@ -53,16 +96,18 @@ public final class SubmarineInfoCommand {
 
         Vector3d ppos = new Vector3d(player.getX(), player.getY(), player.getZ());
         SubLevel found = null;
-        for (SubLevel sub : container.getAllSubLevels()) {
-            if (sub.getPlot() == null) continue;
-            BoundingBox3ic b = sub.getPlot().getBoundingBox();
-            if (b == null) continue;
+        for (SubLevel ship : container.getAllSubLevels()) {
+            if (ship.getPlot() == null)
+                continue;
+            BoundingBox3ic bounds = ship.getPlot().getBoundingBox();
+            if (bounds == null)
+                continue;
             Vector3d local = new Vector3d(ppos);
-            sub.logicalPose().transformPositionInverse(local);
-            if (local.x >= b.minX() - 2 && local.x <= b.maxX() + 2
-                    && local.y >= b.minY() - 2 && local.y <= b.maxY() + 2
-                    && local.z >= b.minZ() - 2 && local.z <= b.maxZ() + 2) {
-                found = sub;
+            ship.logicalPose().transformPositionInverse(local);
+            if (local.x >= bounds.minX() - 2 && local.x <= bounds.maxX() + 2
+                    && local.y >= bounds.minY() - 2 && local.y <= bounds.maxY() + 2
+                    && local.z >= bounds.minZ() - 2 && local.z <= bounds.maxZ() + 2) {
+                found = ship;
                 break;
             }
         }
@@ -73,22 +118,25 @@ public final class SubmarineInfoCommand {
         }
 
         UUID id = found.getUniqueId();
-        BoundingBox3ic b = found.getPlot().getBoundingBox();
+        BoundingBox3ic bounds = found.getPlot().getBoundingBox();
         Level subLevel = found.getLevel();
 
         int controllers = 0, diffusers = 0, floaters = 0;
-        long volume = (long) (b.maxX() - b.minX() + 1) * (b.maxY() - b.minY() + 1) * (b.maxZ() - b.minZ() + 1);
+        long volume = (long) (bounds.maxX() - bounds.minX() + 1) * (bounds.maxY() - bounds.minY() + 1) * (bounds.maxZ() - bounds.minZ() + 1);
         boolean scanned = subLevel != null && volume <= 50_000;
         if (scanned) {
-            BlockPos.MutableBlockPos m = new BlockPos.MutableBlockPos();
-            for (int x = b.minX(); x <= b.maxX(); x++) {
-                for (int y = b.minY(); y <= b.maxY(); y++) {
-                    for (int z = b.minZ(); z <= b.maxZ(); z++) {
-                        m.set(x, y, z);
-                        BlockState s = subLevel.getBlockState(m);
-                        if (s.is(CreateSubmarine.CREATIVE_OXYGENATOR.get())) controllers++;
-                        else if (s.is(CreateSubmarine.OXYGENE_DIFFUSER.get())) diffusers++;
-                        else if (s.is(CreateSubmarine.FLOATER.get())) floaters++;
+            BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
+            for (int x = bounds.minX(); x <= bounds.maxX(); x++) {
+                for (int y = bounds.minY(); y <= bounds.maxY(); y++) {
+                    for (int z = bounds.minZ(); z <= bounds.maxZ(); z++) {
+                        pos.set(x, y, z);
+                        BlockState blockState = subLevel.getBlockState(pos);
+                        if (blockState.is(CreateSubmarine.CREATIVE_OXYGENATOR.get()))
+                            controllers++;
+                        else if (blockState.is(CreateSubmarine.OXYGENE_DIFFUSER.get()))
+                            diffusers++;
+                        else if (blockState.is(CreateSubmarine.FLOATER.get()))
+                            floaters++;
                     }
                 }
             }
@@ -119,6 +167,14 @@ public final class SubmarineInfoCommand {
         source.sendSuccess(() -> bool("Under pressure", underPressure), false);
         if (hullLimit > 0 && hullLimit < Integer.MAX_VALUE)
             source.sendSuccess(() -> line("Hull depth limit", String.valueOf(hullLimit)), false);
+        source.sendSuccess(() -> line("Pressure model", SubmarineConfig.PRESSURE_MODEL.get().name()), false);
+        SubmarinePressureSystem.WeakPoint weak = subLevel != null ? SubmarinePressureSystem.weakestHull(id, subLevel) : null;
+        if (weak != null) {
+            int base = HullStrengthConfig.getFor(weak.state()).map(HullStrengthConfig.HullProperty::maxWaterDepth).orElse(weak.depth());
+            double shape = HullShapeAnalyzer.factor(id, weak.pos());
+            String name = BuiltInRegistries.BLOCK.getKey(weak.state().getBlock()).toString();
+            source.sendSuccess(() -> line("Weakest block", String.format("%s %d m x %.2f (shape)", name, base, shape)), false);
+        }
         return 1;
     }
 
@@ -141,16 +197,18 @@ public final class SubmarineInfoCommand {
 
         Vector3d ppos = new Vector3d(player.getX(), player.getY(), player.getZ());
         SubLevel found = null;
-        for (SubLevel sub : container.getAllSubLevels()) {
-            if (sub.getPlot() == null) continue;
-            BoundingBox3ic b = sub.getPlot().getBoundingBox();
-            if (b == null) continue;
+        for (SubLevel ship : container.getAllSubLevels()) {
+            if (ship.getPlot() == null)
+                continue;
+            BoundingBox3ic bounds = ship.getPlot().getBoundingBox();
+            if (bounds == null)
+                continue;
             Vector3d local = new Vector3d(ppos);
-            sub.logicalPose().transformPositionInverse(local);
-            if (local.x >= b.minX() - 2 && local.x <= b.maxX() + 2
-                    && local.y >= b.minY() - 2 && local.y <= b.maxY() + 2
-                    && local.z >= b.minZ() - 2 && local.z <= b.maxZ() + 2) {
-                found = sub;
+            ship.logicalPose().transformPositionInverse(local);
+            if (local.x >= bounds.minX() - 2 && local.x <= bounds.maxX() + 2
+                    && local.y >= bounds.minY() - 2 && local.y <= bounds.maxY() + 2
+                    && local.z >= bounds.minZ() - 2 && local.z <= bounds.maxZ() + 2) {
+                found = ship;
                 break;
             }
         }
@@ -160,7 +218,7 @@ public final class SubmarineInfoCommand {
             return 1;
         }
 
-        BoundingBox3ic b = found.getPlot().getBoundingBox();
+        BoundingBox3ic bounds = found.getPlot().getBoundingBox();
         Level subLevel = found.getLevel();
         if (subLevel == null) {
             source.sendFailure(Component.translatable("create_submarine.command.findhole.world_not_loaded"));
@@ -171,9 +229,9 @@ public final class SubmarineInfoCommand {
         found.logicalPose().transformPositionInverse(localPlayerVec);
         BlockPos playerLocalPos = BlockPos.containing(localPlayerVec.x, localPlayerVec.y, localPlayerVec.z);
 
-        int minX = b.minX(), maxX = b.maxX();
-        int minY = b.minY(), maxY = b.maxY();
-        int minZ = b.minZ(), maxZ = b.maxZ();
+        int minX = bounds.minX(), maxX = bounds.maxX();
+        int minY = bounds.minY(), maxY = bounds.maxY();
+        int minZ = bounds.minZ(), maxZ = bounds.maxZ();
 
         if (playerLocalPos.getX() < minX || playerLocalPos.getX() > maxX
                 || playerLocalPos.getY() < minY || playerLocalPos.getY() > maxY
@@ -182,7 +240,7 @@ public final class SubmarineInfoCommand {
             return 0;
         }
 
-        Leaks leaks = findLeaks(subLevel, b, playerLocalPos);
+        Leaks leaks = findLeaks(subLevel, bounds, playerLocalPos);
         if (leaks.status() == LeakStatus.TOO_LARGE) {
             source.sendFailure(Component.translatable("create_submarine.command.findhole.too_large"));
             return 0;
@@ -223,10 +281,10 @@ public final class SubmarineInfoCommand {
     public record Leaks(LeakStatus status, List<BlockPos> blocks) {
     }
 
-    public static Leaks findLeaks(Level subLevel, BoundingBox3ic b, BlockPos start) {
-        int minX = b.minX(), maxX = b.maxX();
-        int minY = b.minY(), maxY = b.maxY();
-        int minZ = b.minZ(), maxZ = b.maxZ();
+    public static Leaks findLeaks(Level subLevel, BoundingBox3ic bounds, BlockPos start) {
+        int minX = bounds.minX(), maxX = bounds.maxX();
+        int minY = bounds.minY(), maxY = bounds.maxY();
+        int minZ = bounds.minZ(), maxZ = bounds.maxZ();
         if (start.getX() < minX || start.getX() > maxX || start.getY() < minY || start.getY() > maxY
                 || start.getZ() < minZ || start.getZ() > maxZ)
             return new Leaks(LeakStatus.OUTSIDE, List.of());

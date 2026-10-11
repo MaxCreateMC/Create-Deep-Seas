@@ -7,7 +7,7 @@ import net.minecraft.core.BlockPos;
 import java.util.ArrayList;
 import java.util.List;
 
-public final class SonarScan {
+public class SonarScan {
     AdvancedFbo fbo;
     AdvancedFbo outline;
     AdvancedFbo result;
@@ -24,6 +24,7 @@ public final class SonarScan {
 
     long lastDraw;
     long lastPing;
+    int idlePings;
     long lastSeen;
 
     float yaw;

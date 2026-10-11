@@ -27,9 +27,7 @@ import java.util.Iterator;
 import java.util.Locale;
 import java.util.Map;
 
-public final class SonarView {
-    private SonarView() {
-    }
+public class SonarView {
 
     public static final int PAD = 272;
 
@@ -41,6 +39,7 @@ public final class SonarView {
     static final long SWEEP_NANOS = 1_200_000_000L;
 
     private static final long PING_NANOS = 2_000_000_000L;
+    private static final int REBAKE_PINGS = 5;
     private static final long PREVIEW_NANOS = 50_000_000L;
     private static final long DETAIL_NANOS = 30_000_000L;
     private static final long FORGET_NANOS = 3_000_000_000L;
@@ -138,19 +137,19 @@ public final class SonarView {
 
             SonarBlockEntity sonar = SonarBlockEntity.onSameSub(be);
             SubLevel sub = Sable.HELPER.getContaining(be);
-            if (sonar == null || !(sub instanceof ClientSubLevel csl) || csl.isRemoved() || csl.getPlot() == null)
+            if (sonar == null || !(sub instanceof ClientSubLevel subLevel) || subLevel.isRemoved() || subLevel.getPlot() == null)
                 continue;
 
             scan.lastDraw = now;
             if (detail) {
                 scan.resize(scan.wantWidth, scan.wantHeight);
-                draw(mc, csl, sonar.getBlockPos(), scan, partialTicks, now,
+                draw(mc, subLevel, sonar.getBlockPos(), scan, partialTicks, now,
                         be.sonarZoom, be.sonarPanX, be.sonarPanZ, be.sonarOrbit);
             } else {
                 float[] area = CommandSubRenderer.SONAR;
                 scan.resize(Math.round((area[2] - area[0]) * PIXELS_PER_UNIT),
                         Math.round((area[3] - area[1]) * PIXELS_PER_UNIT));
-                draw(mc, csl, sonar.getBlockPos(), scan, partialTicks, now, PREVIEW_ZOOM, 0, 0, 0);
+                draw(mc, subLevel, sonar.getBlockPos(), scan, partialTicks, now, PREVIEW_ZOOM, 0, 0, 0);
             }
             drew = true;
         }
@@ -173,7 +172,10 @@ public final class SonarView {
         if (now - scan.lastPing >= PING_NANOS || scan.origin == null) {
             BlockPos sonarBlock = BlockPos.containing(sonar.x, sonar.y, sonar.z);
             scan.lastPing = now;
-            scan.replace(SonarTerrain.ping(mc, sub.getLevel(), sonarBlock), sonarBlock);
+            if (!sonarBlock.equals(scan.origin) || ++scan.idlePings >= REBAKE_PINGS) {
+                scan.idlePings = 0;
+                scan.replace(SonarTerrain.ping(mc, sub.getLevel(), sonarBlock), sonarBlock);
+            }
         }
         float front = scan.front(now);
 

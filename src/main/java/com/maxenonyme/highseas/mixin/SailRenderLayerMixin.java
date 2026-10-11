@@ -11,6 +11,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import com.maxenonyme.highseas.client.SailContraptionContext;
+import com.maxenonyme.highseas.client.SailRenderClient;
 
 @Mixin(ItemBlockRenderTypes.class)
 public class SailRenderLayerMixin {
@@ -18,7 +19,7 @@ public class SailRenderLayerMixin {
     @Inject(method = "getRenderLayers", at = @At("HEAD"), cancellable = true, require = 0)
     private static void createhighseas$normalSailUnderIris(BlockState state, CallbackInfoReturnable<ChunkRenderTypeSet> cir) {
         if (state.getBlock() instanceof BoatSailBlock
-                && (IrisCompat.isShaderPackActive() || SailContraptionContext.BAKING.get())) {
+                && (IrisCompat.isShaderPackActive() || SailContraptionContext.BAKING.get() || !SailRenderClient.billows())) {
             cir.setReturnValue(ChunkRenderTypeSet.of(RenderType.cutout()));
         }
     }

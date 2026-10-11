@@ -20,8 +20,8 @@ public record OarRowPayload() implements CustomPacketPayload {
 
     public static void handle(final OarRowPayload payload, final IPayloadContext context) {
         context.enqueueWork(() -> {
-            if (context.player() instanceof ServerPlayer sp) {
-                OarPropulsionSystem.ping(sp);
+            if (context.player() instanceof ServerPlayer player) {
+                OarPropulsionSystem.ping(player);
             }
         });
     }

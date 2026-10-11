@@ -151,9 +151,9 @@ public class BoatEngineExhaustVisual extends AbstractBlockEntityVisual<BoatEngin
     }
 
     private void swingLever(TransformedInstance inst, float angle, float lever) {
-        BlockPos p = getVisualPosition();
+        BlockPos pos = getVisualPosition();
         inst.setIdentityTransform()
-                .translate(p.getX(), p.getY(), p.getZ())
+                .translate(pos.getX(), pos.getY(), pos.getZ())
                 .rotateYCentered(angle)
                 .translate(0.5, 1.1875, 0.31875)
                 .rotate(turn.rotationY(lever))
@@ -162,9 +162,9 @@ public class BoatEngineExhaustVisual extends AbstractBlockEntityVisual<BoatEngin
     }
 
     private void placeStatic(TransformedInstance inst, float angle) {
-        BlockPos p = getVisualPosition();
+        BlockPos pos = getVisualPosition();
         inst.setIdentityTransform()
-                .translate(p.getX(), p.getY(), p.getZ())
+                .translate(pos.getX(), pos.getY(), pos.getZ())
                 .rotateYCentered(angle)
                 .setChanged();
     }
@@ -178,9 +178,9 @@ public class BoatEngineExhaustVisual extends AbstractBlockEntityVisual<BoatEngin
     }
 
     private void pulse(TransformedInstance inst, float angle, float scale, float px, float py, float pz) {
-        BlockPos p = getVisualPosition();
+        BlockPos pos = getVisualPosition();
         inst.setIdentityTransform()
-                .translate(p.getX(), p.getY(), p.getZ())
+                .translate(pos.getX(), pos.getY(), pos.getZ())
                 .rotateYCentered(angle)
                 .translate(px, py, pz)
                 .scale(scale)
@@ -189,9 +189,9 @@ public class BoatEngineExhaustVisual extends AbstractBlockEntityVisual<BoatEngin
     }
 
     private void swivelLeg(TransformedInstance inst, float angle, float swivel) {
-        BlockPos p = getVisualPosition();
+        BlockPos pos = getVisualPosition();
         inst.setIdentityTransform()
-                .translate(p.getX(), p.getY(), p.getZ())
+                .translate(pos.getX(), pos.getY(), pos.getZ())
                 .rotateYCentered(angle)
                 .translate(0.5, 0.0, 0.6875)
                 .rotate(turn.rotationY(swivel))
@@ -200,9 +200,9 @@ public class BoatEngineExhaustVisual extends AbstractBlockEntityVisual<BoatEngin
     }
 
     private void spinProp(float angle, float swivel, float spin) {
-        BlockPos p = getVisualPosition();
+        BlockPos pos = getVisualPosition();
         prop.setIdentityTransform()
-                .translate(p.getX(), p.getY(), p.getZ())
+                .translate(pos.getX(), pos.getY(), pos.getZ())
                 .rotateYCentered(angle)
                 .translate(0.5, 0.0, 0.6875)
                 .rotate(turn.rotationY(swivel))

@@ -7,7 +7,17 @@ import com.maxenonyme.highseas.block.entity.WindVaneBlockEntity;
 import com.maxenonyme.highseas.sail.SailWindSystem;
 import com.maxenonyme.highseas.system.HighSeasLifecycleHandler;
 import com.mojang.logging.LogUtils;
+import com.maxenonyme.highseas.system.FluentWatersJukebox;
+import com.maxenonyme.highseas.block.entity.HalyardBlockEntity;
+import com.maxenonyme.highseas.sail.SailRigging;
+import com.maxenonyme.highseas.item.FluentWatersDiscItem;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.world.item.JukeboxPlayable;
+import net.minecraft.world.item.EitherHolder;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.world.item.Rarity;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.DyeColor;
@@ -69,7 +79,7 @@ import com.maxenonyme.highseas.oar.OarAnimSyncPayload;
 import com.maxenonyme.highseas.oar.OarClientHandler;
 import com.maxenonyme.highseas.oar.OarPropulsionSystem;
 import com.maxenonyme.highseas.oar.OarRowPayload;
-import com.maxenonyme.highseas.sail.FurlSyncPayload;
+import com.maxenonyme.highseas.sail.ReefSyncPayload;
 import com.maxenonyme.highseas.sail.SailCollisionSystem;
 import com.maxenonyme.highseas.sail.SailFurlHandler;
 import com.simibubi.create.content.decoration.copycat.CopycatBlockEntity;
@@ -171,6 +181,11 @@ public class CreateHighSeas {
     public static final Supplier<Item> SEAGLIDE = ITEMS.register("seaglide",
             () -> new SeaglideItem(new Item.Properties().stacksTo(1)));
 
+    public static final Supplier<Item> MUSIC_DISC_HIDDEN_BETWEEN_FLUENT_WATERS = ITEMS.register("music_disc_hidden_between_fluent_waters",
+            () -> new FluentWatersDiscItem(new Item.Properties().stacksTo(1).rarity(Rarity.RARE)
+                    .component(DataComponents.JUKEBOX_PLAYABLE, new JukeboxPlayable(new EitherHolder<>(ResourceKey.create(Registries.JUKEBOX_SONG,
+                            ResourceLocation.fromNamespaceAndPath(MOD_ID, "hidden_between_fluent_waters"))), false))));
+
     public static final Supplier<Item> OAR_OF_BOAT = ITEMS.register("oar_of_boat",
             () -> new OarItem(new Item.Properties()));
 
@@ -209,6 +224,11 @@ public class CreateHighSeas {
         }
     }
 
+    public static final Supplier<BlockEntityType<HalyardBlockEntity>> HALYARD_BE = BLOCK_ENTITIES.register(
+            "kite_bridle",
+            () -> BlockEntityType.Builder.of((pos, state) -> new HalyardBlockEntity(CreateHighSeas.HALYARD_BE.get(), pos, state),
+                    SAILS.values().stream().map(Supplier::get).toArray(Block[]::new)).build(null));
+
     public static final Supplier<Item> SAIL_ITEM = ITEMS.register("white_sail",
             () -> new BlockItem(SAILS.get(DyeColor.WHITE).get(), new Item.Properties()));
 
@@ -234,10 +254,11 @@ public class CreateHighSeas {
         NeoForge.EVENT_BUS.addListener(HelmServer::onServerTick);
         NeoForge.EVENT_BUS.addListener(OarPropulsionSystem::onServerTick);
         NeoForge.EVENT_BUS.addListener(SailCollisionSystem::onServerTick);
-        NeoForge.EVENT_BUS.addListener(SailFurlHandler::onRightClick);
         NeoForge.EVENT_BUS.addListener(SailFurlHandler::onLogin);
         NeoForge.EVENT_BUS.addListener(SailFurlHandler::onServerStarted);
         NeoForge.EVENT_BUS.addListener(BoatEngineBlock::onBlockPlace);
+        NeoForge.EVENT_BUS.addListener(FluentWatersJukebox::onServerTick);
+        NeoForge.EVENT_BUS.addListener(SailRigging::onRightClick);
         NeoForge.EVENT_BUS.addListener(SeaglideAttackGuard::onLeftClickBlock);
         NeoForge.EVENT_BUS.addListener(SeaglideAttackGuard::onAttackEntity);
         NeoForge.EVENT_BUS.addListener(HighSeasLifecycleHandler::onServerStopping);
@@ -278,9 +299,9 @@ public class CreateHighSeas {
     private void registerPayloads(RegisterPayloadHandlersEvent event) {
         PayloadRegistrar registrar = event.registrar(MOD_ID);
         registrar.playToClient(
-                FurlSyncPayload.TYPE,
-                FurlSyncPayload.CODEC,
-                FurlSyncPayload::handle);
+                ReefSyncPayload.TYPE,
+                ReefSyncPayload.CODEC,
+                ReefSyncPayload::handle);
         registrar.playToServer(
                 OarRowPayload.TYPE,
                 OarRowPayload.CODEC,
@@ -344,7 +365,10 @@ public class CreateHighSeas {
             itemToSection.put(ResourceLocation.fromNamespaceAndPath(MOD_ID, "buoy"), highSeasSection);
             tabItems.add(SAIL_ITEM::get);
             itemToSection.put(ResourceLocation.fromNamespaceAndPath(MOD_ID, "white_sail"), highSeasSection);
-        } catch (Exception ignored) {
+            tabItems.add(MUSIC_DISC_HIDDEN_BETWEEN_FLUENT_WATERS::get);
+            itemToSection.put(ResourceLocation.fromNamespaceAndPath(MOD_ID, "music_disc_hidden_between_fluent_waters"), highSeasSection);
+        } catch (ReflectiveOperationException | ClassCastException e) {
+            LOGGER.warn("Couldn't add our items to the Simulated creative section", e);
         }
     }
 }

@@ -1,6 +1,7 @@
 package com.maxenonyme.createsubmarine.submarine.client;
 
 import com.maxenonyme.createsubmarine.submarine.config.HullStrengthConfig;
+import com.maxenonyme.createsubmarine.submarine.network.HullConfigEditPayload;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
@@ -14,16 +15,20 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Block;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.neoforge.client.gui.ConfigurationScreen;
+import net.neoforged.neoforge.network.PacketDistributor;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
 
 public class HullStrengthConfigScreen extends Screen {
     private final ModContainer modContainer;
     private final Screen parentScreen;
     private final Map<String, HullStrengthConfig.HullProperty> editedValues = new TreeMap<>();
-    private final java.util.Set<String> dirtyKeys = new java.util.HashSet<>();
+    private final Set<String> dirtyKeys = new HashSet<>();
 
     private EditBox searchBox;
     private BlockList blockList;
@@ -132,7 +137,8 @@ public class HullStrengthConfigScreen extends Screen {
     }
 
     private void onApply(Button button) {
-        if (this.selectedBlock == null) return;
+        if (this.selectedBlock == null)
+            return;
         try {
             int depth = Integer.parseInt(this.maxDepthBox.getValue());
             float chance = Float.parseFloat(this.implosionBox.getValue());
@@ -143,14 +149,15 @@ public class HullStrengthConfigScreen extends Screen {
 
     private void onSave() {
         if (this.minecraft.getConnection() != null) {
-            Map<String, HullStrengthConfig.HullProperty> changed = new java.util.HashMap<>();
+            Map<String, HullStrengthConfig.HullProperty> changed = new HashMap<>();
             for (String key : this.dirtyKeys) {
                 HullStrengthConfig.HullProperty prop = this.editedValues.get(key);
-                if (prop != null) changed.put(key, prop);
+                if (prop != null)
+                    changed.put(key, prop);
             }
             if (!changed.isEmpty()) {
-                net.neoforged.neoforge.network.PacketDistributor.sendToServer(
-                        new com.maxenonyme.createsubmarine.submarine.network.HullConfigEditPayload(changed));
+                PacketDistributor.sendToServer(
+                        new HullConfigEditPayload(changed));
             }
         } else {
             this.editedValues.forEach((key, prop) ->
@@ -191,7 +198,8 @@ public class HullStrengthConfigScreen extends Screen {
     private void renderBlockIcon(GuiGraphics g, Block block, int x, int y) {
         try {
             g.renderFakeItem(new ItemStack(block), x, y);
-        } catch (Exception ignored) {}
+        } catch (RuntimeException e) {
+        }
     }
 
     public class BlockList extends ObjectSelectionList<BlockEntry> {

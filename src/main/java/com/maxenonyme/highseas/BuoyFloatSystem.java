@@ -14,9 +14,7 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import com.maxenonyme.highseas.config.HighSeasConfig;
 
-public final class BuoyFloatSystem {
-    private BuoyFloatSystem() {
-    }
+public class BuoyFloatSystem {
 
 
     private static final Map<UUID, Double> FLOOR = new ConcurrentHashMap<>();
@@ -39,13 +37,13 @@ public final class BuoyFloatSystem {
             return;
         }
         for (SubLevel raw : container.getAllSubLevels()) {
-            if (!(raw instanceof ServerSubLevel sub)) {
+            if (!(raw instanceof ServerSubLevel subLevel)) {
                 continue;
             }
-            if (!FLOOR.containsKey(sub.getUniqueId())) {
+            if (!FLOOR.containsKey(subLevel.getUniqueId())) {
                 continue;
             }
-            RigidBodyHandle handle = event.getPhysicsSystem().getPhysicsHandle(sub);
+            RigidBodyHandle handle = event.getPhysicsSystem().getPhysicsHandle(subLevel);
             if (handle == null || !handle.isValid()) {
                 continue;
             }

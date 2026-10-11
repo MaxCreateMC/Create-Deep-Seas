@@ -30,11 +30,22 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.LevelAccessor;
 import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Mirror;
 import net.minecraft.world.level.block.RotatedPillarBlock;
+import net.minecraft.world.level.block.Rotation;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.StateDefinition;
+import net.minecraft.world.level.block.state.properties.BooleanProperty;
+import net.minecraft.world.level.block.state.properties.EnumProperty;
+import net.minecraft.world.level.block.EntityBlock;
+import net.minecraft.world.level.block.entity.BlockEntityTicker;
+import net.minecraft.world.level.block.entity.BlockEntityType;
+import com.simibubi.create.foundation.blockEntity.SmartBlockEntityTicker;
+import com.maxenonyme.highseas.block.entity.HalyardBlockEntity;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.CollisionContext;
@@ -48,13 +59,16 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-public class BoatSailBlock extends RotatedPillarBlock implements IWrenchable, BlockSubLevelLiftProvider, SpecialBlockItemRequirement {
+public class BoatSailBlock extends RotatedPillarBlock implements IWrenchable, BlockSubLevelLiftProvider, SpecialBlockItemRequirement, EntityBlock {
     public static final TagKey<Block> SAILS = TagKey.create(Registries.BLOCK,
             ResourceLocation.fromNamespaceAndPath(CreateHighSeas.MOD_ID, "sails"));
 
-    private static final VoxelShape SHAPE_X = Block.box(6, 0, 0, 10, 16, 16);
+    public static final EnumProperty<SailCorner> CORNER = EnumProperty.create("corner", SailCorner.class);
+    public static final BooleanProperty RIGGED = BooleanProperty.create("rigged");
+
     private static final VoxelShape SHAPE_Y = Block.box(0, 6, 0, 16, 10, 16);
-    private static final VoxelShape SHAPE_Z = Block.box(0, 0, 6, 16, 16, 10);
+    private static final double[][] DEPTHS = { { 0.1, 0.9 }, { 0.0, 0.9 }, { 0.1, 1.0 } };
+    private static final VoxelShape[][][] SHAPES = new VoxelShape[2][SailCorner.values().length][DEPTHS.length];
 
     private static final int placementHelperId = PlacementHelpers.register(
             new BoatSailPlacementHelper(BoatSailBlock::checkItem, BoatSailBlock::checkState));
@@ -64,6 +78,129 @@ public class BoatSailBlock extends RotatedPillarBlock implements IWrenchable, Bl
     public BoatSailBlock(Properties properties, DyeColor color) {
         super(properties);
         this.color = color;
+        registerDefaultState(defaultBlockState().setValue(CORNER, SailCorner.NONE).setValue(RIGGED, false));
+    }
+
+    @Override
+    protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
+        super.createBlockStateDefinition(builder);
+        builder.add(CORNER, RIGGED);
+    }
+
+    @Override
+    public BlockEntity newBlockEntity(BlockPos pos, BlockState state) {
+        return state.getValue(RIGGED) ? new HalyardBlockEntity(CreateHighSeas.HALYARD_BE.get(), pos, state) : null;
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public <T extends BlockEntity> BlockEntityTicker<T> getTicker(Level level, BlockState state, BlockEntityType<T> type) {
+        if (!state.getValue(RIGGED) || type != CreateHighSeas.HALYARD_BE.get())
+            return null;
+        return (BlockEntityTicker<T>) new SmartBlockEntityTicker<HalyardBlockEntity>();
+    }
+
+    public static Direction horizontal(Direction.Axis axis) {
+        return axis == Direction.Axis.X ? Direction.SOUTH : Direction.EAST;
+    }
+
+    private static boolean sail(BlockGetter level, BlockPos pos, Direction.Axis axis) {
+        BlockState s = level.getBlockState(pos);
+        return s.getBlock() instanceof BoatSailBlock && s.getValue(AXIS) == axis;
+    }
+
+    public static SailCorner cornerFor(BlockGetter level, BlockPos pos, Direction.Axis axis) {
+        if (axis == Direction.Axis.Y)
+            return SailCorner.NONE;
+        Direction across = horizontal(axis);
+        SailCorner found = SailCorner.NONE;
+        for (SailCorner c : SailCorner.CUTS) {
+            Direction dh = c.h > 0 ? across : across.getOpposite();
+            Direction dv = c.v > 0 ? Direction.UP : Direction.DOWN;
+            if (sail(level, pos.relative(dh), axis) || sail(level, pos.relative(dv), axis))
+                continue;
+            if (!sail(level, pos.relative(dh.getOpposite()), axis) && !sail(level, pos.relative(dv.getOpposite()), axis))
+                continue;
+            if (!sail(level, pos.relative(dh.getOpposite()).relative(dv), axis)
+                    && !sail(level, pos.relative(dh).relative(dv.getOpposite()), axis))
+                continue;
+            if (found != SailCorner.NONE)
+                return SailCorner.NONE;
+            found = c;
+        }
+        return found;
+    }
+
+    private static void refresh(Level level, BlockPos pos) {
+        BlockState s = level.getBlockState(pos);
+        if (!(s.getBlock() instanceof BoatSailBlock))
+            return;
+        SailCorner c = cornerFor(level, pos, s.getValue(AXIS));
+        if (s.getValue(CORNER) != c)
+            level.setBlock(pos, s.setValue(CORNER, c), Block.UPDATE_CLIENTS);
+    }
+
+    private static void refreshDiagonals(Level level, BlockPos pos, Direction.Axis axis) {
+        if (axis == Direction.Axis.Y)
+            return;
+        Direction across = horizontal(axis);
+        for (int h = -1; h <= 1; h += 2)
+            for (int v = -1; v <= 1; v += 2)
+                refresh(level, pos.relative(across, h).relative(Direction.UP, v));
+    }
+
+    private static boolean sameSail(BlockState a, BlockState b) {
+        return a.getBlock() instanceof BoatSailBlock && b.getBlock() instanceof BoatSailBlock
+                && a.getValue(AXIS) == b.getValue(AXIS);
+    }
+
+    @Override
+    protected void onPlace(BlockState state, Level level, BlockPos pos, BlockState oldState, boolean movedByPiston) {
+        super.onPlace(state, level, pos, oldState, movedByPiston);
+        if (level.isClientSide || sameSail(state, oldState))
+            return;
+        refresh(level, pos);
+        refreshDiagonals(level, pos, state.getValue(AXIS));
+    }
+
+    @Override
+    protected void onRemove(BlockState state, Level level, BlockPos pos, BlockState newState, boolean movedByPiston) {
+        super.onRemove(state, level, pos, newState, movedByPiston);
+        if (level.isClientSide || sameSail(state, newState))
+            return;
+        refreshDiagonals(level, pos, state.getValue(AXIS));
+    }
+
+    @Override
+    protected BlockState updateShape(BlockState state, Direction direction, BlockState neighborState, LevelAccessor level,
+                                     BlockPos pos, BlockPos neighborPos) {
+        return state.setValue(CORNER, cornerFor(level, pos, state.getValue(AXIS)));
+    }
+
+    @Override
+    protected BlockState rotate(BlockState state, Rotation rotation) {
+        BlockState turned = super.rotate(state, rotation);
+        if (state.getValue(AXIS) == Direction.Axis.Y || state.getValue(CORNER) == SailCorner.NONE)
+            return turned;
+        Direction across = rotation.rotate(horizontal(state.getValue(AXIS)));
+        return turned.setValue(CORNER, flip(state.getValue(CORNER), across != horizontal(turned.getValue(AXIS))));
+    }
+
+    @Override
+    protected BlockState mirror(BlockState state, Mirror mirror) {
+        if (state.getValue(AXIS) == Direction.Axis.Y || state.getValue(CORNER) == SailCorner.NONE)
+            return state;
+        Direction across = mirror.mirror(horizontal(state.getValue(AXIS)));
+        return state.setValue(CORNER, flip(state.getValue(CORNER), across != horizontal(state.getValue(AXIS))));
+    }
+
+    private static SailCorner flip(SailCorner c, boolean flip) {
+        if (!flip)
+            return c;
+        for (SailCorner o : SailCorner.CUTS)
+            if (o.h == -c.h && o.v == c.v)
+                return o;
+        return c;
     }
 
     private static boolean checkItem(ItemStack i) {
@@ -170,35 +307,45 @@ public class BoatSailBlock extends RotatedPillarBlock implements IWrenchable, Bl
 
     @Override
     public BlockState getStateForPlacement(BlockPlaceContext context) {
-        return defaultBlockState().setValue(AXIS, context.getNearestLookingDirection().getAxis());
+        Direction.Axis axis = context.getNearestLookingDirection().getAxis();
+        return defaultBlockState().setValue(AXIS, axis)
+                .setValue(CORNER, cornerFor(context.getLevel(), context.getClickedPos(), axis));
     }
 
     @Override
     public VoxelShape getShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext ctx) {
         Direction.Axis axis = state.getValue(AXIS);
-        return switch (axis) {
-            case X -> Shapes.or(SHAPE_X, bulge(axis, level, pos));
-            case Z -> Shapes.or(SHAPE_Z, bulge(axis, level, pos));
-            default -> SHAPE_Y;
-        };
-    }
-
-    private static VoxelShape bulge(Direction.Axis axis, BlockGetter level, BlockPos pos) {
+        if (axis == Direction.Axis.Y)
+            return SHAPE_Y;
         Direction plus = Direction.get(Direction.AxisDirection.POSITIVE, axis);
         boolean supPlus = isSupport(level, pos.relative(plus));
         boolean supMinus = isSupport(level, pos.relative(plus.getOpposite()));
-
-        double lo = 0.1;
-        double hi = 0.9;
-        if (supMinus && !supPlus) {
-            lo = 0.0;
-        } else if (supPlus && !supMinus) {
-            hi = 1.0;
+        int depth = supMinus && !supPlus ? 1 : supPlus && !supMinus ? 2 : 0;
+        int a = axis == Direction.Axis.X ? 0 : 1;
+        SailCorner corner = state.getValue(CORNER);
+        VoxelShape shape = SHAPES[a][corner.ordinal()][depth];
+        if (shape == null) {
+            shape = shape(axis, corner, DEPTHS[depth][0], DEPTHS[depth][1]);
+            SHAPES[a][corner.ordinal()][depth] = shape;
         }
+        return shape;
+    }
 
-        return axis == Direction.Axis.X
-                ? Shapes.box(lo, 0.0, 0.0, hi, 1.0, 1.0)
-                : Shapes.box(0.0, 0.0, lo, 1.0, 1.0, hi);
+    private static VoxelShape shape(Direction.Axis axis, SailCorner corner, double lo, double hi) {
+        if (corner == SailCorner.NONE)
+            return axis == Direction.Axis.X ? Shapes.box(lo, 0.0, 0.0, hi, 1.0, 1.0) : Shapes.box(0.0, 0.0, lo, 1.0, 1.0, hi);
+        VoxelShape shape = Shapes.empty();
+        for (int j = 0; j < 4; j++) {
+            double reach = 1.0 - j / 4.0;
+            double h0 = corner.h > 0 ? 0.0 : 1.0 - reach;
+            double h1 = corner.h > 0 ? reach : 1.0;
+            double v0 = corner.v > 0 ? j / 4.0 : 0.75 - j / 4.0;
+            double v1 = v0 + 0.25;
+            shape = Shapes.or(shape, axis == Direction.Axis.X
+                    ? Shapes.box(lo, v0, h0, hi, v1, h1)
+                    : Shapes.box(h0, v0, lo, h1, v1, hi));
+        }
+        return shape;
     }
 
     private static boolean isSupport(BlockGetter level, BlockPos pos) {

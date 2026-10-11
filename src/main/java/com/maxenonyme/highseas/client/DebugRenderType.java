@@ -6,7 +6,7 @@ import net.minecraft.client.renderer.RenderType;
 
 import java.util.OptionalDouble;
 
-public final class DebugRenderType extends RenderType {
+public class DebugRenderType extends RenderType {
 
     public static final RenderType XRAY_LINES = create(
             "create_high_seas_debug_lines",

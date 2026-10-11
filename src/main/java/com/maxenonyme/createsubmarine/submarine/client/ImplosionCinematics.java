@@ -7,6 +7,7 @@ import com.maxenonyme.createsubmarine.CreateSubmarine;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
+import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.client.resources.sounds.SoundInstance;
 import net.minecraft.sounds.SoundEvents;
@@ -21,21 +22,24 @@ import net.neoforged.neoforge.client.event.ViewportEvent;
 import net.neoforged.neoforge.client.event.sound.PlaySoundEvent;
 
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
-public final class ImplosionCinematics {
-    private ImplosionCinematics() {
-    }
+public class ImplosionCinematics {
 
     private static final int BLACKOUT_HOLD = 60;
     private static final int BLACKOUT_FADE = 20;
-    private static final int EPITAPHS = 4;
+    private static final int EPITAPHS = 6;
     private static final float EPITAPH_STEP = 20f;
-    private static final float STRESS_PEAK = 16f;
+    private static final float STRESS_PEAK = 10f;
+    private static final int HOLD_LIMIT = 200;
     private static final float STRAIN_SWAY = 0.35f;
     private static final float STRAIN_JOLT = 0.9f;
     private static final int JOLT_TICKS = 12;
     private static final int JOLT_ODDS = 6;
+    private static final float HEART_START = 5f;
+    private static final float PANIC_FULL = 20f;
+    private static final int SILENCE_TICKS = 10;
 
     private static int stressTotal;
     private static int stressLeft;
@@ -43,10 +47,15 @@ public final class ImplosionCinematics {
     private static boolean lightsOut;
     private static int nextFlicker;
     private static int blackout = -1;
+    private static int lead;
+    private static boolean awaitingSilence;
+    private static int held;
     private static int epitaph;
     private static int strainLeft;
     private static float strain;
     private static int jolt;
+    private static float excess;
+    private static int excessLeft;
     private static final Set<SoundInstance> DEATH_SOUNDS = new HashSet<>();
 
     public static void accept(ImplosionFxPayload payload) {
@@ -54,6 +63,8 @@ public final class ImplosionCinematics {
             case ImplosionFxPayload.STRESS -> {
                 stressTotal = Math.max(1, payload.ticks());
                 stressLeft = stressTotal;
+                awaitingSilence = true;
+                held = 0;
                 stressStrength = payload.strength();
                 nextFlicker = 0;
             }
@@ -61,12 +72,32 @@ public final class ImplosionCinematics {
                 strainLeft = payload.ticks();
                 strain = payload.strength();
             }
+            case ImplosionFxPayload.SILENCE -> {
+                if (stressLeft > 0) {
+                    awaitingSilence = false;
+                    stressLeft = Math.min(stressLeft, SILENCE_TICKS);
+                    held = 0;
+                    Minecraft.getInstance().getSoundManager()
+                            .play(SimpleSoundInstance.forUI(CreateSubmarine.TINNITUS_SOUND.get(), 1.6f, 0.55f));
+                }
+            }
+            case ImplosionFxPayload.END -> {
+                if (stressLeft > 0) {
+                    stressLeft = 0;
+                    lightsOut = false;
+                }
+            }
+            case ImplosionFxPayload.PANIC -> {
+                excessLeft = payload.ticks();
+                excess = payload.strength();
+            }
             case ImplosionFxPayload.FATAL -> {
                 endStress();
                 die(Minecraft.getInstance());
             }
             default -> {
-                endStress();
+                stressLeft = 0;
+                lightsOut = false;
                 CameraShake.shake(4f + 10f * payload.strength(), 30 + (int) (40 * payload.strength()));
             }
         }
@@ -77,7 +108,8 @@ public final class ImplosionCinematics {
             mc.getSoundManager().play(SimpleSoundInstance.forUI(CreateSubmarine.IMPLOSION_SOUND.get(), 1f, 1f));
             return;
         }
-        CameraShake.shake(14f, 12);
+        CameraShake.shake(14f, 8);
+        lead = 0;
         blackout = 0;
         epitaph = mc.level == null ? 0 : mc.level.random.nextInt(EPITAPHS);
         mc.getSoundManager().stop();
@@ -93,8 +125,42 @@ public final class ImplosionCinematics {
 
     @SubscribeEvent
     public static void onPlaySound(PlaySoundEvent event) {
-        if (blackout >= 0 && !DEATH_SOUNDS.contains(event.getOriginalSound()))
+        if ((blackout >= 0 || lead > 0) && !DEATH_SOUNDS.contains(event.getOriginalSound()))
             event.setSound(null);
+    }
+
+    public static float dread() {
+        if (blackout >= 0 || lead > 0)
+            return 1f;
+        float dread = 0f;
+        if (excessLeft > 0) {
+            if (excess >= HEART_START)
+                dread = PressureVision.HEART_THRESHOLD + (1f - PressureVision.HEART_THRESHOLD) * smooth((excess - HEART_START) / (PANIC_FULL - HEART_START));
+            else
+                dread = PressureVision.HEART_THRESHOLD * 0.9f * Mth.clamp((excess + 10f) / (HEART_START + 10f), 0f, 1f);
+        }
+        if (stressLeft > 0) {
+            float progress = 1 - stressLeft / (float) stressTotal;
+            dread = Math.max(dread, (0.55f + 0.45f * progress) * stressStrength);
+        }
+        return dread;
+    }
+
+    public static float greyness() {
+        if (blackout >= 0 || lead > 0 || stressLeft > 0)
+            return 1f;
+        if (excessLeft <= 0)
+            return 0f;
+        return smooth((excess - HEART_START) / (PANIC_FULL - HEART_START));
+    }
+
+    private static float smooth(float t) {
+        t = Mth.clamp(t, 0f, 1f);
+        return t * t * (3f - 2f * t);
+    }
+
+    public static boolean silent() {
+        return stressLeft > 0 && !awaitingSilence && stressLeft <= SILENCE_TICKS;
     }
 
     public static boolean lightsOut() {
@@ -114,7 +180,11 @@ public final class ImplosionCinematics {
         if (mc.isPaused())
             return;
         if (stressLeft > 0) {
-            stressLeft--;
+            int floor = awaitingSilence ? SILENCE_TICKS + 1 : 1;
+            if (stressLeft > floor)
+                stressLeft--;
+            else if (++held > HOLD_LIMIT)
+                stressLeft = 0;
             float progress = 1 - stressLeft / (float) stressTotal;
             if (--nextFlicker <= 0) {
                 lightsOut = !lightsOut;
@@ -124,12 +194,16 @@ public final class ImplosionCinematics {
             if (stressLeft == 0)
                 lightsOut = false;
         }
+        if (excessLeft > 0)
+            excessLeft--;
         if (strainLeft > 0) {
             strainLeft--;
             if (jolt > 0)
                 jolt--;
             creak(mc);
         }
+        if (lead > 0 && --lead == 0)
+            blackout = 0;
         if (blackout >= 0) {
             blackout++;
             boolean alive = mc.player != null && !mc.player.isDeadOrDying();
@@ -160,25 +234,25 @@ public final class ImplosionCinematics {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null || mc.isPaused())
             return;
-        if (stressLeft <= 0) {
-            if (strainLeft > 0)
-                sway(event, mc);
+        float partialTick = (float) event.getPartialTick();
+        float progress = stressLeft > 0 ? Mth.clamp(1 - (stressLeft - partialTick) / stressTotal, 0f, 1f) : 0f;
+        if (strainLeft > 0)
+            sway(event, mc, 1f - progress);
+        if (stressLeft <= 0)
             return;
-        }
-        float progress = 1 - (stressLeft - (float) event.getPartialTick()) / stressTotal;
-        progress = Mth.clamp(progress, 0f, 1f);
-        float amp = (0.25f + STRESS_PEAK * progress * progress * progress) * stressStrength;
-        float t = mc.player.tickCount + (float) event.getPartialTick();
-        float fast = 9f + 26f * progress;
-        event.setPitch(event.getPitch() + (Mth.sin(t * fast) + 0.5f * Mth.sin(t * fast * 2.3f)) * amp * 0.6f);
-        event.setYaw(event.getYaw() + (Mth.cos(t * fast * 1.3f) + 0.4f * Mth.sin(t * fast * 3.1f)) * amp * 0.6f);
-        event.setRoll(event.getRoll() + Mth.sin(t * fast * 0.8f) * amp);
+        float age = progress * stressTotal;
+        float ramp = Mth.clamp(age / 10f, 0f, 1f);
+        float amp = (0.25f * ramp + STRESS_PEAK * progress * progress * progress) * stressStrength;
+        float phase = 9f * age + 9f * age * age / stressTotal;
+        event.setPitch(event.getPitch() + (Mth.sin(phase) + 0.5f * Mth.sin(phase * 2.3f)) * amp * 0.6f);
+        event.setYaw(event.getYaw() + (Mth.cos(phase * 1.3f) + 0.4f * Mth.sin(phase * 3.1f)) * amp * 0.6f);
+        event.setRoll(event.getRoll() + Mth.sin(phase * 0.8f) * amp);
     }
 
-    private static void sway(ViewportEvent.ComputeCameraAngles event, Minecraft mc) {
+    private static void sway(ViewportEvent.ComputeCameraAngles event, Minecraft mc, float scale) {
         float t = mc.player.tickCount + (float) event.getPartialTick();
-        float amp = STRAIN_SWAY * (0.3f + 0.7f * strain);
-        float kick = jolt > 0 ? STRAIN_JOLT * strain * (jolt - (float) event.getPartialTick()) / JOLT_TICKS : 0f;
+        float amp = STRAIN_SWAY * (0.3f + 0.7f * strain) * scale;
+        float kick = jolt > 0 ? STRAIN_JOLT * strain * scale * (jolt - (float) event.getPartialTick()) / JOLT_TICKS : 0f;
         kick = Math.max(0f, kick);
         event.setPitch(event.getPitch() + Mth.sin(t * 0.21f) * amp * 0.5f + Mth.sin(t * 2.7f) * kick * 0.6f);
         event.setYaw(event.getYaw() + Mth.sin(t * 3.4f) * kick * 0.4f);
@@ -214,10 +288,15 @@ public final class ImplosionCinematics {
             return;
         Font font = Minecraft.getInstance().font;
         Component line = Component.translatable("create_submarine.implosion.death." + epitaph);
+        float scale = 1.3f;
+        List<FormattedCharSequence> rows = font.split(line, (int) (graphics.guiWidth() * 0.8f / scale));
+        int color = ((int) (shown * 255) << 24) | 0xFFFFFF;
+        int top = -rows.size() * font.lineHeight / 2;
         graphics.pose().pushPose();
         graphics.pose().translate(graphics.guiWidth() / 2f, graphics.guiHeight() / 2f, 0);
-        graphics.pose().scale(1.3f, 1.3f, 1f);
-        graphics.drawCenteredString(font, line, 0, -font.lineHeight / 2, ((int) (shown * 255) << 24) | 0xFFFFFF);
+        graphics.pose().scale(scale, scale, 1f);
+        for (int i = 0; i < rows.size(); i++)
+            graphics.drawCenteredString(font, rows.get(i), 0, top + i * font.lineHeight, color);
         graphics.pose().popPose();
     }
 }

@@ -25,10 +25,11 @@ public class HullControllerBlockEntity extends BlockEntity {
         super(CreateSubmarine.CREATIVE_OXYGENATOR_BE.get(), pos, state);
     }
     public void tick() {
-        if (level == null) return;
+        if (level == null)
+            return;
         SubLevelAccess subAccess = SableCompanion.INSTANCE.getContaining(level, worldPosition);
-        if (subAccess instanceof SubLevel sub) {
-            currentSubLevelId = sub.getUniqueId();
+        if (subAccess instanceof SubLevel subLevel) {
+            currentSubLevelId = subLevel.getUniqueId();
             long gameTick = level.getGameTime();
             if (!SubmarineDriverRegistry.claim(currentSubLevelId, worldPosition, SubmarineDriverRegistry.HULL_CONTROLLER, gameTick)) {
                 return;
@@ -41,20 +42,20 @@ public class HullControllerBlockEntity extends BlockEntity {
                     || sinceUpdate >= 200;
             if (!CompartmentTracker.isScanActive(currentSubLevelId)
                     && scanDue && sinceUpdate >= getDynamicScanDelay()) {
-                CompartmentTracker.beginScanIfIdle(currentSubLevelId, sub);
+                CompartmentTracker.beginScanIfIdle(currentSubLevelId, subLevel);
             }
             if (CompartmentTracker.isScanActive(currentSubLevelId)) {
-                boolean done = CompartmentTracker.stepScan(currentSubLevelId, sub, getDynamicScanBudget(), gameTick);
+                boolean done = CompartmentTracker.stepScan(currentSubLevelId, subLevel, getDynamicScanBudget(), gameTick);
                 if (done && !level.isClientSide) {
                     SubmarinePressureSystem.setSealedCompartments(
                         currentSubLevelId, CompartmentTracker.getCompartments(currentSubLevelId));
                 }
             }
-            LevelPlot plot = sub.getPlot();
+            LevelPlot plot = subLevel.getPlot();
             if (plot != null) {
                 BoundingBox3ic bounds = plot.getBoundingBox();
                 Vector3d dimensions = CompartmentTracker.getOrComputeDimensions(currentSubLevelId, bounds);
-                Pose3dc pose = sub.logicalPose();
+                Pose3dc pose = subLevel.logicalPose();
                 if (CompartmentTracker.poseMovedEnough(currentSubLevelId, pose, 0.01, 1e-6)) {
                     SubmarineHullManager.updateHull(currentSubLevelId, pose.position(), dimensions, pose.orientation());
                     CompartmentTracker.updateAABB(currentSubLevelId, pose.position(), dimensions);
@@ -62,7 +63,7 @@ public class HullControllerBlockEntity extends BlockEntity {
                 }
                 if (!level.isClientSide && !subLevelRegistered) {
                     SubLevelRegistry.register(
-                        currentSubLevelId, sub, level,
+                        currentSubLevelId, subLevel, level,
                         new SubLevelRegistry.PlotBounds(bounds.minX(), bounds.maxX(), bounds.minY(), bounds.maxY(), bounds.minZ(), bounds.maxZ())
                     );
                     subLevelRegistered = true;
@@ -76,14 +77,16 @@ public class HullControllerBlockEntity extends BlockEntity {
     }
 
     private int getDynamicScanDelay() {
-        if (level == null) return 20;
+        if (level == null)
+            return 20;
         if (level.isClientSide) {
             return 2;
         }
         MinecraftServer server = level.getServer();
         if (server != null) {
             int players = server.getPlayerCount();
-            if (players <= 1) return 1;
+            if (players <= 1)
+                return 1;
             return Math.min(40, players * 5);
         }
         return 20;
@@ -94,7 +97,8 @@ public class HullControllerBlockEntity extends BlockEntity {
     }
 
     private void releaseDriver() {
-        if (currentSubLevelId == null) return;
+        if (currentSubLevelId == null)
+            return;
         long tick = level != null ? level.getGameTime() : 0L;
         if (SubmarineDriverRegistry.release(currentSubLevelId, worldPosition, tick)) {
             SubmarineHullManager.removeHull(currentSubLevelId);

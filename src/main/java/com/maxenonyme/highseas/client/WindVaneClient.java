@@ -8,9 +8,7 @@ import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
 import net.neoforged.neoforge.client.event.EntityRenderersEvent;
 
-public final class WindVaneClient {
-    private WindVaneClient() {
-    }
+public class WindVaneClient {
 
     public static void init(IEventBus modEventBus) {
         AllHighSeasPartialModels.init();
@@ -33,5 +31,6 @@ public final class WindVaneClient {
         event.registerBlockEntityRenderer(CreateHighSeas.WIND_VANE_BE.get(), WindVaneRenderer::new);
         event.registerBlockEntityRenderer(CreateHighSeas.ANCHOR_BE.get(), RopeHolderRenderer::new);
         event.registerBlockEntityRenderer(CreateHighSeas.BUOY_BE.get(), RopeHolderRenderer::new);
+        event.registerBlockEntityRenderer(CreateHighSeas.HALYARD_BE.get(), RopeHolderRenderer::new);
     }
 }

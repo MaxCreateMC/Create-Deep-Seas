@@ -15,7 +15,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 
-public final class UpdateChecker {
+public class UpdateChecker {
     private static volatile boolean updateAvailable = false;
     private static volatile String latestVersion = null;
     private static volatile String latestChangelog = null;
@@ -170,7 +170,8 @@ public final class UpdateChecker {
                         JsonArray versions = JsonParser.parseString(body).getAsJsonArray();
                         for (JsonElement element : versions) {
                             JsonObject versionObj = element.getAsJsonObject();
-                            if (!"listed".equalsIgnoreCase(versionObj.get("status").getAsString())) continue;
+                            if (!"listed".equalsIgnoreCase(versionObj.get("status").getAsString()))
+                                continue;
 
                             boolean matchesLoader = false;
                             for (JsonElement loader : versionObj.getAsJsonArray("loaders")) {
@@ -179,7 +180,8 @@ public final class UpdateChecker {
                                     break;
                                 }
                             }
-                            if (!matchesLoader) continue;
+                            if (!matchesLoader)
+                                continue;
 
                             boolean matchesGameVersion = false;
                             for (JsonElement gv : versionObj.getAsJsonArray("game_versions")) {
@@ -188,7 +190,8 @@ public final class UpdateChecker {
                                     break;
                                 }
                             }
-                            if (!matchesGameVersion) continue;
+                            if (!matchesGameVersion)
+                                continue;
 
                             String onlineVersion = versionObj.get("version_number").getAsString();
                             if (compareVersions(currentVersion, onlineVersion) < 0) {

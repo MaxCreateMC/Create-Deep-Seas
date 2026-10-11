@@ -32,9 +32,9 @@ public class WindVaneVisual extends AbstractBlockEntityVisual<WindVaneBlockEntit
     }
 
     private void applyTransform(float angle) {
-        BlockPos p = getVisualPosition();
+        BlockPos pos = getVisualPosition();
         arrow.setIdentityTransform()
-                .translate(p.getX(), p.getY(), p.getZ())
+                .translate(pos.getX(), pos.getY(), pos.getZ())
                 .rotateYCentered(angle)
                 .setChanged();
     }

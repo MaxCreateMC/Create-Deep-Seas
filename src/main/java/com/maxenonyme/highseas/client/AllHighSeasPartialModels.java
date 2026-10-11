@@ -4,9 +4,7 @@ import com.maxenonyme.highseas.CreateHighSeas;
 import dev.engine_room.flywheel.lib.model.baked.PartialModel;
 import net.minecraft.resources.ResourceLocation;
 
-public final class AllHighSeasPartialModels {
-    private AllHighSeasPartialModels() {
-    }
+public class AllHighSeasPartialModels {
 
     public static final PartialModel WIND_VANE_ARROW = PartialModel.of(
             ResourceLocation.fromNamespaceAndPath(CreateHighSeas.MOD_ID, "block/wind_vane/wind_vane_arrow"));

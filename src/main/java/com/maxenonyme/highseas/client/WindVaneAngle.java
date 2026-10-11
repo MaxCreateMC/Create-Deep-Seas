@@ -15,9 +15,7 @@ import org.joml.Quaterniond;
 import org.joml.Quaterniondc;
 import org.joml.Vector3d;
 
-public final class WindVaneAngle {
-    private WindVaneAngle() {
-    }
+public class WindVaneAngle {
 
     private static final float RESPONSE = 14.0f;
     private static final float MAX_FRAME_SECONDS = 0.1f;
@@ -52,13 +50,13 @@ public final class WindVaneAngle {
         }
         BlockPos pos = be.getBlockPos();
 
-        SubLevelAccess sub = SableCompanion.INSTANCE.getContaining(beLevel, pos);
+        SubLevelAccess subLevel = SableCompanion.INSTANCE.getContaining(beLevel, pos);
         Vector3d center = new Vector3d(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5);
         Quaterniondc orientation = null;
         Level windLevel = beLevel;
 
-        if (sub != null) {
-            Pose3dc pose = sub.logicalPose();
+        if (subLevel != null) {
+            Pose3dc pose = subLevel.logicalPose();
             pose.transformPosition(center);
             orientation = pose.orientation();
             windLevel = Minecraft.getInstance().level;
@@ -68,12 +66,12 @@ public final class WindVaneAngle {
         }
 
         WindSample wind = WindManager.getWind(windLevel, center.x, center.y, center.z);
-        Vec3 w = wind.vector();
-        if (w.lengthSqr() < CALM) {
+        Vec3 point = wind.vector();
+        if (point.lengthSqr() < CALM) {
             return Float.NaN;
         }
 
-        Vector3d local = new Vector3d(w.x, 0.0, w.z);
+        Vector3d local = new Vector3d(point.x, 0.0, point.z);
         if (orientation != null) {
             orientation.conjugate(new Quaterniond()).transform(local);
         }
