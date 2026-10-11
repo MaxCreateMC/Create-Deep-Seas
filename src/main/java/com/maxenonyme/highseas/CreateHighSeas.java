@@ -125,7 +125,8 @@ public class CreateHighSeas {
                             .noSummon()
                             .fireImmune()
                             .clientTrackingRange(10)
-                            .updateInterval(20)
+                            .updateInterval(Integer.MAX_VALUE)
+                            .setShouldReceiveVelocityUpdates(false)
                             .build("helm_seat"));
 
     public static final Supplier<EntityType<BuoySeatEntity>> BUOY_SEAT =

@@ -22,6 +22,7 @@ import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.event.BuildCreativeModeTabContentsEvent;
 import net.neoforged.neoforge.registries.DeferredRegister;
 import org.slf4j.Logger;
 import java.util.List;
@@ -64,6 +65,8 @@ import com.maxenonyme.createsubmarine.submarine.system.LightFailure;
 import com.maxenonyme.createsubmarine.submarine.system.SubLevelFireSystem;
 import com.maxenonyme.createsubmarine.worldgen.OceanDepthOffset;
 import com.mojang.serialization.MapCodec;
+import com.simibubi.create.AllCreativeModeTabs;
+import com.simibubi.create.content.equipment.armor.BacktankUtil;
 import com.simibubi.create.api.behaviour.display.DisplaySource;
 import com.simibubi.create.api.stress.BlockStressValues;
 import com.simibubi.create.content.equipment.goggles.GogglesItem;
@@ -85,6 +88,8 @@ import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.item.ArmorItem;
 import net.minecraft.world.item.ArmorMaterial;
 import net.minecraft.world.item.BlockItem;
+import net.minecraft.world.item.CreativeModeTab;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.Rarity;
 import net.minecraft.world.item.crafting.Ingredient;
@@ -421,7 +426,15 @@ public class CreateSubmarine {
                                         ArmorItem.Type.CHESTPLATE,
                                         new Item.Properties().stacksTo(1)
                                                         .durability(ArmorItem.Type.CHESTPLATE.getDurability(15)),
-                                        ResourceLocation.fromNamespaceAndPath(MOD_ID, "textures/chestplate_diving.png")));
+                                        ResourceLocation.fromNamespaceAndPath(MOD_ID,
+                                                        "textures/models/armor/copper_diving_chestplate.png")));
+        public static final Supplier<Item> DIVING_LEGGINGS = ITEMS.register("diving_leggings",
+                        () -> new DivingSuitItem(DIVING_SUIT_MATERIAL,
+                                        ArmorItem.Type.LEGGINGS,
+                                        new Item.Properties().stacksTo(1)
+                                                        .durability(ArmorItem.Type.LEGGINGS.getDurability(15)),
+                                        ResourceLocation.fromNamespaceAndPath(MOD_ID,
+                                                        "textures/models/armor/copper_diving_leggings.png")));
         public static final Supplier<Item> PRESSURE_GOGGLES = ITEMS.register("pressure_goggles",
                         () -> new PressureGogglesItem(
                                         new Item.Properties().stacksTo(1)));
@@ -515,6 +528,7 @@ public class CreateSubmarine {
                 NeoForge.EVENT_BUS.addListener(FloodSystem::onPhysicsTick);
                 NeoForge.EVENT_BUS.addListener(SubmarineInteractionSystem::onServerTick);
                 NeoForge.EVENT_BUS.addListener(PhysicsWakeSystem::onServerTick);
+                NeoForge.EVENT_BUS.addListener(DiverPressure::onPlayerTick);
                 NeoForge.EVENT_BUS.addListener(
                                 SteelCablePhysicsSystem::onServerTick);
                 NeoForge.EVENT_BUS.addListener(
@@ -543,6 +557,7 @@ public class CreateSubmarine {
                                 SubLevelCableCleanup::onLevelLoad);
 
                 modEventBus.addListener(this::registerCapabilities);
+                modEventBus.addListener(this::moveDivingGear);
 
                 if (FMLEnvironment.dist.isClient()) {
                         CreateSubmarineClient.init(modEventBus, modContainer);
@@ -619,6 +634,18 @@ public class CreateSubmarine {
                                 CableStrandRemovePayload.TYPE,
                                 CableStrandRemovePayload.CODEC,
                                 CableStrandRemovePayload::handle);
+        }
+
+        private void moveDivingGear(BuildCreativeModeTabContentsEvent event) {
+                if (event.getTabKey() != AllCreativeModeTabs.BASE_CREATIVE_TAB.getKey())
+                        return;
+                for (String name : List.of("copper_diving_helmet", "copper_diving_boots"))
+                        event.remove(new ItemStack(createItem(name)),
+                                        CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS);
+        }
+
+        private static Item createItem(String name) {
+                return BuiltInRegistries.ITEM.get(ResourceLocation.fromNamespaceAndPath("create", name));
         }
 
         private void registerCapabilities(RegisterCapabilitiesEvent event) {
@@ -705,6 +732,7 @@ public class CreateSubmarine {
                 event.enqueueWork(() -> {
                         HullStrengthConfig.load();
                         registerToSimulatedTab();
+                        BacktankUtil.addBacktankSupplier(DivingSuitItem::carriedBacktanks);
                         BlockStressValues.IMPACTS.register(SUBMARINE_PROPELLER.get(),
                                         () -> 4.0);
                         BlockStressValues.IMPACTS.register(PUMP_CONTROLLER.get(),
@@ -790,6 +818,14 @@ public class CreateSubmarine {
                         itemToSection.put(ResourceLocation.fromNamespaceAndPath(MOD_ID, "oxygen_bucket"), subSection);
                         tabItems.add(PRESSURE_GOGGLES::get);
                         itemToSection.put(ResourceLocation.fromNamespaceAndPath(MOD_ID, "pressure_goggles"), subSection);
+                        tabItems.add(() -> createItem("copper_diving_helmet"));
+                        itemToSection.put(ResourceLocation.fromNamespaceAndPath("create", "copper_diving_helmet"), subSection);
+                        tabItems.add(DIVING_CHESTPLATE);
+                        itemToSection.put(ResourceLocation.fromNamespaceAndPath(MOD_ID, "diving_chestplate"), subSection);
+                        tabItems.add(DIVING_LEGGINGS);
+                        itemToSection.put(ResourceLocation.fromNamespaceAndPath(MOD_ID, "diving_leggings"), subSection);
+                        tabItems.add(() -> createItem("copper_diving_boots"));
+                        itemToSection.put(ResourceLocation.fromNamespaceAndPath("create", "copper_diving_boots"), subSection);
                 } catch (ReflectiveOperationException | ClassCastException e) {
                         LOGGER.warn("Couldn't add our items to the Simulated creative section", e);
                 }

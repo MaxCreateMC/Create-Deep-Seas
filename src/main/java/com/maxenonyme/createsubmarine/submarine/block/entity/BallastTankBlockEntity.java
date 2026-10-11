@@ -412,7 +412,7 @@ public class BallastTankBlockEntity extends BlockEntity
             targetVelY = baseTarget;
         }
 
-        double perceivedVelY = Math.max(-0.2, Math.min(0.2, currentVelY));
+        double perceivedVelY = Math.max(-maxSpeed, Math.min(maxSpeed, currentVelY));
         double errorY = targetVelY - perceivedVelY;
         double mass = SablePhysicsHelper.readMass(sub);
 

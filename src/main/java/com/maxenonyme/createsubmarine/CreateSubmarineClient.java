@@ -145,6 +145,8 @@ public class CreateSubmarineClient {
         NeoForge.EVENT_BUS
                 .addListener(CommandSubClientHandler::onClientTick);
         NeoForge.EVENT_BUS
+                .addListener(CommandSubClientHandler::onFrameStart);
+        NeoForge.EVENT_BUS
                 .addListener(CommandSubClientHandler::onRenderStage);
         NeoForge.EVENT_BUS
                 .addListener(VeilUploadGuard::onRenderStage);

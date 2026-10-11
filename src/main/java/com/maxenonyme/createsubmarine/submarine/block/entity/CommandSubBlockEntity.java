@@ -240,7 +240,10 @@ public class CommandSubBlockEntity extends BlockEntity {
             double modeSpeed = maxSpeed * RATES[speedMode];
             double braking = Math.max(0.02, 2 * maxSpeed * fillRate) * BRAKING_MARGIN;
             double wantSpeed = Math.signum(error) * Math.min(modeSpeed, Math.sqrt(2 * braking * Math.abs(error)));
-            double wantFill = Mth.clamp(0.5 - wantSpeed / (2 * maxSpeed), 0, 1);
+            Vector3dc velocity = SablePhysicsHelper.getVelocity(subLevel);
+            double rising = velocity == null ? wantSpeed : velocity.y();
+            double push = wantSpeed + 2 * (wantSpeed - rising);
+            double wantFill = Mth.clamp(0.5 - push / (2 * maxSpeed), 0, 1);
             if (fill < wantFill - 0.01)
                 wanted = PumpControllerBlockEntity.FILL;
             else if (fill > wantFill + 0.01)

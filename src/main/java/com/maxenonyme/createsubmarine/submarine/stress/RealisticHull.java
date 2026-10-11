@@ -14,7 +14,7 @@ import java.util.concurrent.ForkJoinWorkerThread;
 
 public class RealisticHull {
     public static final float UNBREAKABLE = 1.0e6f;
-    private static final double REFERENCE_DEPTH_PER_PASCAL = 3.85e-6;
+    private static final double REFERENCE_DEPTH_PER_PASCAL = 3.68e-6;
 
     private static final ForkJoinPool POOL = new ForkJoinPool(Math.max(1, Runtime.getRuntime().availableProcessors() / 2),
             pool -> {

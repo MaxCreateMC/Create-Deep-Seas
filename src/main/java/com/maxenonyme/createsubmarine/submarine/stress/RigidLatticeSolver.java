@@ -163,9 +163,10 @@ public class RigidLatticeSolver {
 
             double t1x = T1[d][0], t1y = T1[d][1], t1z = T1[d][2];
             double t2x = T2[d][0], t2y = T2[d][1], t2z = T2[d][2];
-            double kS = k / (2.0 * (1.0 + nuI));
-            double kBend = k / 12.0;
-            double kTor = k / 6.0;
+            double kS = shear(k, nuI, nu[j]);
+            double length2 = 1.0 / (INV_DIST[d] * INV_DIST[d]);
+            double kBend = k * length2 / 12.0;
+            double kTor = k * length2 / 6.0;
             double fN = k * (nx * rx + ny * ry + nz * rz);
             double fS1 = kS * (t1x * rx + t1y * ry + t1z * rz);
             double fS2 = kS * (t2x * rx + t2y * ry + t2z * rz);
@@ -190,16 +191,21 @@ public class RigidLatticeSolver {
         }
     }
 
+    private static double shear(double k, double nuI, double nuJ) {
+        return k * 0.1 / (2.0 + nuI + nuJ);
+    }
+
     private void buildPreconditioner() {
         precon = new double[6 * n];
         for (int i = 0; i < n; i++) {
             int i6 = 6 * i;
             for (int d = 0; d < NEIGHBORS; d++) {
-                if (neighbors[i][d] < 0)
+                int j = neighbors[i][d];
+                if (j < 0)
                     continue;
                 double k = stiffness[i][d];
-                double kS = k / (2.0 * (1.0 + nu[i]));
-                double rot = k / 12.0 + k / 6.0;
+                double kS = shear(k, nu[i], nu[j]);
+                double rot = (k / 12.0 + k / 6.0) / (INV_DIST[d] * INV_DIST[d]);
                 double cx = DIR[d][0] * DIR[d][0], cy = DIR[d][1] * DIR[d][1], cz = DIR[d][2] * DIR[d][2];
                 precon[i6] += k * cx + kS * (1 - cx);
                 precon[i6 + 1] += k * cy + kS * (1 - cy);

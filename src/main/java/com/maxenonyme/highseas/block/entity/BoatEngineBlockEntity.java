@@ -26,6 +26,7 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.SimpleContainer;
@@ -214,8 +215,8 @@ public class BoatEngineBlockEntity extends BlockEntity implements BlockEntitySub
         syncDirty = true;
     }
 
-    public Vec3 helmAnchor() {
-        return offset(-0.3125, -0.5, -1.75, getBlockState().getValue(BoatEngineBlock.FACING));
+    public static Vec3 helmAnchor(BlockPos pos, Direction facing) {
+        return offset(pos, -0.3125, -0.5, -1.75, facing);
     }
 
     public static void serverTick(Level level, BlockPos pos, BlockState state, BoatEngineBlockEntity be) {
@@ -263,8 +264,12 @@ public class BoatEngineBlockEntity extends BlockEntity implements BlockEntitySub
         if (driverId != null) {
             Player driver = sl.getPlayerByUUID(driverId);
             if (driver == null || !(driver.getVehicle() instanceof HelmSeatEntity seat)
-                    || !seat.getEnginePos().equals(worldPosition))
+                    || !seat.getEnginePos().equals(worldPosition)) {
                 driverId = null;
+            } else if (driver instanceof ServerPlayer player) {
+                seat.positionRider(player);
+                sl.getChunkSource().move(player);
+            }
         }
 
         byte mask = driverId == null ? 0 : HelmServer.maskFor(driverId, sl.getGameTime());
@@ -405,6 +410,10 @@ public class BoatEngineBlockEntity extends BlockEntity implements BlockEntitySub
 
 
     private Vec3 offset(double ox, double oy, double oz, Direction facing) {
+        return offset(worldPosition, ox, oy, oz, facing);
+    }
+
+    private static Vec3 offset(BlockPos origin, double ox, double oy, double oz, Direction facing) {
         double dx;
         double dz;
         switch (facing) {
@@ -425,8 +434,7 @@ public class BoatEngineBlockEntity extends BlockEntity implements BlockEntitySub
                 dz = oz;
             }
         }
-        return new Vec3(worldPosition.getX() + 0.5 + dx, worldPosition.getY() + 0.5 + oy,
-                worldPosition.getZ() + 0.5 + dz);
+        return new Vec3(origin.getX() + 0.5 + dx, origin.getY() + 0.5 + oy, origin.getZ() + 0.5 + dz);
     }
 
     private static void resolveSounds() {
