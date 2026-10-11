@@ -84,7 +84,6 @@ public class LatticeStressSolver {
     private final double[] yieldStress;
     private final int[][] neighbors;
     private final double[][] springK;
-    private final int[] neighborCount;
 
     private final double[] u;
     private final double[] blockWaterDepths;
@@ -114,6 +113,13 @@ public class LatticeStressSolver {
     private static double MOON_POOL_FACTOR = 0.8;
     private static boolean ORIENTATION_ENABLED = true;
     private static boolean COPYCAT_INHERIT = false;
+
+    // ---- per-face load data, flat 6n. Allocated once: only the wet mask and the depths
+    // change between solves; the wetted area depends only on the collision shapes.
+    private final boolean[] wetFlags;
+    private final boolean[] internalFlags;
+    private final double[] faceDepths;
+    private final double[] faceAreas;
 
     private long solveTimeNanos = 0;
     private final long structureHash;
@@ -169,6 +175,11 @@ public class LatticeStressSolver {
         this.shapeX = new double[n];
         this.shapeY = new double[n];
         this.shapeZ = new double[n];
+        this.wetFlags = new boolean[6 * n];
+        this.internalFlags = new boolean[6 * n];
+        this.faceDepths = new double[6 * n];
+        this.faceAreas = new double[6 * n];
+        java.util.Arrays.fill(this.faceAreas, 1.0);
         java.util.Arrays.fill(this.shapeX, 1.0);
         java.util.Arrays.fill(this.shapeY, 1.0);
         java.util.Arrays.fill(this.shapeZ, 1.0);
@@ -177,7 +188,6 @@ public class LatticeStressSolver {
         this.coherence = 1.0;
         this.orientation = new org.joml.Quaterniond();
         this.orientationEnabled = false;
-        this.neighborCount = computeNeighborCounts();
 
         // Create SolverCore referencing our shared arrays
         final int[] sx = new int[n], sy = new int[n], sz = new int[n];
@@ -187,8 +197,7 @@ public class LatticeStressSolver {
             sz[i] = positions[i].getZ();
         }
         this.solverCore = new SolverCore(n, sx, sy, sz,
-            E, yieldStress, neighbors, springK, neighborCount,
-            exposedFaceCount, isHullBlock, hullBlockCount, volFraction,
+            E, yieldStress, neighbors, springK,            exposedFaceCount, isHullBlock, hullBlockCount, volFraction,
             u, blockWaterDepths);
 
         final long t0 = System.nanoTime();
@@ -260,6 +269,15 @@ public class LatticeStressSolver {
         this.shapeX = new double[this.n];
         this.shapeY = new double[this.n];
         this.shapeZ = new double[this.n];
+        this.wetFlags = new boolean[6 * this.n];
+        this.internalFlags = new boolean[6 * this.n];
+        this.faceDepths = new double[6 * this.n];
+        this.faceAreas = new double[6 * this.n];
+        for (int fdir = 0; fdir < 6; fdir++) {
+            for (int fi = 0; fi < this.n; fi++) {
+                this.faceAreas[6 * fi + fdir] = faceAreaFor(fi, fdir);
+            }
+        }
 
         for (int i = 0; i < this.n; i++) {
             final BlockPos pos = this.positions[i];
@@ -297,7 +315,6 @@ public class LatticeStressSolver {
             final BlockPos p = this.positions[i];
             final BlockState blockState = level.getBlockState(p);
             final double Ei = this.E[i];
-            int exteriorFaces = 0;
             for (int dir = 0; dir < MAX_NEIGHBORS; dir++) {
                 final int nx = p.getX() + DX[dir];
                 final int ny = p.getY() + DY[dir];
@@ -327,14 +344,6 @@ public class LatticeStressSolver {
                     this.springK[i][dir] = 0.0;
                     if (dir < 6) this.exposedFaceCount[i]++;
                 }
-
-                if (dir < 6) {
-                    if (nx < bounds.minX() || nx > bounds.maxX() ||
-                            ny < bounds.minY() || ny > bounds.maxY() ||
-                            nz < bounds.minZ() || nz > bounds.maxZ()) {
-                        exteriorFaces++;
-                    }
-                }
             }
 
             if (exposedFaceCount[i] > 0) {
@@ -343,7 +352,6 @@ public class LatticeStressSolver {
             }
         }
 
-        this.neighborCount = computeNeighborCounts();
 
         int minX = Integer.MAX_VALUE, maxX = Integer.MIN_VALUE;
         int minY = Integer.MAX_VALUE, maxY = Integer.MIN_VALUE;
@@ -384,8 +392,7 @@ public class LatticeStressSolver {
             sz[i] = positions[i].getZ();
         }
         this.solverCore = new SolverCore(n, sx, sy, sz,
-            E, yieldStress, neighbors, springK, neighborCount,
-            exposedFaceCount, isHullBlock, hullBlockCount, volFraction,
+            E, yieldStress, neighbors, springK,            exposedFaceCount, isHullBlock, hullBlockCount, volFraction,
             u, blockWaterDepths);
 
         // Wire smoothed normals for curvature-aware panel bending
@@ -480,9 +487,15 @@ public class LatticeStressSolver {
         return aMax >= bMin;
     }
 
-    public static Map<BlockPos, Set<Integer>> buildExposedFaceMap(
+    /**
+     * Exposed faces of every block in the sub-level, as a 6-bit mask (bit d = face d is
+     * exposed) instead of a set of boxed integers: one Integer per hull block instead of
+     * a HashSet plus up to six Integers. The map keys are unchanged, so the iteration
+     * order the consumer sees is the same.
+     */
+    public static Map<BlockPos, Integer> buildExposedFaceMap(
             final BlockGetter level, final BoundingBox3ic bounds) {
-        final Map<BlockPos, Set<Integer>> result = new HashMap<>();
+        final Map<BlockPos, Integer> result = new HashMap<>();
         final BlockPos.MutableBlockPos mutable = new BlockPos.MutableBlockPos();
         final Long2IntOpenHashMap present = new Long2IntOpenHashMap();
         present.defaultReturnValue(-1);
@@ -525,18 +538,22 @@ public class LatticeStressSolver {
                 int ny = pos.getY() + (dir == 2 ? 1 : dir == 3 ? -1 : 0);
                 int nz = pos.getZ() + (dir == 4 ? 1 : dir == 5 ? -1 : 0);
                 int neighborIdx = present.get(BlockPos.asLong(nx, ny, nz));
+                boolean exposed = false;
                 if (neighborIdx < 0) {
-                    result.computeIfAbsent(pos, k -> new HashSet<>()).add(dir);
+                    exposed = true;
                 } else {
                     BlockState neighborState = level.getBlockState(new BlockPos(nx, ny, nz));
                     if (!facesTouch(dir, state, level, pos, neighborState, level, new BlockPos(nx, ny, nz))) {
-                        result.computeIfAbsent(pos, k -> new HashSet<>()).add(dir);
+                        exposed = true;
                     }
                 }
                 if (nx < cropMinX || nx > cropMaxX ||
                     ny < cropMinY || ny > cropMaxY ||
                     nz < cropMinZ || nz > cropMaxZ) {
-                    result.computeIfAbsent(pos, k -> new HashSet<>()).add(dir);
+                    exposed = true;
+                }
+                if (exposed) {
+                    result.merge(pos, 1 << dir, (a, b) -> a | b);
                 }
             }
         }
@@ -584,28 +601,26 @@ public class LatticeStressSolver {
         // Per-face load data. The pressure on a face is rho*g*depth(face centroid), the
         // wetted area of that face, and a moon-pool attenuation when the face is wetted by
         // *internal* fluid (flooded compartment, breach, moon-pool shaft) rather than by
-        // the surrounding ocean.
-        final boolean[][] wf = new boolean[this.n][6];
-        final boolean[][] internal = new boolean[this.n][6];
-        final double[][] fdepth = new double[this.n][6];
-        final double[][] farea = new double[this.n][6];
+        // the surrounding ocean. The arrays are reused across solves: only the wet mask
+        // and the depths are rewritten, the areas were computed at construction time.
+        java.util.Arrays.fill(this.wetFlags, false);
+        java.util.Arrays.fill(this.internalFlags, false);
         for (int i = 0; i < this.n; i++) {
             if (this.blockWaterDepths[i] <= 0) continue;
             for (int dir = 0; dir < 6; dir++) {
                 if (this.neighbors[i][dir] >= 0) continue;
                 final int wet = faceWetness(i, dir);
                 if (wet == WET_DRY) continue;
-                wf[i][dir] = true;
-                internal[i][dir] = (wet == WET_INTERNAL);
-                fdepth[i][dir] = faceDepthFor(i, dir);
-                farea[i][dir] = faceAreaFor(i, dir);
+                this.wetFlags[6 * i + dir] = true;
+                this.internalFlags[6 * i + dir] = (wet == WET_INTERNAL);
+                this.faceDepths[6 * i + dir] = faceDepthFor(i, dir);
             }
         }
 
-        solverCore.waterFace = wf;
-        solverCore.faceInternal = internal;
-        solverCore.faceDepth = fdepth;
-        solverCore.faceArea = farea;
+        solverCore.waterFace = this.wetFlags;
+        solverCore.faceInternal = this.internalFlags;
+        solverCore.faceDepth = this.faceDepths;
+        solverCore.faceArea = this.faceAreas;
         solverCore.buildRHS(b);
     }
 
@@ -974,9 +989,8 @@ public class LatticeStressSolver {
                     final double k = -Kij * modulusScale;
                     if (!(k > 0)) continue;
                     final double nx = DIR_COS[dir][0], ny = DIR_COS[dir][1], nz = DIR_COS[dir][2];
-                    final double L = 1.0 / INV_DIST[dir];
-                    final double h = 0.5 * L;
-                    final double L2 = L * L;
+                    final double h = SolverCore.HALF_LEN[dir];
+                    final double L2 = SolverCore.LEN2[dir];
                     final double uAx = uvec[ci6], uAy = uvec[ci6 + 1], uAz = uvec[ci6 + 2];
                     final double wIx = uvec[ci6 + 3], wIy = uvec[ci6 + 4], wIz = uvec[ci6 + 5];
                     final double uBx = uvec[cj6], uBy = uvec[cj6 + 1], uBz = uvec[cj6 + 2];
@@ -1108,46 +1122,6 @@ public class LatticeStressSolver {
     public static int[] getDY() { return DY; }
     public static int[] getDZ() { return DZ; }
     public static double[] getInvDist() { return INV_DIST; }
-
-    public int getNeighborCount(final int i) {
-        if (i < 0 || i >= this.n) return 0;
-        return this.neighborCount[i];
-    }
-
-    private int[] computeNeighborCounts() {
-        final int[] hullDist = new int[this.n];
-        java.util.Arrays.fill(hullDist, Integer.MAX_VALUE);
-        final ArrayDeque<Integer> queue = new ArrayDeque<>();
-        for (int i = 0; i < this.n; i++) {
-            if (this.isHullBlock[i]) {
-                hullDist[i] = 0;
-                queue.addLast(i);
-            }
-        }
-        while (!queue.isEmpty()) {
-            final int i = queue.removeFirst();
-            final int nd = hullDist[i] + 1;
-            for (int dir = 0; dir < MAX_NEIGHBORS; dir++) {
-                final int j = this.neighbors[i][dir];
-                if (j >= 0 && hullDist[j] > nd) {
-                    hullDist[j] = nd;
-                    queue.addLast(j);
-                }
-            }
-        }
-
-        final int[] nc = new int[this.n];
-        for (int i = 0; i < this.n; i++) {
-            if (hullDist[i] <= 1) {
-                nc[i] = 26;
-            } else if (hullDist[i] <= 3) {
-                nc[i] = 18;
-            } else {
-                nc[i] = 6;
-            }
-        }
-        return nc;
-    }
 
     public double getYoungsModulus(final int i) { return this.E[i]; }
     public double getYieldStress(final int i) { return this.yieldStress[i]; }

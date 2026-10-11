@@ -99,20 +99,17 @@ public class CalibrationRunner {
             exposedFaceCount[i] = exteriorFaces;
         }
 
-        final int[] neighborCount = new int[n];
+        
         for (int i = 0; i < n; i++) {
             int cnt = 0;
             for (int dir = 0; dir < SolverCore.MAX_NEIGHBORS; dir++)
-                if (neighbors[i][dir] >= 0) cnt++;
-            neighborCount[i] = cnt;
-        }
+                if (neighbors[i][dir] >= 0) cnt++;        }
 
         final double[] u = new double[6 * n];
         final double[] blockWaterDepths = new double[n];
 
         final SolverCore solver = new SolverCore(
-            n, sx, sy, sz, E, yield, neighbors, springK, neighborCount,
-            exposedFaceCount, isHull, hullCount, volFrac, u, blockWaterDepths
+            n, sx, sy, sz, E, yield, neighbors, springK,            exposedFaceCount, isHull, hullCount, volFrac, u, blockWaterDepths
         );
 
         // Depth sweep: VM must scale linearly with depth (linear system).

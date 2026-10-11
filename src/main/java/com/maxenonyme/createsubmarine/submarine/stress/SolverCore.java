@@ -69,6 +69,10 @@ public class SolverCore {
 
     public static final double[] INV_DIST = new double[MAX_NEIGHBORS];
     public static final double[][] DIR_COS = new double[MAX_NEIGHBORS][3];
+    /** L^2 and L/2 per link direction: the link geometry is fixed, so the reciprocal and
+     *  the half-length are precomputed once instead of per link per mat-vec. */
+    public static final double[] LEN2 = new double[MAX_NEIGHBORS];
+    public static final double[] HALF_LEN = new double[MAX_NEIGHBORS];
     // precomputed orthonormal shear basis per neighbour direction
     static final double[][] T1 = new double[MAX_NEIGHBORS][3];
     static final double[][] T2 = new double[MAX_NEIGHBORS][3];
@@ -137,6 +141,10 @@ public class SolverCore {
             DIR_COS[dir][0] = DX[dir] / d;
             DIR_COS[dir][1] = DY[dir] / d;
             DIR_COS[dir][2] = DZ[dir] / d;
+            // same expressions as the ones previously evaluated per link inside the mat-vec
+            final double l = 1.0 / INV_DIST[dir];
+            LEN2[dir] = l * l;
+            HALF_LEN[dir] = 0.5 * l;
             final double nx = DIR_COS[dir][0], ny = DIR_COS[dir][1], nz = DIR_COS[dir][2];
             double vx, vy, vz;
             final double ax = Math.abs(nx), ay = Math.abs(ny), az = Math.abs(nz);
@@ -161,7 +169,6 @@ public class SolverCore {
     public final double[] yieldStress;
     public final int[][] neighbors;
     public final double[][] springK;
-    public final int[] neighborCount;
     public final int[] exposedFaceCount;
     public final boolean[] isHullBlock;
     public final int hullBlockCount;
@@ -223,14 +230,14 @@ public class SolverCore {
     // ---- smoothed normals from ShapeClassifier (null = flat-only) ----
     public double[][] smoothedNormals;
 
-    // ---- which exposed faces are wet (null = all exposed faces wet) ----
-    public boolean[][] waterFace;
-    /** per-face hydrostatic depth (null => use blockWaterDepths[i] for every face) */
-    public double[][] faceDepth;
-    /** per-face wetted area (null => use volFraction[i], the legacy approximation) */
-    public double[][] faceArea;
-    /** faces wetted by internal fluid (moon pool / flooded compartment) */
-    public boolean[][] faceInternal;
+    // ---- which exposed faces are wet (flat 6n, null = all exposed faces wet) ----
+    public boolean[] waterFace;
+    // ---- per-face hydrostatic depth (flat 6n, null = use blockWaterDepths[i]) ----
+    public double[] faceDepth;
+    // ---- per-face wetted area (flat 6n, null = use volFraction[i]) ----
+    public double[] faceArea;
+    // ---- per-face: wetted by internal fluid / moon pool (flat 6n, null = none) ----
+    public boolean[] faceInternal;
 
     // ---- warm-start tracking ----
     private double previousBNorm = -1;
@@ -254,7 +261,6 @@ public class SolverCore {
         final double[] yieldStress,
         final int[][] neighbors,
         final double[][] springK,
-        final int[] neighborCount,
         final int[] exposedFaceCount,
         final boolean[] isHullBlock,
         final int hullBlockCount,
@@ -270,7 +276,6 @@ public class SolverCore {
         this.yieldStress = yieldStress;
         this.neighbors = neighbors;
         this.springK = springK;
-        this.neighborCount = neighborCount;
         this.exposedFaceCount = exposedFaceCount;
         this.isHullBlock = isHullBlock;
         this.hullBlockCount = hullBlockCount;
@@ -313,12 +318,12 @@ public class SolverCore {
             anyUnderwater = true;
             for (int dir = 0; dir < 6; dir++) {
                 if (neighbors[i][dir] >= 0) continue;
-                if (waterFace != null && !waterFace[i][dir]) continue;
-                final double depth = (faceDepth != null) ? faceDepth[i][dir] : blockDepth;
+                if (waterFace != null && !waterFace[6 * i + dir]) continue;
+                final double depth = (faceDepth != null) ? faceDepth[6 * i + dir] : blockDepth;
                 if (depth <= 0) continue;
                 double p = this.rhoG * depth;
-                p *= (faceArea != null) ? faceArea[i][dir] : volFraction[i];
-                if (useMoonPool && faceInternal != null && faceInternal[i][dir]) {
+                p *= (faceArea != null) ? faceArea[6 * i + dir] : volFraction[i];
+                if (useMoonPool && faceInternal != null && faceInternal[6 * i + dir]) {
                     p *= MOON_POOL_FACTOR;
                 }
                 // inward pressure: +x face (dir 0) pushes -x, hence the sign on even dirs
@@ -366,9 +371,8 @@ public class SolverCore {
             if (!(k > 0)) continue;
 
             final double nx = DIR_COS[dir][0], ny = DIR_COS[dir][1], nz = DIR_COS[dir][2];
-            final double L = 1.0 / INV_DIST[dir];
-            final double h = 0.5 * L; // half centre distance
-            final double L2 = L * L;
+            final double h = HALF_LEN[dir]; // half centre distance
+            final double L2 = LEN2[dir];
 
             // attachment point displacements: U = u + w x r, r = +/- h * n
             final double uAx = uvec[i6], uAy = uvec[i6 + 1], uAz = uvec[i6 + 2];
@@ -465,8 +469,7 @@ public class SolverCore {
                 if (!(k > 0)) continue;
                 final double nuJ = nuBlock != null ? nuBlock[j] : poissonRatio;
                 final double kS = shearStiffness(k, nuI, nuJ);
-                final double L = 1.0 / INV_DIST[dir];
-                final double L2 = L * L;
+                final double L2 = LEN2[dir];
                 final double kBend = k * L2 / 12.0 * this.bendScale;
                 final double kTor = k * L2 / 6.0 * this.bendScale;
                 final int i6 = 6 * i;
@@ -694,8 +697,8 @@ public class SolverCore {
 
         // per-chunk partials about the ORIGIN:
         // [0] mass, [1..3] m*v, [4..6] m*w, [7..9] angular momentum,
-        // [10..15] second moments of mass (xx,yy,zz,xy,xz,yz)
-        final double[][] part = new double[chunks][16];
+        // [10..15] second moments of mass (xx,yy,zz,xy,xz,yz), [16..18] m*r (centroid)
+        final double[][] part = new double[chunks][19];
         java.util.stream.IntStream.range(0, chunks).parallel().forEach(c -> {
             final int lo = c * chunkSize;
             final int hi = Math.min(n, lo + chunkSize);
@@ -712,11 +715,12 @@ public class SolverCore {
                 p[9] += m * (rx * v[i6 + 1] - ry * v[i6]);
                 p[10] += m * rx * rx; p[11] += m * ry * ry; p[12] += m * rz * rz;
                 p[13] += m * rx * ry; p[14] += m * rx * rz; p[15] += m * ry * rz;
+                p[16] += m * rx; p[17] += m * ry; p[18] += m * rz;
             }
         });
 
         double mSum = 0, sx = 0, sy = 0, sz = 0, swx = 0, swy = 0, swz = 0;
-        double LoX = 0, LoY = 0, LoZ = 0, Sxx = 0, Syy = 0, Szz = 0, Sxy = 0, Sxz = 0, Syz = 0;
+        double LoX = 0, LoY = 0, LoZ = 0, Sxx = 0, Syy = 0, Szz = 0, Sxy = 0, Sxz = 0, Syz = 0, Srx = 0, Sry = 0, Srz = 0;
         for (final double[] p : part) {
             mSum += p[0];
             sx += p[1]; sy += p[2]; sz += p[3];
@@ -724,27 +728,14 @@ public class SolverCore {
             LoX += p[7]; LoY += p[8]; LoZ += p[9];
             Sxx += p[10]; Syy += p[11]; Szz += p[12];
             Sxy += p[13]; Sxz += p[14]; Syz += p[15];
+            Srx += p[16]; Sry += p[17]; Srz += p[18];
         }
         if (!(mSum > 0)) return;
 
         final double inv = 1.0 / mSum;
         final double vcx = sx * inv, vcy = sy * inv, vcz = sz * inv;   // centre-of-mass velocity
-        // centroid of mass, from the same chunking (the main pass keeps the second moments,
-        // the first moments of position ride along in a second cheap pass)
-        final double[][] cpart = new double[chunks][3];
-        java.util.stream.IntStream.range(0, chunks).parallel().forEach(c -> {
-            final int lo = c * chunkSize;
-            final int hi = Math.min(n, lo + chunkSize);
-            double ax = 0, ay = 0, az = 0;
-            for (int i = lo; i < hi; i++) {
-                final double mw = Math.max(volFraction[i], 1e-3);
-                ax += mw * x[i]; ay += mw * y[i]; az += mw * z[i];
-            }
-            cpart[c][0] = ax; cpart[c][1] = ay; cpart[c][2] = az;
-        });
-        double cSumX = 0, cSumY = 0, cSumZ = 0;
-        for (final double[] p : cpart) { cSumX += p[0]; cSumY += p[1]; cSumZ += p[2]; }
-        final double ccx = cSumX * inv, ccy = cSumY * inv, ccz = cSumZ * inv;
+        // centroid of mass from the same pass
+        final double ccx = Srx * inv, ccy = Sry * inv, ccz = Srz * inv;
         final double avgWX = swx * inv, avgWY = swy * inv, avgWZ = swz * inv;
         lastMeanSpinX = avgWX; lastMeanSpinY = avgWY; lastMeanSpinZ = avgWZ;
 

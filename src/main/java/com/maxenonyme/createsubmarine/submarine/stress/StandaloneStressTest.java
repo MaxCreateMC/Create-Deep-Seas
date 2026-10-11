@@ -188,9 +188,11 @@ public class StandaloneStressTest {
             yield_arr[i] = propsList.get(i)[1];
         }
 
-        long[] keys = new long[n];
+        // O(1) neighbour lookup: the previous linear scan over all blocks per link made
+        // graph construction O(26 n^2).
+        final java.util.HashMap<Long, Integer> byKey = new java.util.HashMap<>(n * 2);
         for (int i = 0; i < n; i++)
-            keys[i] = BlockPos.asLong(positions[i].getX(), positions[i].getY(), positions[i].getZ());
+            byKey.put(BlockPos.asLong(positions[i].getX(), positions[i].getY(), positions[i].getZ()), i);
 
         int[][] neighbors = new int[n][MAX_NEIGHBORS];
         double[][] springK = new double[n][MAX_NEIGHBORS];
@@ -202,11 +204,8 @@ public class StandaloneStressTest {
             int px = positions[i].getX(), py = positions[i].getY(), pz = positions[i].getZ();
             for (int dir = 0; dir < MAX_NEIGHBORS; dir++) {
                 int nx = px + DX[dir], ny = py + DY[dir], nz = pz + DZ[dir];
-                long nk = BlockPos.asLong(nx, ny, nz);
-                int j = -1;
-                for (int k = 0; k < n; k++) {
-                    if (keys[k] == nk) { j = k; break; }
-                }
+                Integer found = byKey.get(BlockPos.asLong(nx, ny, nz));
+                int j = found == null ? -1 : found;
                 if (j >= 0) {
                     neighbors[i][dir] = j;
                     double kVol = 1.0;

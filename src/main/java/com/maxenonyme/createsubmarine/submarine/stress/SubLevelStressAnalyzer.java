@@ -183,7 +183,7 @@ public class SubLevelStressAnalyzer implements SubLevelObserver {
 
                     final double kernelRadius = SubmarineConfig.KERNEL_RADIUS != null
                         ? SubmarineConfig.KERNEL_RADIUS.get() : 1.5;
-                    final Map<BlockPos, Set<Integer>> exposedFaces =
+                    final Map<BlockPos, Integer> exposedFaces =
                         LatticeStressSolver.buildExposedFaceMap(ssl.getLevel(), bb);
                     final ShapeClassifier.ClassificationResult classification =
                         ShapeClassifier.classify(exposedFaces, kernelRadius);
@@ -311,7 +311,7 @@ public class SubLevelStressAnalyzer implements SubLevelObserver {
 
             final double kernelRadius = SubmarineConfig.KERNEL_RADIUS != null
                 ? SubmarineConfig.KERNEL_RADIUS.get() : 1.5;
-            final Map<BlockPos, Set<Integer>> exposedFaces =
+            final Map<BlockPos, Integer> exposedFaces =
                 LatticeStressSolver.buildExposedFaceMap(subLevel.getLevel(), bb);
             final ShapeClassifier.ClassificationResult classification =
                 ShapeClassifier.classify(exposedFaces, kernelRadius);
