@@ -6,9 +6,7 @@ import dev.ryanhcode.sable.companion.math.BoundingBox3ic;
 import dev.ryanhcode.sable.sublevel.plot.LevelPlot;
 import net.minecraft.world.phys.Vec3;
 
-public final class RudderDetector {
-    private RudderDetector() {
-    }
+public class RudderDetector {
 
     public static Vec3 centroid(LevelPlot plot) {
         BoundingBox3ic bounds = plot.getBoundingBox();

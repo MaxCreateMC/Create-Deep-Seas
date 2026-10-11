@@ -15,9 +15,7 @@ import net.neoforged.neoforge.network.PacketDistributor;
 import org.lwjgl.glfw.GLFW;
 import com.maxenonyme.highseas.client.BoatEngineSoundHandler;
 
-public final class HelmClientHandler {
-    private HelmClientHandler() {
-    }
+public class HelmClientHandler {
 
     private static final int RESEND_INTERVAL = 5;
     private static final int RELEASE_LOCKOUT = 10;

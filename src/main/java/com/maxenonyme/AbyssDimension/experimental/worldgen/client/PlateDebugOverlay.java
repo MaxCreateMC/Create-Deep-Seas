@@ -13,9 +13,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.Level;
 import net.neoforged.neoforge.client.event.CustomizeGuiOverlayEvent;
 
-public final class PlateDebugOverlay {
-    private PlateDebugOverlay() {
-    }
+public class PlateDebugOverlay {
 
     private static final ResourceKey<Level> ABYSS = ResourceKey.create(Registries.DIMENSION,
             ResourceLocation.fromNamespaceAndPath(CreateAbyss.MOD_ID, "abyss"));

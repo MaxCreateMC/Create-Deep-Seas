@@ -39,7 +39,8 @@ public class SubmarineFogHandler {
     }
 
     private static boolean computeShouldFog(Level level, Vec3 probePos) {
-        if (findSubmarineContainingPos(level, probePos) == null) return false;
+        if (findSubmarineContainingPos(level, probePos) == null)
+            return false;
         return isSubmerged(level, probePos);
     }
 
@@ -47,9 +48,10 @@ public class SubmarineFogHandler {
         for (double dx = -PROBE_OFFSET; dx <= PROBE_OFFSET; dx += PROBE_OFFSET) {
             for (double dy = -PROBE_OFFSET; dy <= PROBE_OFFSET; dy += PROBE_OFFSET) {
                 for (double dz = -PROBE_OFFSET; dz <= PROBE_OFFSET; dz += PROBE_OFFSET) {
-                    BlockPos p = BlockPos.containing(probePos.x + dx, probePos.y + dy, probePos.z + dz);
-                    UUID id = CompartmentTracker.findSealedSublevel(level, p);
-                    if (id != null) return id;
+                    BlockPos pos = BlockPos.containing(probePos.x + dx, probePos.y + dy, probePos.z + dz);
+                    UUID id = CompartmentTracker.findSealedSublevel(level, pos);
+                    if (id != null)
+                        return id;
                 }
             }
         }
@@ -64,7 +66,8 @@ public class SubmarineFogHandler {
         BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
         for (int y = startY; y <= endY; y++) {
             cursor.set(x, y, z);
-            if (CompartmentTracker.isOccluded(level, cursor)) continue;
+            if (CompartmentTracker.isOccluded(level, cursor))
+                continue;
             return isWaterAt(level, x, y, z);
         }
         return false;
@@ -73,15 +76,18 @@ public class SubmarineFogHandler {
     private static boolean isWaterAt(Level level, int x, int y, int z) {
         try {
             LevelChunk chunk = level.getChunkSource().getChunkNow(x >> 4, z >> 4);
-            if (chunk == null) return false;
+            if (chunk == null)
+                return false;
             int sectionIndex = chunk.getSectionIndex(y);
             LevelChunkSection[] sections = chunk.getSections();
-            if (sectionIndex < 0 || sectionIndex >= sections.length) return false;
+            if (sectionIndex < 0 || sectionIndex >= sections.length)
+                return false;
             LevelChunkSection section = sections[sectionIndex];
-            if (section == null || section.hasOnlyAir()) return false;
+            if (section == null || section.hasOnlyAir())
+                return false;
             BlockState state = section.getBlockState(x & 15, y & 15, z & 15);
             return state.getFluidState().is(FluidTags.WATER);
-        } catch (Exception ignored) {
+        } catch (RuntimeException e) {
             return false;
         }
     }

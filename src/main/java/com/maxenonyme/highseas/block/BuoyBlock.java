@@ -42,15 +42,17 @@ import dev.ryanhcode.sable.companion.math.BoundingBox3i;
 import dev.ryanhcode.sable.companion.math.BoundingBox3ic;
 import dev.ryanhcode.sable.sublevel.ServerSubLevel;
 import dev.ryanhcode.sable.api.SubLevelAssemblyHelper;
+import dev.simulated_team.simulated.content.items.rope.RopeItem.RopeItem;
 import java.util.Set;
 import net.minecraft.world.level.block.state.StateDefinition;
+import net.minecraft.world.level.block.state.properties.BooleanProperty;
 
 public class BuoyBlock extends Block implements EntityBlock {
 
     public static final MapCodec<BuoyBlock> CODEC = simpleCodec(BuoyBlock::new);
 
-    public static final net.minecraft.world.level.block.state.properties.BooleanProperty ROPED =
-            net.minecraft.world.level.block.state.properties.BooleanProperty.create("roped");
+    public static final BooleanProperty ROPED =
+            BooleanProperty.create("roped");
 
     private static final VoxelShape SHAPE = Shapes.or(
             Block.box(7.5, 0.25, -9.75, 10.5, 10.25, -6.75),
@@ -245,9 +247,9 @@ public class BuoyBlock extends Block implements EntityBlock {
 
     private static boolean holdsRope(Player player) {
         return player.getMainHandItem()
-                .getItem() instanceof dev.simulated_team.simulated.content.items.rope.RopeItem.RopeItem
+                .getItem() instanceof RopeItem
                 || player.getOffhandItem()
-                        .getItem() instanceof dev.simulated_team.simulated.content.items.rope.RopeItem.RopeItem;
+                        .getItem() instanceof RopeItem;
     }
 
     @Override

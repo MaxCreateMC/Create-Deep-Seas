@@ -3,7 +3,7 @@ package com.maxenonyme.createsubmarine.submarine.stress;
 import java.util.Arrays;
 import java.util.stream.IntStream;
 
-public final class RigidLatticeSolver {
+public class RigidLatticeSolver {
     public static final int NEIGHBORS = 26;
     public static final int[] DX = {
             1, -1, 0, 0, 0, 0,

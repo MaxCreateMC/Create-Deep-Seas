@@ -13,9 +13,7 @@ import net.minecraft.world.level.block.state.BlockBehaviour;
 
 import java.util.function.Supplier;
 
-public final class GeothermalRegistry {
-    private GeothermalRegistry() {
-    }
+public class GeothermalRegistry {
 
     public static final Supplier<Block> GEOTHERMAL_VENT = vent("geothermal_vent", Blocks.STONE);
     public static final Supplier<Block> FOAM_ROCK_GEOTHERMAL_VENT = vent("foam_rock_geothermal_vent", Blocks.MOSSY_COBBLESTONE);

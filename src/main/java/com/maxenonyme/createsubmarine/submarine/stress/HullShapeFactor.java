@@ -1,8 +1,6 @@
 package com.maxenonyme.createsubmarine.submarine.stress;
 
-public final class HullShapeFactor {
-    private HullShapeFactor() {
-    }
+public class HullShapeFactor {
 
     public static double[] compute(SolverCore core, double referenceSpan, double min, double max) {
         double[] ratios = core.computePanelBendingRatios();

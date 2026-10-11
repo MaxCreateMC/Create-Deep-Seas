@@ -12,9 +12,7 @@ import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
 import net.neoforged.neoforge.network.PacketDistributor;
 
 @EventBusSubscriber(modid = CreateSubmarine.MOD_ID)
-public final class PressureGogglesEvents {
-    private PressureGogglesEvents() {
-    }
+public class PressureGogglesEvents {
 
     private static boolean wantsToggle(Player player, InteractionHand hand) {
         return hand == InteractionHand.MAIN_HAND && player.isShiftKeyDown() && player.getMainHandItem().isEmpty()

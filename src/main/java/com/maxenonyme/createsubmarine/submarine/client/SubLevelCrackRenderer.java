@@ -1,11 +1,13 @@
 package com.maxenonyme.createsubmarine.submarine.client;
 
+import com.maxenonyme.createsubmarine.submarine.client.renderer.SubLevelRenderPoseCapture;
 import com.maxenonyme.createsubmarine.submarine.compartment.CompartmentTracker;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import dev.ryanhcode.sable.companion.SubLevelAccess;
 import net.minecraft.client.Minecraft;
 import com.maxenonyme.createsubmarine.submarine.system.ImplosionSequence;
+import dev.ryanhcode.sable.companion.math.Pose3dc;
 import dev.ryanhcode.sable.sublevel.ClientSubLevel;
 import net.minecraft.client.renderer.LevelRenderer;
 import net.minecraft.client.renderer.LightTexture;
@@ -22,6 +24,9 @@ import net.neoforged.api.distmarker.OnlyIn;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
 import org.joml.Matrix4f;
+import org.joml.Quaterniondc;
+import org.joml.Quaternionf;
+import org.joml.Vector3d;
 
 import java.util.Map;
 import java.util.UUID;
@@ -36,7 +41,8 @@ public class SubLevelCrackRenderer {
     public static void updateCrack(UUID subId, BlockPos plotPos, int crackLevel, int blockId) {
         if (crackLevel < 0) {
             Map<BlockPos, long[]> m = CLIENT_CRACKS.get(subId);
-            if (m != null) m.remove(plotPos);
+            if (m != null)
+                m.remove(plotPos);
         } else {
             Minecraft mc = Minecraft.getInstance();
             long now = mc.level == null ? 0 : mc.level.getGameTime();
@@ -56,16 +62,19 @@ public class SubLevelCrackRenderer {
 
     public static void clearAll() {
         CLIENT_CRACKS.clear();
-        com.maxenonyme.createsubmarine.submarine.client.renderer.SubLevelRenderPoseCapture.clearAll();
+        SubLevelRenderPoseCapture.clearAll();
     }
 
     @SubscribeEvent
     public static void onRenderLevel(RenderLevelStageEvent event) {
-        if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_TRANSLUCENT_BLOCKS) return;
-        if (CLIENT_CRACKS.isEmpty()) return;
+        if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_TRANSLUCENT_BLOCKS)
+            return;
+        if (CLIENT_CRACKS.isEmpty())
+            return;
 
         Minecraft mc = Minecraft.getInstance();
-        if (mc.level == null) return;
+        if (mc.level == null)
+            return;
 
         Vec3 camPos = event.getCamera().getPosition();
         PoseStack poseStack = event.getPoseStack();
@@ -76,45 +85,53 @@ public class SubLevelCrackRenderer {
         for (Map.Entry<UUID, Map<BlockPos, long[]>> subEntry : CLIENT_CRACKS.entrySet()) {
             UUID subId = subEntry.getKey();
             Map<BlockPos, long[]> cracks = subEntry.getValue();
-            if (cracks.isEmpty()) continue;
+            if (cracks.isEmpty())
+                continue;
 
-            SubLevelAccess sub = CompartmentTracker.getSub(subId);
-            if (sub == null) continue;
+            SubLevelAccess subLevel = CompartmentTracker.getSub(subId);
+            if (subLevel == null)
+                continue;
 
-            dev.ryanhcode.sable.companion.math.Pose3dc renderPose =
-                    com.maxenonyme.createsubmarine.submarine.client.renderer.SubLevelRenderPoseCapture.get(subId);
+            Pose3dc renderPose =
+                    SubLevelRenderPoseCapture.get(subId);
             if (renderPose == null) {
-                if (sub instanceof dev.ryanhcode.sable.sublevel.ClientSubLevel clientSub) {
+                if (subLevel instanceof ClientSubLevel clientSub) {
                     renderPose = clientSub.renderPose();
                 } else {
-                    renderPose = sub.logicalPose();
+                    renderPose = subLevel.logicalPose();
                 }
             }
 
-            if (renderPose == null) continue;
-            org.joml.Quaterniondc subRot = renderPose.orientation();
+            if (renderPose == null)
+                continue;
+            Quaterniondc subRot = renderPose.orientation();
 
             for (Map.Entry<BlockPos, long[]> crackEntry : cracks.entrySet()) {
                 BlockPos plotPos = crackEntry.getKey();
                 int crackLevel = (int) crackEntry.getValue()[0];
 
                 int stage = 0;
-                if (crackLevel == 1) stage = 2;
-                else if (crackLevel == 2) stage = 5;
-                else if (crackLevel == 3) stage = 8;
-                else if (crackLevel >= BURSTING) stage = 9;
+                if (crackLevel == 1)
+                    stage = 2;
+                else if (crackLevel == 2)
+                    stage = 5;
+                else if (crackLevel == 3)
+                    stage = 8;
+                else if (crackLevel >= BURSTING)
+                    stage = 9;
                 ResourceLocation tex = ResourceLocation.withDefaultNamespace(
                         "textures/block/destroy_stage_" + stage + ".png");
 
                 BlockState state = mc.level.getBlockState(plotPos);
-                if (state.isAir()) continue;
+                if (state.isAir())
+                    continue;
 
-                org.joml.Vector3d worldVec = new org.joml.Vector3d(plotPos.getX(), plotPos.getY(), plotPos.getZ());
+                Vector3d worldVec = new Vector3d(plotPos.getX(), plotPos.getY(), plotPos.getZ());
                 renderPose.transformPosition(worldVec);
 
                 poseStack.pushPose();
                 poseStack.translate(worldVec.x - camPos.x, worldVec.y - camPos.y, worldVec.z - camPos.z);
-                poseStack.mulPose(new org.joml.Quaternionf(
+                poseStack.mulPose(new Quaternionf(
                         (float) subRot.x(), (float) subRot.y(), (float) subRot.z(), (float) subRot.w()));
 
                 poseStack.translate(0.5f, 0.5f, 0.5f);
@@ -124,7 +141,7 @@ public class SubLevelCrackRenderer {
                     poseStack.scale(1.02f, 1.02f, 1.02f);
                     poseStack.translate(-0.5f, -0.5f, -0.5f);
                     int light = LevelRenderer.getLightColor(mc.level, plotPos);
-                    if (sub instanceof ClientSubLevel clientSub)
+                    if (subLevel instanceof ClientSubLevel clientSub)
                         light = clientSub.scaleLightColor(light);
                     mc.getBlockRenderer().renderSingleBlock(state, poseStack, bufferSource, light, OverlayTexture.NO_OVERLAY);
                     poseStack.popPose();
@@ -156,7 +173,7 @@ public class SubLevelCrackRenderer {
         ThreadLocalRandom random = ThreadLocalRandom.current();
         poseStack.translate((random.nextFloat() - 0.5f) * 2f * jitter, (random.nextFloat() - 0.5f) * 2f * jitter,
                 (random.nextFloat() - 0.5f) * 2f * jitter);
-        poseStack.mulPose(new org.joml.Quaternionf().rotateXYZ((random.nextFloat() - 0.5f) * 2f * wobble,
+        poseStack.mulPose(new Quaternionf().rotateXYZ((random.nextFloat() - 0.5f) * 2f * wobble,
                 (random.nextFloat() - 0.5f) * 2f * wobble, (random.nextFloat() - 0.5f) * 2f * wobble));
     }
 

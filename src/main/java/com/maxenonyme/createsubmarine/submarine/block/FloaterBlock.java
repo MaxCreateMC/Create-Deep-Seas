@@ -20,12 +20,23 @@ import net.minecraft.world.phys.BlockHitResult;
 import org.jetbrains.annotations.Nullable;
 import com.maxenonyme.createsubmarine.CreateSubmarine;
 import com.maxenonyme.createsubmarine.submarine.block.entity.FloaterBlockEntity;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
+import net.minecraft.world.item.component.BlockItemStateProperties;
+import net.minecraft.world.item.component.CustomModelData;
+import net.minecraft.world.level.LevelReader;
+import net.minecraft.world.level.block.SoundType;
+import net.minecraft.world.level.storage.loot.LootParams;
+import net.minecraft.world.phys.HitResult;
+import java.util.ArrayList;
+import java.util.List;
 
 public class FloaterBlock extends Block implements EntityBlock {
     public static final EnumProperty<DyeColor> COLOR = EnumProperty.create("color", DyeColor.class);
 
     public FloaterBlock(Properties properties) {
-        super(properties.sound(net.minecraft.world.level.block.SoundType.WOOL));
+        super(properties.sound(SoundType.WOOL));
         this.registerDefaultState(this.stateDefinition.any().setValue(COLOR, DyeColor.WHITE));
     }
 
@@ -41,8 +52,8 @@ public class FloaterBlock extends Block implements EntityBlock {
             DyeColor color = dye.getDyeColor();
             if (state.getValue(COLOR) != color) {
                 level.setBlock(pos, state.setValue(COLOR, color), 3);
-                level.playSound(null, pos, net.minecraft.sounds.SoundEvents.DYE_USE, net.minecraft.sounds.SoundSource.BLOCKS, 1.0F, 1.0F);
-                level.playSound(null, pos, net.minecraft.sounds.SoundEvents.WOOL_PLACE, net.minecraft.sounds.SoundSource.BLOCKS, 1.0F, 1.0F);
+                level.playSound(null, pos, SoundEvents.DYE_USE, SoundSource.BLOCKS, 1.0F, 1.0F);
+                level.playSound(null, pos, SoundEvents.WOOL_PLACE, SoundSource.BLOCKS, 1.0F, 1.0F);
                 if (!player.getAbilities().instabuild) {
                     stack.shrink(1);
                 }
@@ -62,22 +73,23 @@ public class FloaterBlock extends Block implements EntityBlock {
     @Override
     public <T extends BlockEntity> BlockEntityTicker<T> getTicker(Level level, BlockState state, BlockEntityType<T> type) {
         return level.isClientSide ? null : (l, p, s, be) -> {
-            if (be instanceof FloaterBlockEntity fbe) FloaterBlockEntity.serverTick(l, p, fbe);
+            if (be instanceof FloaterBlockEntity fbe)
+                FloaterBlockEntity.serverTick(l, p, fbe);
         };
     }
 
     @Override
-    public ItemStack getCloneItemStack(BlockState state, net.minecraft.world.phys.HitResult target, net.minecraft.world.level.LevelReader level, BlockPos pos, Player player) {
+    public ItemStack getCloneItemStack(BlockState state, HitResult target, LevelReader level, BlockPos pos, Player player) {
         ItemStack stack = new ItemStack(this);
         DyeColor color = state.getValue(COLOR);
-        stack.set(net.minecraft.core.component.DataComponents.BLOCK_STATE, net.minecraft.world.item.component.BlockItemStateProperties.EMPTY.with(COLOR, color));
-        stack.set(net.minecraft.core.component.DataComponents.CUSTOM_MODEL_DATA, new net.minecraft.world.item.component.CustomModelData(getColorIndex(color)));
+        stack.set(DataComponents.BLOCK_STATE, BlockItemStateProperties.EMPTY.with(COLOR, color));
+        stack.set(DataComponents.CUSTOM_MODEL_DATA, new CustomModelData(getColorIndex(color)));
         return stack;
     }
 
     @Override
-    public java.util.List<ItemStack> getDrops(BlockState state, net.minecraft.world.level.storage.loot.LootParams.Builder params) {
-        java.util.List<ItemStack> drops = new java.util.ArrayList<>();
+    public List<ItemStack> getDrops(BlockState state, LootParams.Builder params) {
+        List<ItemStack> drops = new ArrayList<>();
         drops.add(getCloneItemStack(state, null, null, null, null));
         return drops;
     }

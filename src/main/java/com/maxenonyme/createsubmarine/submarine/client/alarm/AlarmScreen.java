@@ -22,6 +22,7 @@ import net.neoforged.neoforge.network.PacketDistributor;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.function.Consumer;
 
 public class AlarmScreen extends AbstractSimiScreen {
 
@@ -127,7 +128,7 @@ public class AlarmScreen extends AbstractSimiScreen {
         addRenderableWidget(confirm);
     }
 
-    private List<Object> time(int x, int y, int min, int value, java.util.function.Consumer<Integer> sink, String key) {
+    private List<Object> time(int x, int y, int min, int value, Consumer<Integer> sink, String key) {
         Label label = new Label(x + FIELD_X + 5, y + 5, Component.empty()).withShadow();
         ScrollInput input = new ScrollInput(x + FIELD_X, y, FIELD_W, 18).withRange(min, 601)
                 .withShiftStep(20)

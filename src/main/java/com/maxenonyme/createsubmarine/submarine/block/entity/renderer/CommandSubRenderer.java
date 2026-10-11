@@ -16,6 +16,7 @@ import com.mojang.blaze3d.vertex.VertexConsumer;
 import dev.ryanhcode.sable.Sable;
 import dev.ryanhcode.sable.sublevel.ClientSubLevel;
 import dev.ryanhcode.sable.sublevel.SubLevel;
+import com.maxenonyme.createsubmarine.submarine.client.DeviceGlitch;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.renderer.MultiBufferSource;
@@ -124,11 +125,18 @@ public class CommandSubRenderer implements BlockEntityRenderer<CommandSubBlockEn
         Font font = Minecraft.getInstance().font;
 
         double subY = be.getBlockPos().getY() + 0.5;
-        SubLevel sub = Sable.HELPER.getContaining(be);
-        if (sub instanceof ClientSubLevel csl)
-            subY = csl.renderPose().position().y();
+        SubLevel ship = Sable.HELPER.getContaining(be);
+        if (ship instanceof ClientSubLevel subLevel)
+            subY = subLevel.renderPose().position().y();
         float depth = be.surfaceY == Integer.MIN_VALUE ? 0 : Math.max(0f, (float) (be.surfaceY + 1 - subY));
         trackVerticalSpeed(be, subY);
+        float glitch = DeviceGlitch.at(be.getLevel(), be.getBlockPos());
+        float shownVs = be.shownVs;
+        if (glitch > 0.15f) {
+            float time = DeviceGlitch.time(be.getLevel(), partialTicks);
+            depth = Math.abs(depth + glitch * (time * 173f % 9000f) * DeviceGlitch.noise(be.getBlockPos(), time * 1.3f));
+            shownVs = glitch * 900f * DeviceGlitch.noise(be.getBlockPos().above(), time * 2.1f);
+        }
 
         int hovered = CommandSubClientHandler.hoveredWidget(be);
 
@@ -181,7 +189,7 @@ public class CommandSubRenderer implements BlockEntityRenderer<CommandSubBlockEn
 
         text(ms, buffer, font, tr("create_submarine.command_sub.vertical"),
                 5, 93, 0.6f, INK, light, false);
-        text(ms, buffer, font, String.format(Locale.ROOT, "%+.1f m/s", be.shownVs), 5, 100, 0.75f, INK, light, false);
+        text(ms, buffer, font, String.format(Locale.ROOT, "%+.1f m/s", shownVs), 5, 100, 0.75f, INK, light, false);
 
         drawTape(be, depth, ms, buffer, font, light);
 

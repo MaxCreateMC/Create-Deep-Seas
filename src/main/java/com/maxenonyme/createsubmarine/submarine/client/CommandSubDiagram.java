@@ -22,9 +22,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 
-public final class CommandSubDiagram {
-    private CommandSubDiagram() {
-    }
+public class CommandSubDiagram {
 
     private static final int PIXELS_PER_UNIT = 4;
     private static final long FRAME_NANOS = 500_000_000L;
@@ -33,7 +31,7 @@ public final class CommandSubDiagram {
 
     public static boolean drawing;
 
-    private static final class Frames {
+    private static class Frames {
         AdvancedFbo fbo;
         AdvancedFbo outline;
         AdvancedFbo result;

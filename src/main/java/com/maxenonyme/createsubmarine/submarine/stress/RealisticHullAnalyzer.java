@@ -17,9 +17,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-public final class RealisticHullAnalyzer {
-    private RealisticHullAnalyzer() {
-    }
+public class RealisticHullAnalyzer {
 
     private record Snapshot(Set<BlockPos> solid, int version, double thickness, Long2FloatOpenHashMap depths) {
     }
@@ -80,22 +78,22 @@ public final class RealisticHullAnalyzer {
         Long2IntOpenHashMap index = new Long2IntOpenHashMap(n);
         index.defaultReturnValue(-1);
         int i = 0;
-        for (BlockPos p : solid) {
-            BlockState state = plot.getBlockState(p);
-            x[i] = p.getX();
-            y[i] = p.getY();
-            z[i] = p.getZ();
+        for (BlockPos blockPos : solid) {
+            BlockState state = plot.getBlockState(blockPos);
+            x[i] = blockPos.getX();
+            y[i] = blockPos.getY();
+            z[i] = blockPos.getZ();
             materials[i] = RealisticHull.material(state);
-            index.put(p.asLong(), i);
+            index.put(blockPos.asLong(), i);
             i++;
         }
         boolean[][] wet = new boolean[n][6];
         boolean[] exterior = new boolean[n];
-        BlockPos.MutableBlockPos m = new BlockPos.MutableBlockPos();
+        BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
         for (i = 0; i < n; i++) {
             for (int d = 0; d < 6; d++) {
-                m.set(x[i] + RigidLatticeSolver.DX[d], y[i] + RigidLatticeSolver.DY[d], z[i] + RigidLatticeSolver.DZ[d]);
-                wet[i][d] = index.get(m.asLong()) < 0 && !CompartmentTracker.isWithinShip(id, m);
+                pos.set(x[i] + RigidLatticeSolver.DX[d], y[i] + RigidLatticeSolver.DY[d], z[i] + RigidLatticeSolver.DZ[d]);
+                wet[i][d] = index.get(pos.asLong()) < 0 && !CompartmentTracker.isWithinShip(id, pos);
                 exterior[i] |= wet[i][d];
             }
         }

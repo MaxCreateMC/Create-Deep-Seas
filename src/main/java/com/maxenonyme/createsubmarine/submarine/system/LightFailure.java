@@ -20,14 +20,14 @@ import java.util.Random;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-public final class LightFailure {
+public class LightFailure {
     private static final int FLICKER_MIN = 80;
     private static final int FLICKER_SPREAD = 80;
     private static final int TREMBLE = 40;
     private static final int RESCAN = 200;
     private static final Random RAND = new Random();
 
-    public static final class Failure {
+    public static class Failure {
         public final long start;
         public final int flicker;
         public final int tremble;
@@ -60,9 +60,6 @@ public final class LightFailure {
     private static final Map<ResourceKey<Level>, Map<Long, Failure>> CLIENT = new ConcurrentHashMap<>();
     private static final Map<UUID, Lights> LIGHTS = new ConcurrentHashMap<>();
     private static volatile boolean any;
-
-    private LightFailure() {
-    }
 
     public static boolean any() {
         return any;
@@ -115,12 +112,12 @@ public final class LightFailure {
         if (cached != null && now - cached.scanned() < RESCAN)
             return cached.positions();
         List<BlockPos> found = new ArrayList<>();
-        SubLevelRegistry.PlotBounds b = SubLevelRegistry.getBounds(id);
-        if (b != null) {
+        SubLevelRegistry.PlotBounds bounds = SubLevelRegistry.getBounds(id);
+        if (bounds != null) {
             BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
-            for (int x = b.minX(); x <= b.maxX(); x++)
-                for (int y = b.minY(); y <= b.maxY(); y++)
-                    for (int z = b.minZ(); z <= b.maxZ(); z++)
+            for (int x = bounds.minX(); x <= bounds.maxX(); x++)
+                for (int y = bounds.minY(); y <= bounds.maxY(); y++)
+                    for (int z = bounds.minZ(); z <= bounds.maxZ(); z++)
                         if (plot.getBlockState(cursor.set(x, y, z)).getLightEmission() > 0)
                             found.add(cursor.immutable());
         }

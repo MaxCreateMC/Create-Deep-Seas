@@ -24,7 +24,7 @@ import java.io.IOException;
 import java.lang.reflect.Field;
 import java.util.List;
 
-public final class PressureVision {
+public class PressureVision {
     private static final ResourceLocation CHAIN = ResourceLocation.fromNamespaceAndPath(CreateSubmarine.MOD_ID,
             "shaders/post/pressure_vision.json");
     private static final float CALM_BPM = 72f;
@@ -47,9 +47,6 @@ public final class PressureVision {
     private static PanicDrone drone;
     private static float gasp;
     private static float previousGasp;
-
-    private PressureVision() {
-    }
 
     public static boolean enabled() {
         return !SubmarineConfig.CLIENT_SPEC.isLoaded() || SubmarineConfig.PRESSURE_EFFECTS.get();

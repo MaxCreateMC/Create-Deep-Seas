@@ -8,9 +8,7 @@ import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
 import net.neoforged.neoforge.client.event.EntityRenderersEvent;
 
-public final class WindVaneClient {
-    private WindVaneClient() {
-    }
+public class WindVaneClient {
 
     public static void init(IEventBus modEventBus) {
         AllHighSeasPartialModels.init();

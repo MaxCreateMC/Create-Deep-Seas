@@ -168,10 +168,10 @@ public class ClientSteelCableItemHandler {
         }
 
         UUID subId = SubLevelRegistry.findUUID(player.level());
-        SubLevelAccess sub = subId != null
+        SubLevelAccess subLevel = subId != null
                 ? SubLevelRegistry.getAll().get(subId)
                 : null;
-        if (sub != null) {
+        if (subLevel != null) {
             Level parent = SubLevelRegistry.getLevel(subId);
             ClientLevelRopeManager parentManager = parent != null
                     ? ClientLevelRopeManager
@@ -180,8 +180,8 @@ public class ClientSteelCableItemHandler {
             if (parentManager != null) {
                 Vector3d pPos = new Vector3d(player.getX(),
                         player.getY() + player.getBbHeight() / 2.0, player.getZ());
-                sub.logicalPose().transformPosition(pPos);
-                collidePlayerWithCables(player, parentManager, pPos, sub);
+                subLevel.logicalPose().transformPosition(pPos);
+                collidePlayerWithCables(player, parentManager, pPos, subLevel);
             }
         }
     }
@@ -189,7 +189,7 @@ public class ClientSteelCableItemHandler {
     private static void collidePlayerWithCables(Player player,
             ClientLevelRopeManager ropeManager,
             Vector3d pPos,
-            SubLevelAccess sub) {
+            SubLevelAccess subLevel) {
         for (ClientRopeStrand strand : ropeManager
                 .getAllStrands()) {
             if (!(strand instanceof SteelCableHolderAccessor accessor)
@@ -248,8 +248,8 @@ public class ClientSteelCableItemHandler {
                     double pushY = Math.max(0.0, targetWorldFeetY - worldFeetY);
 
                     Vector3d pushVec = new Vector3d(0, pushY, 0);
-                    if (sub != null) {
-                        sub.logicalPose().orientation().conjugate(new Quaterniond()).transform(pushVec);
+                    if (subLevel != null) {
+                        subLevel.logicalPose().orientation().conjugate(new Quaterniond()).transform(pushVec);
                     }
 
                     player.move(MoverType.SHULKER_BOX, new Vec3(pushVec.x, pushVec.y, pushVec.z));
@@ -258,8 +258,8 @@ public class ClientSteelCableItemHandler {
                     player.fallDistance = 0.0f;
 
                     pPos.set(player.getX(), player.getY() + player.getBbHeight() / 2.0, player.getZ());
-                    if (sub != null) {
-                        sub.logicalPose().transformPosition(pPos);
+                    if (subLevel != null) {
+                        subLevel.logicalPose().transformPosition(pPos);
                     }
                     continue;
                 }
@@ -282,8 +282,8 @@ public class ClientSteelCableItemHandler {
                     }
 
                     Vector3d pushVec = new Vector3d(push).mul(overlap);
-                    if (sub != null) {
-                        sub.logicalPose().orientation().conjugate(new Quaterniond()).transform(pushVec);
+                    if (subLevel != null) {
+                        subLevel.logicalPose().orientation().conjugate(new Quaterniond()).transform(pushVec);
                     }
 
                     player.move(MoverType.SHULKER_BOX, new Vec3(pushVec.x, pushVec.y, pushVec.z));
@@ -299,8 +299,8 @@ public class ClientSteelCableItemHandler {
                     player.hasImpulse = true;
 
                     pPos.set(player.getX(), player.getY() + player.getBbHeight() / 2.0, player.getZ());
-                    if (sub != null) {
-                        sub.logicalPose().transformPosition(pPos);
+                    if (subLevel != null) {
+                        subLevel.logicalPose().transformPosition(pPos);
                     }
                 }
             }

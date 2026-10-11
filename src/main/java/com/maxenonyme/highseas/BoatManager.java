@@ -31,12 +31,13 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 @EventBusSubscriber(modid = CreateHighSeas.MOD_ID)
-public final class BoatManager {
+public class BoatManager {
 
     private static final int RESCAN_INTERVAL = 2;
     private static final int FAST_INTERVAL = 1;
@@ -44,7 +45,7 @@ public final class BoatManager {
     private static final int SCAN_BUDGET = 40000;
     private static final long AWAY_TICKS = 60;
 
-    private static final class Boat {
+    private static class Boat {
         long lastScan;
         boolean registered;
         CompartmentDetector.Result cover;
@@ -68,9 +69,6 @@ public final class BoatManager {
 
     public static Map<UUID, SubLevel> boatSubs() {
         return BOATS;
-    }
-
-    private BoatManager() {
     }
 
     public static boolean isEnabled() {
@@ -244,10 +242,10 @@ public final class BoatManager {
     }
 
     private static boolean leaks(Level level, Pose3dc pose, BlockPos[] openings) {
-        Vector3d w = new Vector3d();
+        Vector3d point = new Vector3d();
         for (BlockPos n : openings) {
-            pose.transformPosition(w.set(n.getX() + 0.5, n.getY() + 0.5, n.getZ() + 0.5));
-            if (CompartmentTracker.realFluidState(level, BlockPos.containing(w.x, w.y, w.z)).is(FluidTags.WATER))
+            pose.transformPosition(point.set(n.getX() + 0.5, n.getY() + 0.5, n.getZ() + 0.5));
+            if (CompartmentTracker.realFluidState(level, BlockPos.containing(point.x, point.y, point.z)).is(FluidTags.WATER))
                 return true;
         }
         return false;
@@ -278,7 +276,7 @@ public final class BoatManager {
     private static boolean same(CompartmentDetector.Result a, CompartmentDetector.Result b) {
         if (a == null || b == null)
             return a == b;
-        if (a.components().size() != b.components().size() || !java.util.Objects.equals(a.solidBlocks(), b.solidBlocks()))
+        if (a.components().size() != b.components().size() || !Objects.equals(a.solidBlocks(), b.solidBlocks()))
             return false;
         Map<BlockPos, CompartmentDetector.Component> byAnchor = new HashMap<>();
         for (CompartmentDetector.Component c : a.components())
@@ -292,13 +290,13 @@ public final class BoatManager {
     }
 
     private static boolean topUnderwater(Level level, Pose3dc pose, BlockPos[] tops) {
-        Vector3d w = new Vector3d();
+        Vector3d point = new Vector3d();
         Vector3d top = null;
         for (BlockPos p : tops) {
-            w.set(p.getX() + 0.5, p.getY() + 0.95, p.getZ() + 0.5);
-            pose.transformPosition(w);
-            if (top == null || w.y > top.y)
-                top = new Vector3d(w);
+            point.set(p.getX() + 0.5, p.getY() + 0.95, p.getZ() + 0.5);
+            pose.transformPosition(point);
+            if (top == null || point.y > top.y)
+                top = new Vector3d(point);
         }
         return top != null && CompartmentTracker.realFluidState(level, BlockPos.containing(top.x, top.y, top.z))
                 .is(FluidTags.WATER);

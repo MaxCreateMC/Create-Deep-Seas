@@ -5,8 +5,7 @@ import java.util.List;
 import java.util.Random;
 import java.util.UUID;
 
-public final class RandomPlateGenerator {
-    private RandomPlateGenerator() {}
+public class RandomPlateGenerator {
 
     private static final String[] PLATE_NAMES = {
         "African", "Antarctic", "Eurasian", "Indo-Australian", "Australian",

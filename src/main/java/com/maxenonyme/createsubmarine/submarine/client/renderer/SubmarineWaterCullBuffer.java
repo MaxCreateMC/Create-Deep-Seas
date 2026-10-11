@@ -44,7 +44,7 @@ import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.neoforged.fml.ModList;
 import java.util.function.Predicate;
 
-public final class SubmarineWaterCullBuffer {
+public class SubmarineWaterCullBuffer {
     private static final double POSE_MOVE_THRESHOLD_SQ = 0.01;
     private static final double PIXEL_PERFECT_MOVE_THRESHOLD_SQ = 0.25;
     private static final double DEFAULT_RADIUS = 16.0;
@@ -62,9 +62,6 @@ public final class SubmarineWaterCullBuffer {
     private static long lastWetScanTick = -1;
     private static boolean renderingSubmarineFluid = false;
     private static volatile boolean remeshAll = false;
-
-    private SubmarineWaterCullBuffer() {
-    }
 
     public static boolean isRenderingSubmarineFluid() {
         return renderingSubmarineFluid;
@@ -106,17 +103,17 @@ public final class SubmarineWaterCullBuffer {
         Set<UUID> tracked = new HashSet<>(regions.keySet());
         tracked.addAll(lastBlocks.keySet());
         for (UUID id : tracked) {
-            SubLevel sub = container.getSubLevel(id);
-            if (sub == null) {
+            SubLevel subLevel = container.getSubLevel(id);
+            if (subLevel == null) {
                 forgetVanished(mc, id);
                 continue;
             }
-            Vector3dc p = sub.logicalPose().position();
+            Vector3dc p = subLevel.logicalPose().position();
             Vector3d last = lastClientPose.get(id);
             if (last != null && last.distanceSquared(p) < threshold)
                 continue;
 
-            double r = computeRadius(id, sub);
+            double r = computeRadius(id, subLevel);
             AABB newAABB = new AABB(p.x() - r, p.y() - r, p.z() - r, p.x() + r, p.y() + r, p.z() + r);
             AABB oldAABB = CompartmentTracker.getWorldAABB(id);
             CompartmentTracker.setWorldAABB(id, newAABB);
@@ -178,11 +175,11 @@ public final class SubmarineWaterCullBuffer {
         AABB aabb = CompartmentTracker.getWorldAABB(id);
         if (aabb == null) {
             SubLevelContainer subContainer = SubLevelContainer.getContainer(level);
-            SubLevel sub = subContainer == null ? null : subContainer.getSubLevel(id);
-            if (sub == null)
+            SubLevel subLevel = subContainer == null ? null : subContainer.getSubLevel(id);
+            if (subLevel == null)
                 return true;
-            Vector3dc p = sub.logicalPose().position();
-            double r = computeRadius(id, sub);
+            Vector3dc p = subLevel.logicalPose().position();
+            double r = computeRadius(id, subLevel);
             aabb = new AABB(p.x() - r, p.y() - r, p.z() - r, p.x() + r, p.y() + r, p.z() + r);
         }
         if (aabb.minY - 2.0 <= level.getSeaLevel())
@@ -194,12 +191,12 @@ public final class SubmarineWaterCullBuffer {
         int minZ = (int) Math.floor(aabb.minZ) - 2, maxZ = (int) Math.ceil(aabb.maxZ) + 2;
         int sxz = Math.max(4, Math.max(maxX - minX, maxZ - minZ) / 24);
         int sy = Math.max(2, (maxY - minY) / 24);
-        BlockPos.MutableBlockPos m = new BlockPos.MutableBlockPos();
+        BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
         for (int x = minX; x <= maxX; x += sxz) {
             for (int y = minY; y <= maxY; y += sy) {
                 for (int z = minZ; z <= maxZ; z += sxz) {
-                    m.set(x, y, z);
-                    if (!CompartmentTracker.realFluidState(level, m).isEmpty())
+                    cursor.set(x, y, z);
+                    if (!CompartmentTracker.realFluidState(level, cursor).isEmpty())
                         return true;
                 }
             }
@@ -207,11 +204,11 @@ public final class SubmarineWaterCullBuffer {
         return false;
     }
 
-    private static double computeRadius(UUID id, SubLevel sub) {
+    private static double computeRadius(UUID id, SubLevel subLevel) {
         Vector3d dims = CompartmentTracker.getCachedDimensions(id);
         if (dims != null)
             return Math.max(dims.x, Math.max(dims.y, dims.z)) * 0.75;
-        BoundingBox3dc bb = sub.boundingBox();
+        BoundingBox3dc bb = subLevel.boundingBox();
         if (bb == null)
             return DEFAULT_RADIUS;
         return Math.max(bb.maxX() - bb.minX(), Math.max(bb.maxY() - bb.minY(), bb.maxZ() - bb.minZ())) * 0.75;
@@ -308,10 +305,10 @@ public final class SubmarineWaterCullBuffer {
         SubLevelContainer subContainer = SubLevelContainer.getContainer(level);
         if (subContainer == null)
             return blocks;
-        SubLevel sub = subContainer.getSubLevel(id);
-        if (sub == null)
+        SubLevel subLevel = subContainer.getSubLevel(id);
+        if (subLevel == null)
             return blocks;
-        LevelPlot plot = sub.getPlot();
+        LevelPlot plot = subLevel.getPlot();
         if (plot == null)
             return blocks;
 
@@ -341,7 +338,7 @@ public final class SubmarineWaterCullBuffer {
                 continue;
             }
             boolean full = state.isCollisionShapeFullBlock(EmptyBlockGetter.INSTANCE, BlockPos.ZERO);
-            if (full && !dry(level, sub, pos)) {
+            if (full && !dry(level, subLevel, pos)) {
                 out.add(pos);
                 continue;
             }
@@ -349,21 +346,21 @@ public final class SubmarineWaterCullBuffer {
                 out.add(pos);
                 continue;
             }
-            if (!full && !dry(level, sub, pos) && sealedByHull(state, pos, union))
+            if (!full && !dry(level, subLevel, pos) && sealedByHull(state, pos, union))
                 out.add(pos);
         }
         return out;
     }
 
-    private static boolean enclosed(BlockPos pos, Set<BlockPos> solid, BoundingBox3ic b) {
+    private static boolean enclosed(BlockPos pos, Set<BlockPos> solid, BoundingBox3ic box) {
         BlockPos.MutableBlockPos p = new BlockPos.MutableBlockPos();
         for (Direction dir : AROUND) {
             p.set(pos);
             boolean hit = false;
             while (!hit) {
                 p.move(dir);
-                if (p.getX() < b.minX() || p.getX() > b.maxX() || p.getY() < b.minY() || p.getY() > b.maxY()
-                        || p.getZ() < b.minZ() || p.getZ() > b.maxZ())
+                if (p.getX() < box.minX() || p.getX() > box.maxX() || p.getY() < box.minY() || p.getY() > box.maxY()
+                        || p.getZ() < box.minZ() || p.getZ() > box.maxZ())
                     break;
                 hit = solid.contains(p);
             }
@@ -373,8 +370,8 @@ public final class SubmarineWaterCullBuffer {
         return true;
     }
 
-    private static boolean dry(Level level, SubLevel sub, BlockPos pos) {
-        Vector3d world = sub.logicalPose().transformPosition(new Vector3d(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5));
+    private static boolean dry(Level level, SubLevel subLevel, BlockPos pos) {
+        Vector3d world = subLevel.logicalPose().transformPosition(new Vector3d(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5));
         BlockPos.MutableBlockPos cell = new BlockPos.MutableBlockPos();
         cell.set(BlockPos.containing(world.x, world.y, world.z));
         for (int i = 0; i < 3; i++) {

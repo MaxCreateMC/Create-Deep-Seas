@@ -310,9 +310,9 @@ public class BoatEngineBlockEntity extends BlockEntity implements BlockEntitySub
 
         Vector3d where = new Vector3d(worldPosition.getX() + 0.5, worldPosition.getY() + 0.5,
                 worldPosition.getZ() + 0.5);
-        SubLevelAccess sub = SableCompanion.INSTANCE.getContaining(level, worldPosition);
-        if (sub != null)
-            sub.logicalPose().transformPosition(where);
+        SubLevelAccess subLevel = SableCompanion.INSTANCE.getContaining(level, worldPosition);
+        if (subLevel != null)
+            subLevel.logicalPose().transformPosition(where);
         PacketDistributor.sendToPlayersNear(sl, null, where.x, where.y, where.z, 96.0,
                 EngineStatePayload.of(worldPosition, throttle, steer, throttleCap));
     }
@@ -355,20 +355,20 @@ public class BoatEngineBlockEntity extends BlockEntity implements BlockEntitySub
     }
 
     @Override
-    public void sable$physicsTick(ServerSubLevel sub, RigidBodyHandle handle, double timeStep) {
+    public void sable$physicsTick(ServerSubLevel subLevel, RigidBodyHandle handle, double timeStep) {
         if (level == null || level.isClientSide)
             return;
         Direction facing = getBlockState().getValue(BoatEngineBlock.FACING);
         forward.set(facing.getStepX(), 0.0, facing.getStepZ());
 
-        Pose3dc pose = sub.logicalPose();
+        Pose3dc pose = subLevel.logicalPose();
         pose.orientation().conjugate(inverse);
-        double mass = Math.max(1.0, SablePhysicsHelper.readMass(sub));
+        double mass = Math.max(1.0, SablePhysicsHelper.readMass(subLevel));
 
         Vec3 prop = offset(0.0, -1.15625, 0.40625, facing);
         pose.transformPosition(propWorld.set(prop.x, prop.y, prop.z));
 
-        double surface = BoatBuoyancySystem.surfaceFor(sub.getUniqueId());
+        double surface = BoatBuoyancySystem.surfaceFor(subLevel.getUniqueId());
         if (surface == Double.NEGATIVE_INFINITY && level instanceof ServerLevel server) {
             surface = BoatBuoyancySystem.surfaceNear(server, propWorld.x, propWorld.y, propWorld.z);
         }

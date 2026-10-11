@@ -30,9 +30,7 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
 
-public final class ImplosionSequence {
-    private ImplosionSequence() {
-    }
+public class ImplosionSequence {
 
     public static final int BUILD_UP = 60;
     public static final int SILENCE = 10;
@@ -184,9 +182,9 @@ public final class ImplosionSequence {
         double[] heights = { 0.1, player.getBbHeight() * 0.5, player.getEyeHeight() };
         BlockPos[] out = new BlockPos[heights.length];
         for (int i = 0; i < heights.length; i++) {
-            Vector3d p = new Vector3d(player.getX(), player.getY() + heights[i], player.getZ());
-            sub.logicalPose().transformPositionInverse(p);
-            out[i] = BlockPos.containing(p.x, p.y, p.z);
+            Vector3d point = new Vector3d(player.getX(), player.getY() + heights[i], player.getZ());
+            sub.logicalPose().transformPositionInverse(point);
+            out[i] = BlockPos.containing(point.x, point.y, point.z);
         }
         return out;
     }

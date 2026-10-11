@@ -1,7 +1,13 @@
 package com.maxenonyme.createsubmarine.submarine.item;
 
+import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.entity.player.Player;
@@ -9,25 +15,27 @@ import net.minecraft.world.item.BucketItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.material.Fluid;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
+import java.util.function.Supplier;
 
 public class OxygenBucketItem extends BucketItem {
-    public OxygenBucketItem(java.util.function.Supplier<? extends Fluid> supplier, Item.Properties builder) {
+    public OxygenBucketItem(Supplier<? extends Fluid> supplier, Item.Properties builder) {
         super(supplier.get(), builder);
     }
 
     @Override
-    public net.minecraft.network.chat.Component getName(ItemStack pStack) {
-        return super.getName(pStack).copy().withStyle(net.minecraft.ChatFormatting.GOLD);
+    public Component getName(ItemStack pStack) {
+        return super.getName(pStack).copy().withStyle(ChatFormatting.GOLD);
     }
 
     @Override
     public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {
         ItemStack itemstack = player.getItemInHand(hand);
-        BlockHitResult blockhitresult = getPlayerPOVHitResult(level, player, net.minecraft.world.level.ClipContext.Fluid.NONE);
+        BlockHitResult blockhitresult = getPlayerPOVHitResult(level, player, ClipContext.Fluid.NONE);
 
         if (blockhitresult.getType() == HitResult.Type.MISS) {
             return InteractionResultHolder.pass(itemstack);
@@ -36,14 +44,14 @@ public class OxygenBucketItem extends BucketItem {
         }
 
         BlockPos blockpos = blockhitresult.getBlockPos();
-        net.minecraft.core.Direction direction = blockhitresult.getDirection();
+        Direction direction = blockhitresult.getDirection();
         BlockPos blockpos1 = blockpos.relative(direction);
 
         if (!level.mayInteract(player, blockpos) || !player.mayUseItemAt(blockpos1, direction, itemstack)) {
             return InteractionResultHolder.fail(itemstack);
         }
 
-        if (!level.isClientSide && level instanceof net.minecraft.server.level.ServerLevel serverLevel) {
+        if (!level.isClientSide && level instanceof ServerLevel serverLevel) {
             for (int i = 0; i < 15; i++) {
                 double x = blockpos1.getX() + 0.5 + (level.random.nextDouble() - 0.5) * 0.5;
                 double y = blockpos1.getY() + 0.5 + (level.random.nextDouble() - 0.5) * 0.5;
@@ -52,7 +60,7 @@ public class OxygenBucketItem extends BucketItem {
             }
         } else {
             level.playLocalSound(blockpos1.getX() + 0.5, blockpos1.getY() + 0.5, blockpos1.getZ() + 0.5,
-                    net.minecraft.sounds.SoundEvents.FIRE_EXTINGUISH, net.minecraft.sounds.SoundSource.BLOCKS, 0.5F,
+                    SoundEvents.FIRE_EXTINGUISH, SoundSource.BLOCKS, 0.5F,
                     2.6F + (level.random.nextFloat() - level.random.nextFloat()) * 0.8F, false);
         }
 

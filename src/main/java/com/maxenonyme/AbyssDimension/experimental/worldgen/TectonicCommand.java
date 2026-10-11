@@ -1,5 +1,8 @@
 package com.maxenonyme.AbyssDimension.experimental.worldgen;
 
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 import com.mojang.brigadier.arguments.StringArgumentType;
@@ -9,7 +12,9 @@ import com.mojang.brigadier.suggestion.Suggestions;
 import com.mojang.brigadier.suggestion.SuggestionsBuilder;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
@@ -18,11 +23,10 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.Level;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
 
-public final class TectonicCommand {
-    private TectonicCommand() {}
+public class TectonicCommand {
 
     private static final ResourceKey<Level> ABYSS_KEY = ResourceKey.create(
-            net.minecraft.core.registries.Registries.DIMENSION,
+            Registries.DIMENSION,
             ResourceLocation.fromNamespaceAndPath("create_abyss", "abyss"));
 
     private static final SuggestionProvider<CommandSourceStack> PLATE_SUGGESTER =
@@ -69,7 +73,8 @@ public final class TectonicCommand {
 
     private static ServerLevel getAbyss(CommandSourceStack source) {
         MinecraftServer server = source.getServer();
-        if (server == null) return null;
+        if (server == null)
+            return null;
         return server.getLevel(ABYSS_KEY);
     }
 
@@ -164,7 +169,7 @@ public final class TectonicCommand {
             return 0;
         }
 
-        var neighbors = new java.util.LinkedHashMap<String, java.util.List<int[]>>();
+        var neighbors = new LinkedHashMap<String, List<int[]>>();
         int scanRadius = 3;
 
         for (int dx = -scanRadius; dx <= scanRadius; dx++) {
@@ -172,19 +177,22 @@ public final class TectonicCommand {
                 TectonicPlate here = SeafloorGenerator.getPlateAt(
                     dx * SeafloorGenerator.PLATE_CELL_SIZE,
                     dz * SeafloorGenerator.PLATE_CELL_SIZE);
-                if (here == null || !here.name().equalsIgnoreCase(targetName)) continue;
+                if (here == null || !here.name().equalsIgnoreCase(targetName))
+                    continue;
 
                 for (int ndx = -1; ndx <= 1; ndx++) {
                     for (int ndz = -1; ndz <= 1; ndz++) {
-                        if (ndx == 0 && ndz == 0) continue;
+                        if (ndx == 0 && ndz == 0)
+                            continue;
                         TectonicPlate neighbor = SeafloorGenerator.getPlateAt(
                             (dx + ndx) * SeafloorGenerator.PLATE_CELL_SIZE,
                             (dz + ndz) * SeafloorGenerator.PLATE_CELL_SIZE);
-                        if (neighbor == null || neighbor.name().equalsIgnoreCase(targetName)) continue;
+                        if (neighbor == null || neighbor.name().equalsIgnoreCase(targetName))
+                            continue;
 
                         int bx = dx * SeafloorGenerator.PLATE_CELL_SIZE + ndx * SeafloorGenerator.PLATE_CELL_SIZE / 2;
                         int bz = dz * SeafloorGenerator.PLATE_CELL_SIZE + ndz * SeafloorGenerator.PLATE_CELL_SIZE / 2;
-                        neighbors.computeIfAbsent(neighbor.name(), k -> new java.util.ArrayList<>())
+                        neighbors.computeIfAbsent(neighbor.name(), k -> new ArrayList<>())
                             .add(new int[]{bx, bz});
                     }
                 }
@@ -196,7 +204,7 @@ public final class TectonicCommand {
             return 0;
         }
 
-        net.minecraft.network.chat.MutableComponent msg = Component.literal("§6=== " + target.name() + " Plate Boundaries ===\n");
+        MutableComponent msg = Component.literal("§6=== " + target.name() + " Plate Boundaries ===\n");
         for (var entry : neighbors.entrySet()) {
             String nName = entry.getKey();
             var points = entry.getValue();
@@ -280,11 +288,13 @@ public final class TectonicCommand {
         for (int r = 0; r <= searchRadius; r++) {
             for (int dx = -r; dx <= r; dx++) {
                 int dz = r - Math.abs(dx);
-                if (dz < 0) continue;
+                if (dz < 0)
+                    continue;
                 for (int sign : new int[]{1, -1}) {
                     int cz = cellZ + dz * sign;
                     int cx = cellX + dx;
-                    if (cx == cellX && cz == cellZ && r > 0) continue;
+                    if (cx == cellX && cz == cellZ && r > 0)
+                        continue;
 
                     TectonicPlate here = SeafloorGenerator.getPlateAt(
                         cx * SeafloorGenerator.PLATE_CELL_SIZE,
@@ -299,7 +309,8 @@ public final class TectonicCommand {
                     }
                 }
             }
-            if (bestDist2 < Double.MAX_VALUE) break;
+            if (bestDist2 < Double.MAX_VALUE)
+                break;
         }
 
         if (bestX == Integer.MAX_VALUE) {

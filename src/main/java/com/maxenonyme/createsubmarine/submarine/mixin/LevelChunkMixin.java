@@ -5,6 +5,9 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.LevelChunk;
 import com.llamalad7.mixinextras.injector.ModifyReturnValue;
 import com.llamalad7.mixinextras.sugar.Local;
+import com.maxenonyme.createsubmarine.submarine.system.LightFailure;
+import com.maxenonyme.createsubmarine.submarine.system.SubmarinePressureSystem;
+import net.minecraft.world.level.Level;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -20,13 +23,14 @@ public abstract class LevelChunkMixin {
     @Inject(method = "setBlockState", at = @At("RETURN"))
     private void createsubmarine$onSetBlockState(BlockPos pos, BlockState state, boolean isMoving, CallbackInfoReturnable<BlockState> cir) {
         BlockState old = cir.getReturnValue();
-        if (old == null) return;
-        net.minecraft.world.level.Level level = ((LevelChunk) (Object) this).getLevel();
+        if (old == null)
+            return;
+        Level level = ((LevelChunk) (Object) this).getLevel();
         CompartmentTracker.onPlotBlockChanged(level, pos, old, state);
         if (old.getBlock() != state.getBlock())
-            com.maxenonyme.createsubmarine.submarine.system.LightFailure.forget(level, pos);
+            LightFailure.forget(level, pos);
         if (!level.isClientSide && old.getBlock() != state.getBlock()) {
-            com.maxenonyme.createsubmarine.submarine.system.SubmarinePressureSystem.onPlotBlockReplaced(level, pos);
+            SubmarinePressureSystem.onPlotBlockReplaced(level, pos);
         }
     }
 }

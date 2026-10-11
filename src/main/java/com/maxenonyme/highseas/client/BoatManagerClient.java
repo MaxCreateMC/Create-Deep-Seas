@@ -9,9 +9,7 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
 
 @EventBusSubscriber(modid = CreateHighSeas.MOD_ID, value = Dist.CLIENT)
-public final class BoatManagerClient {
-    private BoatManagerClient() {
-    }
+public class BoatManagerClient {
 
     @SubscribeEvent
     public static void onClientTick(ClientTickEvent.Post event) {

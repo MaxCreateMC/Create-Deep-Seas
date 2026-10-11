@@ -43,8 +43,8 @@ public class FlywheelFogUniformsMixin {
         if (region == null)
             return -1.0f;
         BoundedBitVolume3i volume = region.getVolume();
-        SubLevel sub = Sable.HELPER.getContaining(mc.level, volume.getMinBlockPos());
-        Vec3 local = sub != null ? sub.logicalPose().transformPositionInverse(cameraPos) : cameraPos;
+        SubLevel subLevel = Sable.HELPER.getContaining(mc.level, volume.getMinBlockPos());
+        Vec3 local = subLevel != null ? subLevel.logicalPose().transformPositionInverse(cameraPos) : cameraPos;
         BlockPos min = volume.getMinBlockPos();
         BlockPos max = volume.getMaxBlockPos();
         double dx = Math.max(local.x - min.getX(), max.getX() + 1 - local.x);

@@ -3,9 +3,7 @@ package com.maxenonyme.highseas.config;
 import net.neoforged.fml.event.config.ModConfigEvent;
 import net.neoforged.neoforge.common.ModConfigSpec;
 
-public final class HighSeasConfig {
-    private HighSeasConfig() {
-    }
+public class HighSeasConfig {
 
     public static double baseWind = 1.0;
     public static double gustAmplitude = 0.25;

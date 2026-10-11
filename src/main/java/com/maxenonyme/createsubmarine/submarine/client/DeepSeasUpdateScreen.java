@@ -66,7 +66,8 @@ public class DeepSeasUpdateScreen extends Screen {
 
     private List<Component> parseMarkdown(String text) {
         List<Component> lines = new ArrayList<>();
-        if (text == null || text.isEmpty()) return lines;
+        if (text == null || text.isEmpty())
+            return lines;
 
         String[] rawLines = text.split("\n");
         for (String line : rawLines) {

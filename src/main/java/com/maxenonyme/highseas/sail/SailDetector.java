@@ -27,37 +27,35 @@ import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.function.Predicate;
 
-public final class SailDetector {
-    private SailDetector() {
-    }
+public class SailDetector {
 
     private static final Predicate<BlockState> SAIL = state -> state.is(BoatSailBlock.SAILS)
             && state.hasProperty(BlockStateProperties.AXIS);
 
     static void scan(LevelPlot plot, Predicate<BlockState> wanted, BiConsumer<BlockPos.MutableBlockPos, BlockState> found) {
-        BoundingBox3ic b = plot.getBoundingBox();
-        BlockPos.MutableBlockPos m = new BlockPos.MutableBlockPos();
-        for (int cx = b.minX() >> 4; cx <= b.maxX() >> 4; cx++) {
-            for (int cz = b.minZ() >> 4; cz <= b.maxZ() >> 4; cz++) {
+        BoundingBox3ic box = plot.getBoundingBox();
+        BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
+        for (int cx = box.minX() >> 4; cx <= box.maxX() >> 4; cx++) {
+            for (int cz = box.minZ() >> 4; cz <= box.maxZ() >> 4; cz++) {
                 ChunkAccess chunk = plot.getChunk(plot.toLocal(new ChunkPos(cx, cz)));
                 if (chunk == null)
                     continue;
-                for (int sy = b.minY() >> 4; sy <= b.maxY() >> 4; sy++) {
+                for (int sy = box.minY() >> 4; sy <= box.maxY() >> 4; sy++) {
                     int index = chunk.getSectionIndexFromSectionY(sy);
                     if (index < 0 || index >= chunk.getSectionsCount())
                         continue;
                     LevelChunkSection section = chunk.getSection(index);
                     if (section.hasOnlyAir() || !section.maybeHas(wanted))
                         continue;
-                    int x0 = Math.max(b.minX(), cx << 4), x1 = Math.min(b.maxX(), (cx << 4) + 15);
-                    int y0 = Math.max(b.minY(), sy << 4), y1 = Math.min(b.maxY(), (sy << 4) + 15);
-                    int z0 = Math.max(b.minZ(), cz << 4), z1 = Math.min(b.maxZ(), (cz << 4) + 15);
+                    int x0 = Math.max(box.minX(), cx << 4), x1 = Math.min(box.maxX(), (cx << 4) + 15);
+                    int y0 = Math.max(box.minY(), sy << 4), y1 = Math.min(box.maxY(), (sy << 4) + 15);
+                    int z0 = Math.max(box.minZ(), cz << 4), z1 = Math.min(box.maxZ(), (cz << 4) + 15);
                     for (int y = y0; y <= y1; y++) {
                         for (int z = z0; z <= z1; z++) {
                             for (int x = x0; x <= x1; x++) {
                                 BlockState state = section.getBlockState(x & 15, y & 15, z & 15);
                                 if (wanted.test(state))
-                                    found.accept(m.set(x, y, z), state);
+                                    found.accept(cursor.set(x, y, z), state);
                             }
                         }
                     }
@@ -151,8 +149,8 @@ public final class SailDetector {
             int width = axis == Direction.Axis.X ? maxZ - minZ + 1 : maxX - minX + 1;
             int height = maxY - minY + 1;
             for (BlockPos p : component) {
-                BlockState s = level.getBlockState(p);
-                SailCorner c = s.hasProperty(BoatSailBlock.CORNER) ? s.getValue(BoatSailBlock.CORNER) : SailCorner.NONE;
+                BlockState blockState = level.getBlockState(p);
+                SailCorner c = blockState.hasProperty(BoatSailBlock.CORNER) ? blockState.getValue(BoatSailBlock.CORNER) : SailCorner.NONE;
                 if (c == SailCorner.NONE)
                     continue;
                 if (cut != null && cut != c)
@@ -180,11 +178,11 @@ public final class SailDetector {
     }
 
     public static BlockPos groupMin(BlockGetter level, BlockPos start) {
-        BlockState s = level.getBlockState(start);
-        if (!s.is(BoatSailBlock.SAILS) || !s.hasProperty(BlockStateProperties.AXIS)) {
+        BlockState blockState = level.getBlockState(start);
+        if (!blockState.is(BoatSailBlock.SAILS) || !blockState.hasProperty(BlockStateProperties.AXIS)) {
             return null;
         }
-        Direction.Axis axis = s.getValue(BlockStateProperties.AXIS);
+        Direction.Axis axis = blockState.getValue(BlockStateProperties.AXIS);
 
         Set<BlockPos> visited = new HashSet<>();
         Deque<BlockPos> queue = new ArrayDeque<>();
@@ -232,7 +230,8 @@ public final class SailDetector {
             height = maxY - minY + 1;
         }
 
-        if (width <= 2 || height <= 2) return false;
+        if (width <= 2 || height <= 2)
+            return false;
 
         boolean[][] sail = new boolean[width][height];
         for (BlockPos p : component) {

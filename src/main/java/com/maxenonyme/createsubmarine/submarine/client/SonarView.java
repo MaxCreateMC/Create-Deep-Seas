@@ -27,9 +27,7 @@ import java.util.Iterator;
 import java.util.Locale;
 import java.util.Map;
 
-public final class SonarView {
-    private SonarView() {
-    }
+public class SonarView {
 
     public static final int PAD = 272;
 
@@ -139,19 +137,19 @@ public final class SonarView {
 
             SonarBlockEntity sonar = SonarBlockEntity.onSameSub(be);
             SubLevel sub = Sable.HELPER.getContaining(be);
-            if (sonar == null || !(sub instanceof ClientSubLevel csl) || csl.isRemoved() || csl.getPlot() == null)
+            if (sonar == null || !(sub instanceof ClientSubLevel subLevel) || subLevel.isRemoved() || subLevel.getPlot() == null)
                 continue;
 
             scan.lastDraw = now;
             if (detail) {
                 scan.resize(scan.wantWidth, scan.wantHeight);
-                draw(mc, csl, sonar.getBlockPos(), scan, partialTicks, now,
+                draw(mc, subLevel, sonar.getBlockPos(), scan, partialTicks, now,
                         be.sonarZoom, be.sonarPanX, be.sonarPanZ, be.sonarOrbit);
             } else {
                 float[] area = CommandSubRenderer.SONAR;
                 scan.resize(Math.round((area[2] - area[0]) * PIXELS_PER_UNIT),
                         Math.round((area[3] - area[1]) * PIXELS_PER_UNIT));
-                draw(mc, csl, sonar.getBlockPos(), scan, partialTicks, now, PREVIEW_ZOOM, 0, 0, 0);
+                draw(mc, subLevel, sonar.getBlockPos(), scan, partialTicks, now, PREVIEW_ZOOM, 0, 0, 0);
             }
             drew = true;
         }

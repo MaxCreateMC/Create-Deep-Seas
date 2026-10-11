@@ -18,9 +18,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-public final class BoatClassifier {
-    private BoatClassifier() {
-    }
+public class BoatClassifier {
 
     private static final int REFRESH = 20;
 
@@ -42,20 +40,20 @@ public final class BoatClassifier {
             Collection<SubLevel> chain;
             try {
                 chain = SubLevelHelper.getConnectedChain(s);
-            } catch (Exception e) {
+            } catch (RuntimeException e) {
                 chain = List.of(s);
             }
             SubLevel hull = s;
             long biggest = volume(s);
-            for (SubLevel c : chain) {
-                long v = volume(c);
+            for (SubLevel subLevel : chain) {
+                long v = volume(subLevel);
                 if (v > biggest) {
                     biggest = v;
-                    hull = c;
+                    hull = subLevel;
                 }
             }
-            for (SubLevel c : chain) {
-                map.put(c.getUniqueId(), hull);
+            for (SubLevel subLevel : chain) {
+                map.put(subLevel.getUniqueId(), hull);
             }
             map.put(s.getUniqueId(), hull);
         }
@@ -80,9 +78,9 @@ public final class BoatClassifier {
 
     public static boolean inAir(Level parent, SubLevel ship, Vec3 localCenter) {
         Pose3dc pose = ship.logicalPose();
-        Vector3d p = new Vector3d(localCenter.x, localCenter.y, localCenter.z);
-        pose.transformPosition(p);
-        BlockPos bp = BlockPos.containing(p.x, p.y, p.z);
+        Vector3d point = new Vector3d(localCenter.x, localCenter.y, localCenter.z);
+        pose.transformPosition(point);
+        BlockPos bp = BlockPos.containing(point.x, point.y, point.z);
         return !parent.getFluidState(bp).is(FluidTags.WATER);
     }
 

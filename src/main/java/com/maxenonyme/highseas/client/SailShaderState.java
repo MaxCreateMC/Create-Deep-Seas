@@ -29,9 +29,7 @@ import java.util.UUID;
 import com.maxenonyme.highseas.config.HighSeasConfig;
 import java.util.concurrent.ConcurrentHashMap;
 
-public final class SailShaderState {
-    private SailShaderState() {
-    }
+public class SailShaderState {
 
     private static final int MAX_SAILS = 8;
     private static final String[] SAIL_MIN = uniforms("sailMin");
@@ -242,8 +240,8 @@ public final class SailShaderState {
             Vector3d worldCenter = new Vector3d(
                     (b.minX + b.maxX) * 0.5, (b.minY + b.maxY) * 0.5, (b.minZ + b.maxZ) * 0.5);
             renderPose.transformPosition(worldCenter);
-            Vec3 w = WindManager.getWind(level, worldCenter.x, worldCenter.y, worldCenter.z).vector();
-            double windDotN = w.x * worldNormal.x + w.y * worldNormal.y + w.z * worldNormal.z;
+            Vec3 point = WindManager.getWind(level, worldCenter.x, worldCenter.y, worldCenter.z).vector();
+            double windDotN = point.x * worldNormal.x + point.y * worldNormal.y + point.z * worldNormal.z;
             if (Math.abs(windDotN) > 0.15 * WIND_REF)
                 b.bulgeSign = Math.signum(windDotN);
             double targetPower = Mth.clamp(Math.abs(windDotN) / WIND_REF, 0.0, 1.0);
@@ -258,9 +256,12 @@ public final class SailShaderState {
             if (dt > 0 && dt < 1.0) {
                 double maxStep = 0.5 * dt;
                 double diff = targetPower - b.smoothedPower;
-                if (diff > maxStep) b.smoothedPower += maxStep;
-                else if (diff < -maxStep) b.smoothedPower -= maxStep;
-                else b.smoothedPower = targetPower;
+                if (diff > maxStep)
+                    b.smoothedPower += maxStep;
+                else if (diff < -maxStep)
+                    b.smoothedPower -= maxStep;
+                else
+                    b.smoothedPower = targetPower;
             }
         }
         fill = IDLE_FILL + (1.0 - IDLE_FILL) * b.smoothedPower;
@@ -319,7 +320,8 @@ public final class SailShaderState {
 
     private static SailData lookup(ClientSubLevel sub) {
         ClientLevel level = Minecraft.getInstance().level;
-        if (level == null) return new SailData(List.of(), null, 0);
+        if (level == null)
+            return new SailData(List.of(), null, 0);
         long now = level.getGameTime();
 
         SailData data = CACHE.get(sub.getUniqueId());

@@ -17,9 +17,7 @@ import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
 import net.neoforged.neoforge.client.event.ViewportEvent;
 import net.neoforged.neoforge.client.event.RenderGuiEvent;
 
-public final class BuoyRideEffects {
-    private BuoyRideEffects() {
-    }
+public class BuoyRideEffects {
 
     private static final double JOLT_SCALE = 3.4;
     private static final float JOLT_DECAY = 0.86f;

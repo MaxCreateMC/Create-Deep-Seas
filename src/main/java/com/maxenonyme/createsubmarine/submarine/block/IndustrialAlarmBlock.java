@@ -30,6 +30,8 @@ import org.jetbrains.annotations.Nullable;
 import com.maxenonyme.createsubmarine.submarine.alarm.AlarmSounds;
 import com.maxenonyme.createsubmarine.submarine.network.AlarmOpenPayload;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.tags.FluidTags;
+import net.minecraft.util.RandomSource;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.BlockHitResult;
@@ -72,7 +74,7 @@ public class IndustrialAlarmBlock extends DirectionalBlock implements SimpleWate
         return defaultBlockState()
                 .setValue(BlockStateProperties.FACING, ctx.getClickedFace())
                 .setValue(BlockStateProperties.LIT, false)
-                .setValue(BlockStateProperties.WATERLOGGED, fluidstate.is(net.minecraft.tags.FluidTags.WATER));
+                .setValue(BlockStateProperties.WATERLOGGED, fluidstate.is(FluidTags.WATER));
     }
 
     @Override
@@ -101,7 +103,7 @@ public class IndustrialAlarmBlock extends DirectionalBlock implements SimpleWate
     }
 
     @Override
-    public void animateTick(BlockState state, Level level, BlockPos pos, net.minecraft.util.RandomSource random) {
+    public void animateTick(BlockState state, Level level, BlockPos pos, RandomSource random) {
         if (level.getBlockEntity(pos) instanceof IndustrialAlarmBlockEntity alarm && alarm.isShining(level.getGameTime()))
             makeParticle(state, level, pos);
     }

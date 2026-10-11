@@ -9,6 +9,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 import java.util.UUID;
+import java.util.function.BiConsumer;
 
 public record SubCrackPayload(UUID subId, BlockPos plotPos, int crackLevel, int blockId) implements CustomPacketPayload {
     public static final Type<SubCrackPayload> TYPE = new Type<>(
@@ -33,7 +34,7 @@ public record SubCrackPayload(UUID subId, BlockPos plotPos, int crackLevel, int 
         return TYPE;
     }
 
-    public static java.util.function.BiConsumer<SubCrackPayload, IPayloadContext> handler = (p, c) -> {};
+    public static BiConsumer<SubCrackPayload, IPayloadContext> handler = (p, c) -> {};
 
     public static void handle(SubCrackPayload payload, IPayloadContext context) {
         handler.accept(payload, context);

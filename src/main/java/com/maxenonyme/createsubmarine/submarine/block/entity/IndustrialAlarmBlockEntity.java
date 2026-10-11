@@ -10,7 +10,6 @@ import dev.ryanhcode.sable.companion.SableCompanion;
 import dev.ryanhcode.sable.companion.SubLevelAccess;
 import com.maxenonyme.createsubmarine.submarine.client.VeilLights;
 import com.maxenonyme.createsubmarine.submarine.config.SubmarineConfig;
-import foundry.veil.api.client.render.VeilRenderSystem;
 import foundry.veil.api.client.render.light.data.PointLightData;
 import foundry.veil.api.client.render.light.renderer.LightRenderHandle;
 import net.minecraft.core.BlockPos;
@@ -36,6 +35,7 @@ public class IndustrialAlarmBlockEntity extends BlockEntity {
     private Object playing;
     private int scan;
     private int weakest = -1;
+    private static final float BRIGHTNESS = 7.2f;
     private Object lightHandle;
 
     public IndustrialAlarmBlockEntity(BlockPos pos, BlockState state) {
@@ -84,9 +84,9 @@ public class IndustrialAlarmBlockEntity extends BlockEntity {
 
     private void updatePeriod() {
         int wanted = 0;
-        SubLevelAccess sub = SableCompanion.INSTANCE.getContaining(level, worldPosition);
-        if (sub != null) {
-            UUID id = sub.getUniqueId();
+        SubLevelAccess subLevel = SableCompanion.INSTANCE.getContaining(level, worldPosition);
+        if (subLevel != null) {
+            UUID id = subLevel.getUniqueId();
             if (scan % 40 == 0 || weakest < 0)
                 weakest = SubmarinePressureSystem.getWeakestHullDepth(id, level);
             int depth = SubmarinePressureSystem.getCachedDepth(id);
@@ -108,7 +108,13 @@ public class IndustrialAlarmBlockEntity extends BlockEntity {
         if (period <= 0)
             stopSound();
         if (!isShining(time)) {
-            freeLight();
+            if (period > 0 && lightHandle instanceof LightRenderHandle<?> handle
+                    && handle.getLightData() instanceof PointLightData light) {
+                light.setBrightness(0.0f);
+                handle.markDirty();
+            } else {
+                freeLight();
+            }
             return;
         }
         Vec3 world = Sable.HELPER.projectOutOfSubLevel(level, Vec3.atCenterOf(worldPosition));
@@ -116,15 +122,16 @@ public class IndustrialAlarmBlockEntity extends BlockEntity {
             freeLight();
         } else if (lightHandle instanceof LightRenderHandle<?> handle && handle.getLightData() instanceof PointLightData light) {
             light.setPosition(world.x, world.y, world.z);
+            light.setBrightness(BRIGHTNESS);
             handle.markDirty();
         } else {
             PointLightData light = new PointLightData();
             light.setPosition(world.x, world.y, world.z);
-            light.setBrightness(7.2f);
+            light.setBrightness(BRIGHTNESS);
             light.setColor(1.0f, 0.0f, 0.0f);
             light.setRadius(6.5f);
             light.setOcclusionEnabled(false);
-            lightHandle = VeilRenderSystem.renderer().getLightRenderer().addLight(light);
+            lightHandle = VeilLights.add(light);
         }
         int cycle = cycle();
         if (cycle > 0 && time % cycle == 0)
@@ -154,8 +161,8 @@ public class IndustrialAlarmBlockEntity extends BlockEntity {
     }
 
     private void freeLight() {
-        if (lightHandle instanceof LightRenderHandle<?> handle) {
-            handle.free();
+        if (lightHandle != null) {
+            VeilLights.free(lightHandle);
             lightHandle = null;
         }
     }

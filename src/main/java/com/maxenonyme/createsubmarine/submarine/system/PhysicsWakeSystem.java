@@ -15,13 +15,17 @@ public class PhysicsWakeSystem {
     private static int tickCounter = 0;
 
     public static void onServerTick(ServerTickEvent.Post event) {
-        if (++tickCounter % 100 != 0) return;
+        if (++tickCounter % 100 != 0)
+            return;
         for (ServerLevel level : event.getServer().getAllLevels()) {
             SubLevelContainer container = SubLevelContainer.getContainer(level);
-            if (!(container instanceof ServerSubLevelContainer serverContainer)) continue;
-            for (SubLevel sub : serverContainer.getAllSubLevels()) {
-                if (!(sub instanceof ServerSubLevel serverSub)) continue;
-                if (serverSub.getPlot() == null) continue;
+            if (!(container instanceof ServerSubLevelContainer serverContainer))
+                continue;
+            for (SubLevel subLevel : serverContainer.getAllSubLevels()) {
+                if (!(subLevel instanceof ServerSubLevel serverSub))
+                    continue;
+                if (serverSub.getPlot() == null)
+                    continue;
                 boolean hasForces = !serverSub.getPlot().getLiftProviders().isEmpty();
                 if (!hasForces) {
                     Object2ObjectMap<ForceGroup, QueuedForceGroup> groups = serverSub.getQueuedForceGroups();

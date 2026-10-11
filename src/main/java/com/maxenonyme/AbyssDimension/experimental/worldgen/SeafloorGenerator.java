@@ -1,16 +1,22 @@
 package com.maxenonyme.AbyssDimension.experimental.worldgen;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
+import com.mojang.logging.LogUtils;
 import com.mojang.serialization.JsonOps;
+import org.slf4j.Logger;
 
 public class SeafloorGenerator {
+    private static final Logger LOGGER = LogUtils.getLogger();
     static final int TILE_SIZE = 256;
     private static final int SEA_LEVEL = 0;
 
@@ -40,7 +46,8 @@ public class SeafloorGenerator {
     private static PlateTectonicsConfig config;
 
     private static synchronized void ensureConfig() {
-        if (config != null) return;
+        if (config != null)
+            return;
         if (skipJsonConfig) {
             config = RandomPlateGenerator.generate(activeSeed);
             return;
@@ -51,7 +58,9 @@ public class SeafloorGenerator {
                 String json = new String(is.readAllBytes(), StandardCharsets.UTF_8);
                 config = PlateTectonicsConfig.CODEC.parse(JsonOps.INSTANCE, new Gson().fromJson(json, JsonElement.class)).result().orElse(null);
             }
-        } catch (Exception ignored) {}
+        } catch (IOException | RuntimeException e) {
+            LOGGER.warn("Couldn't read the default tectonic plates, falling back to random ones", e);
+        }
         if (config == null) {
             config = RandomPlateGenerator.generate(activeSeed);
         }
@@ -63,12 +72,14 @@ public class SeafloorGenerator {
         Random rng = new Random(cellHash);
         double totalWeight = 0;
         for (TectonicPlate p : config.plates()) totalWeight += p.weight();
-        if (totalWeight <= 0) return new TectonicPlate("default", "", 0, 0, 1, true, 1);
+        if (totalWeight <= 0)
+            return new TectonicPlate("default", "", 0, 0, 1, true, 1);
         double r = rng.nextDouble() * totalWeight;
         double cumulative = 0;
         for (TectonicPlate p : config.plates()) {
             cumulative += p.weight();
-            if (r < cumulative) return p;
+            if (r < cumulative)
+                return p;
         }
         return config.plates().getLast();
     }
@@ -197,8 +208,8 @@ public class SeafloorGenerator {
     private static List<PlateInfo> computeUniquePlates(int wx, int wz) {
         int cellX = Math.floorDiv(wx, PLATE_CELL_SIZE);
         int cellZ = Math.floorDiv(wz, PLATE_CELL_SIZE);
-        java.util.HashSet<Integer> seen = new java.util.HashSet<>();
-        java.util.ArrayList<PlateInfo> plates = new java.util.ArrayList<>();
+        HashSet<Integer> seen = new HashSet<>();
+        ArrayList<PlateInfo> plates = new ArrayList<>();
         for (int dx = -1; dx <= 1; dx++) {
             for (int dz = -1; dz <= 1; dz++) {
                 PlateInfo info = buildPlateInfo(cellX + dx, cellZ + dz);
@@ -234,7 +245,8 @@ public class SeafloorGenerator {
             }
         }
 
-        if (infos[1] == null) return null;
+        if (infos[1] == null)
+            return null;
 
         PairData[] pairs = new PairData[3];
         int[][] combos = {{0,1}, {0,2}, {1,2}};
@@ -263,12 +275,14 @@ public class SeafloorGenerator {
     }
 
     private static double pairModifier(int wx, int wz, PairData pd) {
-        if (pd == null) return 0.0;
+        if (pd == null)
+            return 0.0;
 
         double signedDist = signedBoundaryDist(wx, wz, pd.a, pd.b, pd.nx, pd.nz);
         double d = Math.abs(signedDist);
 
-        if (d > 600) return 0.0;
+        if (d > 600)
+            return 0.0;
 
         double convergence = pd.convergence;
         double shear = pd.shear;
@@ -281,9 +295,12 @@ public class SeafloorGenerator {
         boolean aOc = pd.a.oceanic(), bOc = pd.b.oceanic();
         boolean bothContinental = !aOc && !bOc;
         boolean subductIsA;
-        if (aOc && !bOc) subductIsA = true;
-        else if (!aOc && bOc) subductIsA = false;
-        else subductIsA = pd.a.mass() > pd.b.mass();
+        if (aOc && !bOc)
+            subductIsA = true;
+        else if (!aOc && bOc)
+            subductIsA = false;
+        else
+            subductIsA = pd.a.mass() > pd.b.mass();
         boolean onSubductingSide = (signedDist > 0) == subductIsA;
 
         double modifier = 0;
@@ -303,15 +320,18 @@ public class SeafloorGenerator {
                         arc = 300.0 * Math.exp(-Math.pow(d-100.0, 2)/(2.0*2025.0));
                     }
                     modifier = trench + outerRise;
-                    if (arc > modifier) modifier = arc;
+                    if (arc > modifier)
+                        modifier = arc;
                 }
             } else if (obliquity < Math.PI / 3) {
                 double tgSpeed = Math.abs(shear);
                 double transpress = 250.0 * Math.exp(-d*d/(2.0*3025.0)) * Math.min(tgSpeed / 50.0, 2.0);
-                if (transpress > modifier) modifier = transpress;
+                if (transpress > modifier)
+                    modifier = transpress;
             } else {
                 double transformValley = -60.0 * Math.exp(-d*d/(2.0*900.0));
-                if (transformValley < modifier) modifier = transformValley;
+                if (transformValley < modifier)
+                    modifier = transformValley;
             }
         } else if (convergence < -0.001) {
             if (obliquity < Math.PI / 6) {
@@ -320,10 +340,12 @@ public class SeafloorGenerator {
                           + 50.0  * Math.exp(-Math.pow(d-150.0, 2)/(2.0*2500.0));
             } else if (obliquity < Math.PI / 3) {
                 double transten = -100.0 * Math.exp(-d*d/(2.0*2500.0));
-                if (transten < modifier) modifier = transten;
+                if (transten < modifier)
+                    modifier = transten;
             } else {
                 double transformValley = -60.0 * Math.exp(-d*d/(2.0*900.0));
-                if (transformValley < modifier) modifier = transformValley;
+                if (transformValley < modifier)
+                    modifier = transformValley;
             }
         } else {
             modifier = -60.0 * Math.exp(-d*d/(2.0*900.0));
@@ -333,7 +355,8 @@ public class SeafloorGenerator {
     }
 
     private static double computeTectonicModifier(int wx, int wz, List<PlateInfo> plates) {
-        if (plates.size() < 2) return 0.0;
+        if (plates.size() < 2)
+            return 0.0;
         double modifier = 0;
         double totalWeight = 0;
         for (int i = 0; i < plates.size(); i++) {
@@ -344,14 +367,16 @@ public class SeafloorGenerator {
                 double nx = a.seedX() - b.seedX();
                 double nz = a.seedZ() - b.seedZ();
                 double len = Math.sqrt(nx*nx + nz*nz);
-                if (len < 0.001) continue;
+                if (len < 0.001)
+                    continue;
                 nx /= len; nz /= len;
 
                 double mx = (a.seedX() + b.seedX()) * 0.5;
                 double mz = (a.seedZ() + b.seedZ()) * 0.5;
                 double signedDist = (wx - mx) * nx + (wz - mz) * nz;
                 double d = Math.abs(signedDist);
-                if (d > 1200) continue;
+                if (d > 1200)
+                    continue;
 
                 double vrx = a.vx() - b.vx();
                 double vrz = a.vz() - b.vz();
@@ -375,17 +400,20 @@ public class SeafloorGenerator {
     private static double computeCanyonDepth(int wx, int wz, double continentValue) {
         double absC = Math.abs(continentValue);
         double canyonEdge = SHELF_BOUNDARY + 0.18;
-        if (absC < SHELF_BOUNDARY || absC > canyonEdge) return 0;
+        if (absC < SHELF_BOUNDARY || absC > canyonEdge)
+            return 0;
 
         double shelfMid = (SHELF_BOUNDARY + canyonEdge) / 2.0;
         double slopeFactor = 1.0 - Math.abs(absC - shelfMid) / (canyonEdge - SHELF_BOUNDARY) * 2;
-        if (slopeFactor < 0) return 0;
+        if (slopeFactor < 0)
+            return 0;
         slopeFactor = Math.min(1.0, slopeFactor);
 
         PerlinNoise cn = getCanyonNoise();
 
         double presence = cn.noise(wx * 0.004, wz * 0.004);
-        if (presence < -0.2) return 0;
+        if (presence < -0.2)
+            return 0;
 
         double warpX = wx * 0.01 + cn.noise(wx * 0.02, wz * 0.02) * 20;
         double warpZ = wz * 0.01 + cn.noise(wx * 0.02 + 500, wz * 0.02 + 500) * 20;
@@ -396,8 +424,10 @@ public class SeafloorGenerator {
     }
 
     private static double computeVentHeight(int wx, int wz, PairData bd) {
-        if (bd == null || bd.convergence >= -0.1) return 0;
-        if (bd.dist > 300) return 0;
+        if (bd == null || bd.convergence >= -0.1)
+            return 0;
+        if (bd.dist > 300)
+            return 0;
 
         int cellX = (int) Math.floor(wx / VENT_CELL_SIZE);
         int cellZ = (int) Math.floor(wz / VENT_CELL_SIZE);
@@ -408,7 +438,8 @@ public class SeafloorGenerator {
         double ventZ = cellZ * VENT_CELL_SIZE + rng.nextDouble() * VENT_CELL_SIZE;
         double d2 = (wx - ventX) * (wx - ventX) + (wz - ventZ) * (wz - ventZ);
 
-        if (d2 > 1600) return 0;
+        if (d2 > 1600)
+            return 0;
 
         double dist = Math.sqrt(d2);
         double t = 1.0 - dist / 40;
@@ -447,7 +478,8 @@ public class SeafloorGenerator {
                 double lenFactor = Math.exp(-(across * across) / (chainLen * chainLen));
                 double height = 60 + rng.nextDouble() * 140;
                 double h = height * widthFactor * lenFactor * (1.0 - plumeDist / (chainLen * 2));
-                if (h > maxHeight) maxHeight = h;
+                if (h > maxHeight)
+                    maxHeight = h;
             }
         }
         return maxHeight;
@@ -472,10 +504,14 @@ public class SeafloorGenerator {
         double fz = (double)(wz - baseZ) / COARSE_RES;
         int gx = (int) Math.floor(fx);
         int gz = (int) Math.floor(fz);
-        if (gx < 0) gx = 0;
-        if (gz < 0) gz = 0;
-        if (gx >= grid[0].length - 1) gx = grid[0].length - 2;
-        if (gz >= grid.length - 1) gz = grid.length - 2;
+        if (gx < 0)
+            gx = 0;
+        if (gz < 0)
+            gz = 0;
+        if (gx >= grid[0].length - 1)
+            gx = grid[0].length - 2;
+        if (gz >= grid.length - 1)
+            gz = grid.length - 2;
         double lx = fx - gx;
         double lz = fz - gz;
         double v00 = grid[gz][gx];

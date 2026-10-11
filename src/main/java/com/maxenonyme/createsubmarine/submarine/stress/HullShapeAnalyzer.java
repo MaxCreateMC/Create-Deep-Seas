@@ -15,9 +15,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-public final class HullShapeAnalyzer {
-    private HullShapeAnalyzer() {
-    }
+public class HullShapeAnalyzer {
 
     private record Params(int span, double min, double max) {
     }
@@ -97,20 +95,20 @@ public final class HullShapeAnalyzer {
         Long2IntOpenHashMap index = new Long2IntOpenHashMap(n);
         index.defaultReturnValue(-1);
         int i = 0;
-        for (BlockPos p : solid) {
-            x[i] = p.getX();
-            y[i] = p.getY();
-            z[i] = p.getZ();
-            index.put(p.asLong(), i);
+        for (BlockPos blockPos : solid) {
+            x[i] = blockPos.getX();
+            y[i] = blockPos.getY();
+            z[i] = blockPos.getZ();
+            index.put(blockPos.asLong(), i);
             i++;
         }
 
         boolean[][] exterior = new boolean[n][6];
-        BlockPos.MutableBlockPos m = new BlockPos.MutableBlockPos();
+        BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
         for (i = 0; i < n; i++) {
             for (int d = 0; d < 6; d++) {
-                m.set(x[i] + SolverCore.DX[d], y[i] + SolverCore.DY[d], z[i] + SolverCore.DZ[d]);
-                exterior[i][d] = index.get(m.asLong()) < 0 && !CompartmentTracker.isWithinShip(id, m);
+                pos.set(x[i] + SolverCore.DX[d], y[i] + SolverCore.DY[d], z[i] + SolverCore.DZ[d]);
+                exterior[i][d] = index.get(pos.asLong()) < 0 && !CompartmentTracker.isWithinShip(id, pos);
             }
         }
         return factors(n, x, y, z, index, exterior, params.span(), params.min(), params.max());

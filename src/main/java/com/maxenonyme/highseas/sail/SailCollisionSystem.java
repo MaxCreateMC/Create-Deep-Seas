@@ -34,9 +34,7 @@ import java.util.Set;
 import java.util.Map;
 import java.util.UUID;
 
-public final class SailCollisionSystem {
-    private SailCollisionSystem() {
-    }
+public class SailCollisionSystem {
 
     private static final double IDLE_FILL = 0.5;
     private static final double DEPTH_PER_BLOCK = 0.26;
@@ -120,17 +118,17 @@ public final class SailCollisionSystem {
                 continue;
             }
             UUID subId = SubLevelRegistry.findUUID(player.level());
-            SubLevelAccess sub = subId != null ? SubLevelRegistry.getAll().get(subId) : null;
-            Level world = sub != null ? SubLevelRegistry.getLevel(subId) : player.level();
+            SubLevelAccess subLevel = subId != null ? SubLevelRegistry.getAll().get(subId) : null;
+            Level world = subLevel != null ? SubLevelRegistry.getLevel(subId) : player.level();
             List<ShipSails> ships = byLevel.get(world);
             if (ships == null) {
                 continue;
             }
             Vector3d worldPos = new Vector3d(player.getX(), player.getY() + player.getBbHeight() / 2.0, player.getZ());
             Pose3dc entityPose = null;
-            if (sub != null) {
-                sub.logicalPose().transformPosition(worldPos);
-                entityPose = sub.logicalPose();
+            if (subLevel != null) {
+                subLevel.logicalPose().transformPosition(worldPos);
+                entityPose = subLevel.logicalPose();
             }
             for (ShipSails ship : ships) {
                 if (pushEntity(player, worldPos, entityPose, ship)) {

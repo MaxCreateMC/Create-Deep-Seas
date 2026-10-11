@@ -122,11 +122,14 @@ public class SolverCore {
         boolean anyUnderwater = false;
         for (int i = 0; i < n; i++) {
             final double depth = blockWaterDepths[i];
-            if (depth <= 0) continue;
+            if (depth <= 0)
+                continue;
             anyUnderwater = true;
             for (int dir = 0; dir < 6; dir++) {
-                if (neighbors[i][dir] >= 0) continue;
-                if (exteriorFaces != null && !exteriorFaces[i][dir]) continue;
+                if (neighbors[i][dir] >= 0)
+                    continue;
+                if (exteriorFaces != null && !exteriorFaces[i][dir])
+                    continue;
                 final int comp = dir / 2;
                 final double sign = (dir % 2 == 0) ? -1.0 : 1.0;
                 double localPressure = this.rhoG * depth * volFraction[i];
@@ -161,7 +164,8 @@ public class SolverCore {
         final double uix = uvec[i3], uiy = uvec[i3 + 1], uiz = uvec[i3 + 2];
         for (int dir = 0; dir < MAX_NEIGHBORS; dir++) {
             final int j = neighbors[i][dir];
-            if (j < 0) continue;
+            if (j < 0)
+                continue;
             final double Kij = springK[i][dir];
             final int j3 = 3 * j;
             if (dir < 6) {
@@ -183,11 +187,13 @@ public class SolverCore {
     }
 
     private void ensurePreconditioner() {
-        if (diagPrecon != null) return;
+        if (diagPrecon != null)
+            return;
         diagPrecon = new double[3 * n];
         for (int i = 0; i < n; i++) {
             for (int dir = 0; dir < MAX_NEIGHBORS; dir++) {
-                if (neighbors[i][dir] < 0) continue;
+                if (neighbors[i][dir] < 0)
+                    continue;
                 final double k = springK[i][dir];
                 if (dir < 6) {
                     diagPrecon[3 * i + dir / 2] += k;
@@ -247,7 +253,8 @@ public class SolverCore {
             applyK(p, Ap);
             for (int k = 0; k < N3; k++) Ap[k] += tikhonovAlpha * p[k];
             final double pAp = dot(p, Ap);
-            if (pAp <= 0) break;
+            if (pAp <= 0)
+                break;
 
             final double alpha = rz / pAp;
             for (int k = 0; k < N3; k++) {
@@ -255,13 +262,15 @@ public class SolverCore {
                 r[k] -= alpha * Ap[k];
             }
 
-            if (dot(r, r) < 1e-12 * bNorm) break;
+            if (dot(r, r) < 1e-12 * bNorm)
+                break;
 
             for (int k = 0; k < N3; k++) {
                 zv[k] = r[k] / (diagPrecon[k] + tikhonovAlpha);
             }
             final double rzNew = dot(r, zv);
-            if (rzNew <= 0) break;
+            if (rzNew <= 0)
+                break;
 
             final double beta = rzNew / rz;
             for (int k = 0; k < N3; k++) p[k] = zv[k] + beta * p[k];
@@ -329,7 +338,8 @@ public class SolverCore {
 
         for (int dir = 0; dir < MAX_NEIGHBORS; dir++) {
             final int j = neighbors[blockIdx][dir];
-            if (j < 0) continue;
+            if (j < 0)
+                continue;
             final int j3 = 3 * j;
             final double dux = u[j3] - uix;
             final double duy = u[j3 + 1] - uiy;
@@ -398,7 +408,8 @@ public class SolverCore {
 
         double maxBlockDepth = 0;
         for (int i = 0; i < n; i++) {
-            if (blockWaterDepths[i] > maxBlockDepth) maxBlockDepth = blockWaterDepths[i];
+            if (blockWaterDepths[i] > maxBlockDepth)
+                maxBlockDepth = blockWaterDepths[i];
         }
         if (maxBlockDepth <= 0) {
             result[n] = -1;
@@ -446,7 +457,8 @@ public class SolverCore {
                         && yieldStress[i] > 0
                         && (exteriorFaces == null || exteriorFaces[i][dir]);
                 visited[i] = false;
-                if (!candidate[i]) continue;
+                if (!candidate[i])
+                    continue;
                 any = true;
                 int t = 1;
                 int cx = x[i], cy = y[i], cz = z[i];
@@ -454,15 +466,18 @@ public class SolverCore {
                     cx += DX[inward];
                     cy += DY[inward];
                     cz += DZ[inward];
-                    if (findBlock(cx, cy, cz) < 0) break;
+                    if (findBlock(cx, cy, cz) < 0)
+                        break;
                     t++;
                 }
                 thickness[i] = t;
             }
-            if (!any) continue;
+            if (!any)
+                continue;
 
             for (int start = 0; start < n; start++) {
-                if (!candidate[start] || visited[start]) continue;
+                if (!candidate[start] || visited[start])
+                    continue;
 
                 final int t = thickness[start];
                 int size = 0;
@@ -473,12 +488,14 @@ public class SolverCore {
                     patch[size++] = cur;
                     for (int pd : planeDirs) {
                         final int ni = neighbors[cur][pd];
-                        if (ni < 0 || visited[ni] || !candidate[ni] || thickness[ni] != t) continue;
+                        if (ni < 0 || visited[ni] || !candidate[ni] || thickness[ni] != t)
+                            continue;
                         visited[ni] = true;
                         stack.push(ni);
                     }
                 }
-                if (size < 2) continue;
+                if (size < 2)
+                    continue;
 
                 int minU = Integer.MAX_VALUE, maxU = Integer.MIN_VALUE;
                 int minV = Integer.MAX_VALUE, maxV = Integer.MIN_VALUE;
@@ -498,7 +515,8 @@ public class SolverCore {
                     avgDepth += blockWaterDepths[idx];
                 }
                 final double shortSpan = Math.min(maxU - minU + 1, maxV - minV + 1);
-                if (shortSpan < 2) continue;
+                if (shortSpan < 2)
+                    continue;
                 avgDepth /= size;
 
                 final double bendingStress = PLATE_BENDING_BETA * this.rhoG * avgDepth * shortSpan * shortSpan
@@ -513,18 +531,21 @@ public class SolverCore {
     }
 
     private double curvatureFactor(final int[] patch, final int size) {
-        if (smoothedNormals == null) return 1.0;
+        if (smoothedNormals == null)
+            return 1.0;
         double avgNx = 0, avgNy = 0, avgNz = 0;
         int count = 0;
         for (int k = 0; k < size; k++) {
             final double[] nv = smoothedNormals[patch[k]];
-            if (nv == null) continue;
+            if (nv == null)
+                continue;
             avgNx += nv[0];
             avgNy += nv[1];
             avgNz += nv[2];
             count++;
         }
-        if (count < 2) return 1.0;
+        if (count < 2)
+            return 1.0;
         final double len = Math.sqrt(avgNx * avgNx + avgNy * avgNy + avgNz * avgNz);
         if (len > 1e-10) {
             avgNx /= len;
@@ -534,7 +555,8 @@ public class SolverCore {
         double sumAngleSq = 0;
         for (int k = 0; k < size; k++) {
             final double[] nv = smoothedNormals[patch[k]];
-            if (nv == null) continue;
+            if (nv == null)
+                continue;
             final double d = Math.max(-1.0, Math.min(1.0, avgNx * nv[0] + avgNy * nv[1] + avgNz * nv[2]));
             final double angle = Math.acos(d);
             sumAngleSq += angle * angle;
@@ -572,7 +594,8 @@ public class SolverCore {
     }
 
     private double stressRatio(final int i) {
-        if (blockWaterDepths[i] <= 0) return 0;
+        if (blockWaterDepths[i] <= 0)
+            return 0;
         final double vm = computeVonMises(i);
         return vm <= 1e-30 ? 0 : Math.min(1.0, vm / yieldStress[i]);
     }

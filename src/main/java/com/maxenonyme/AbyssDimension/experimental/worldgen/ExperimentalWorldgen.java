@@ -16,9 +16,7 @@ import net.neoforged.neoforge.event.AddPackFindersEvent;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
 import net.neoforged.neoforge.registries.DeferredRegister;
 
-public final class ExperimentalWorldgen {
-    private ExperimentalWorldgen() {
-    }
+public class ExperimentalWorldgen {
 
     private static final DeferredRegister<MapCodec<? extends DensityFunction>> DENSITY_FUNCTIONS = DeferredRegister
             .create(Registries.DENSITY_FUNCTION_TYPE, CreateAbyss.MOD_ID);

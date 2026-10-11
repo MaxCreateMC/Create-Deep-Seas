@@ -27,9 +27,7 @@ import org.lwjgl.glfw.GLFW;
 import java.util.Set;
 import com.maxenonyme.highseas.config.HighSeasConfig;
 
-public final class SeaglideClientHandler {
-    private SeaglideClientHandler() {
-    }
+public class SeaglideClientHandler {
 
     private static final float MAX_SPEED = 42.0f;
     private static final float SPIN_UP = 0.055f;

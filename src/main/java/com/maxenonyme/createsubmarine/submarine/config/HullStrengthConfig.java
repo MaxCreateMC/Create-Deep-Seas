@@ -78,7 +78,8 @@ public class HullStrengthConfig {
             writeJson(CONFIG_PATH, complete);
         try {
             Files.deleteIfExists(LEGACY_DUMP_PATH);
-        } catch (IOException ignored) {
+        } catch (IOException e) {
+            CreateSubmarine.LOGGER.warn("Couldn't delete the old {}", LEGACY_DUMP_PATH, e);
         }
     }
 
@@ -169,6 +170,7 @@ public class HullStrengthConfig {
                     .resolveSibling(CONFIG_PATH.getFileName() + ".bak." + Instant.now().getEpochSecond());
             Files.copy(CONFIG_PATH, backup, StandardCopyOption.REPLACE_EXISTING);
         } catch (IOException e) {
+            CreateSubmarine.LOGGER.warn("Couldn't back up the broken {}", CONFIG_PATH, e);
         }
     }
 
@@ -184,7 +186,7 @@ public class HullStrengthConfig {
             hardness = state.getDestroySpeed(null, null);
             resistance = state.getBlock().getExplosionResistance();
             sound = state.getSoundType();
-        } catch (Throwable ignored) {
+        } catch (RuntimeException e) {
         }
         double strength = Math.max(0.0, hardness) + Math.log1p(Math.max(0.0, resistance)) * 2.0;
 
@@ -236,7 +238,7 @@ public class HullStrengthConfig {
             hardness = state.getDestroySpeed(null, null);
             resistance = state.getBlock().getExplosionResistance();
             sound = state.getSoundType();
-        } catch (Throwable ignored) {
+        } catch (RuntimeException e) {
         }
         double score = hardness * 11.2 + resistance * 5.6;
         if (sound == SoundType.METAL)
@@ -289,6 +291,7 @@ public class HullStrengthConfig {
         try {
             Files.writeString(path, GSON.toJson(root));
         } catch (IOException e) {
+            CreateSubmarine.LOGGER.warn("Couldn't write {}", path, e);
         }
     }
 

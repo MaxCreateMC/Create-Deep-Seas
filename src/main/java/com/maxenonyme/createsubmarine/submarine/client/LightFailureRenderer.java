@@ -24,9 +24,7 @@ import org.joml.Vector3d;
 import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
 
-public final class LightFailureRenderer {
-    private LightFailureRenderer() {
-    }
+public class LightFailureRenderer {
 
     public static void onRenderLevel(RenderLevelStageEvent event) {
         if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_TRANSLUCENT_BLOCKS)
@@ -54,16 +52,16 @@ public final class LightFailureRenderer {
             BlockState state = mc.level.getBlockState(pos);
             if (state.isAir())
                 continue;
-            SubLevel sub = Sable.HELPER.getContaining(mc.level, pos);
+            SubLevel ship = Sable.HELPER.getContaining(mc.level, pos);
             Vector3d corner = new Vector3d(pos.getX(), pos.getY(), pos.getZ());
             Quaternionf rotation = new Quaternionf();
             int light = dark ? ambient(mc, pos) : LevelRenderer.getLightColor(mc.level, pos);
-            if (sub instanceof ClientSubLevel csl) {
-                Pose3dc pose = csl.renderPose(partialTick);
+            if (ship instanceof ClientSubLevel subLevel) {
+                Pose3dc pose = subLevel.renderPose(partialTick);
                 pose.transformPosition(corner);
                 rotation.set((float) pose.orientation().x(), (float) pose.orientation().y(),
                         (float) pose.orientation().z(), (float) pose.orientation().w());
-                light = csl.scaleLightColor(light);
+                light = subLevel.scaleLightColor(light);
             }
             poseStack.pushPose();
             poseStack.translate(corner.x - cam.x, corner.y - cam.y, corner.z - cam.z);
@@ -93,8 +91,8 @@ public final class LightFailureRenderer {
     private static int ambient(Minecraft mc, BlockPos pos) {
         int block = 0;
         int sky = 0;
-        for (Direction d : Direction.values()) {
-            BlockPos next = pos.relative(d);
+        for (Direction dir : Direction.values()) {
+            BlockPos next = pos.relative(dir);
             block = Math.max(block, mc.level.getBrightness(LightLayer.BLOCK, next));
             sky = Math.max(sky, mc.level.getBrightness(LightLayer.SKY, next));
         }

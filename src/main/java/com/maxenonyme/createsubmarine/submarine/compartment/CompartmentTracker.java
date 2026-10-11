@@ -66,7 +66,7 @@ public class CompartmentTracker {
     private static final Map<UUID, Set<BlockPos>> SUNKEN = new ConcurrentHashMap<>();
     private static volatile AABB globalBounds = null;
 
-    private static final class SealedEntry {
+    private static class SealedEntry {
         final UUID id;
         final SubLevelAccess access;
         final ResourceKey<Level> dimension;
@@ -113,7 +113,7 @@ public class CompartmentTracker {
         }
     }
 
-    private static final class Frame {
+    private static class Frame {
         final double px, py, pz, qx, qy, qz, qw, rx, ry, rz;
         final double ox, oy, oz, ax, ay, az, bx, by, bz, dx, dy, dz;
         final double x0, y0, z0, x1, y1, z1;
@@ -132,13 +132,13 @@ public class CompartmentTracker {
             rx = r.x();
             ry = r.y();
             rz = r.z();
-            Vector3d o = pose.transformPositionInverse(new Vector3d());
-            Vector3d a = pose.transformPositionInverse(new Vector3d(1.0, 0.0, 0.0)).sub(o);
-            Vector3d b = pose.transformPositionInverse(new Vector3d(0.0, 1.0, 0.0)).sub(o);
-            Vector3d d = pose.transformPositionInverse(new Vector3d(0.0, 0.0, 1.0)).sub(o);
-            ox = o.x;
-            oy = o.y;
-            oz = o.z;
+            Vector3d point = pose.transformPositionInverse(new Vector3d());
+            Vector3d a = pose.transformPositionInverse(new Vector3d(1.0, 0.0, 0.0)).sub(point);
+            Vector3d b = pose.transformPositionInverse(new Vector3d(0.0, 1.0, 0.0)).sub(point);
+            Vector3d d = pose.transformPositionInverse(new Vector3d(0.0, 0.0, 1.0)).sub(point);
+            ox = point.x;
+            oy = point.y;
+            oz = point.z;
             ax = a.x;
             ay = a.y;
             az = a.z;
@@ -554,9 +554,9 @@ public class CompartmentTracker {
     }
 
     private static boolean outsideIsWater(SubLevel sub, Level level, BlockPos plotPos) {
-        Vector3d w = new Vector3d(plotPos.getX() + 0.5, plotPos.getY() + 0.5, plotPos.getZ() + 0.5);
-        sub.logicalPose().transformPosition(w);
-        return realFluidState(level, BlockPos.containing(w.x, w.y, w.z)).is(FluidTags.WATER);
+        Vector3d vec = new Vector3d(plotPos.getX() + 0.5, plotPos.getY() + 0.5, plotPos.getZ() + 0.5);
+        sub.logicalPose().transformPosition(vec);
+        return realFluidState(level, BlockPos.containing(vec.x, vec.y, vec.z)).is(FluidTags.WATER);
     }
 
     private static boolean holdsWater(Level level, CompartmentDetector.Component comp) {
@@ -613,7 +613,7 @@ public class CompartmentTracker {
                 return true;
             }
             return false;
-        } catch (Throwable t) {
+        } catch (RuntimeException e) {
             scans.remove(id);
             LAST_UPDATE_TICK.put(id, gameTick);
             return false;
@@ -697,8 +697,8 @@ public class CompartmentTracker {
             if (blocks == null || blocks.isEmpty())
                 continue;
 
-            Pose3dc pose = (level.isClientSide && access instanceof ClientSubLevel csl)
-                    ? csl.renderPose()
+            Pose3dc pose = (level.isClientSide && access instanceof ClientSubLevel subLevel)
+                    ? subLevel.renderPose()
                     : access.logicalPose();
             Vector3d local = new Vector3d(exactPos.x, exactPos.y, exactPos.z);
             pose.transformPositionInverse(local);

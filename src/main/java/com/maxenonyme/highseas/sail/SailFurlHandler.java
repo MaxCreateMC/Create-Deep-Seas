@@ -7,9 +7,7 @@ import net.neoforged.neoforge.network.PacketDistributor;
 
 import java.util.UUID;
 
-public final class SailFurlHandler {
-    private SailFurlHandler() {
-    }
+public class SailFurlHandler {
 
     public static void onServerStarted(ServerStartedEvent event) {
         FurlState.clearAll();

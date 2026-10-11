@@ -22,9 +22,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
 
-public final class SailRigging {
-    private SailRigging() {
-    }
+public class SailRigging {
 
     public static void onRightClick(PlayerInteractEvent.RightClickBlock event) {
         ItemStack stack = event.getItemStack();
@@ -95,12 +93,12 @@ public final class SailRigging {
     private static void orient(ServerLevel level, RopeStrandHolderBehavior self, RopeStrandHolderBehavior other) {
         if (!(self.blockEntity instanceof HalyardBlockEntity bridle))
             return;
-        BlockPos p = bridle.getBlockPos();
-        BlockState state = level.getBlockState(p);
+        BlockPos blockPos = bridle.getBlockPos();
+        BlockState state = level.getBlockState(blockPos);
         if (!state.hasProperty(BoatSailBlock.AXIS))
             return;
         Direction plus = Direction.get(Direction.AxisDirection.POSITIVE, state.getValue(BoatSailBlock.AXIS));
-        Vec3 center = Vec3.atCenterOf(p);
+        Vec3 center = Vec3.atCenterOf(blockPos);
         Vec3 from = Sable.HELPER.projectOutOfSubLevel(level, center);
         Vec3 tip = Sable.HELPER.projectOutOfSubLevel(level, center.add(plus.getStepX(), plus.getStepY(), plus.getStepZ()));
         Vec3 to = Sable.HELPER.projectOutOfSubLevel(level, Vec3.atCenterOf(other.blockEntity.getBlockPos()));

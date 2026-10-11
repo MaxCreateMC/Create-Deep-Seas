@@ -51,8 +51,8 @@ public class PumpControllerBlockEntity extends PumpBlockEntity {
         float wantedRate = 1f;
         float wantedBoost = 1f;
         BlockPos found = null;
-        SubLevelAccess sub = SableCompanion.INSTANCE.getContaining(level, worldPosition);
-        CommandSubBlockEntity brain = sub == null ? null : CommandSubBlockEntity.onSub(sub.getUniqueId());
+        SubLevelAccess subLevel = SableCompanion.INSTANCE.getContaining(level, worldPosition);
+        CommandSubBlockEntity brain = subLevel == null ? null : CommandSubBlockEntity.onSub(subLevel.getUniqueId());
         if (brain != null) {
             found = brain.getBlockPos();
             brain.reportPump(worldPosition, level.getGameTime());
@@ -120,8 +120,8 @@ public class PumpControllerBlockEntity extends PumpBlockEntity {
                 FluidTransportBehaviour pipe = FluidPropagator.getPipe(level, pos);
                 if (pipe == null)
                     continue;
-                for (Direction d : FluidPropagator.getPipeConnections(level.getBlockState(pos), pipe)) {
-                    BlockPos neighbour = pos.relative(d);
+                for (Direction dir : FluidPropagator.getPipeConnections(level.getBlockState(pos), pipe)) {
+                    BlockPos neighbour = pos.relative(dir);
                     if (seen.add(neighbour))
                         next.add(neighbour);
                 }

@@ -34,18 +34,16 @@ import static com.maxenonyme.createsubmarine.submarine.client.SonarView.DOWN;
 import static com.maxenonyme.createsubmarine.submarine.client.SonarView.RANGE;
 import static com.maxenonyme.createsubmarine.submarine.client.SonarView.UP;
 
-final class SonarReadings {
-    private SonarReadings() {
-    }
+class SonarReadings {
 
-    static void locateContacts(Minecraft mc, ClientSubLevel sub, Vector3d sonar, Vector3d center, Matrix4f toScreen,
+    static void locateContacts(Minecraft mc, ClientSubLevel subLevel, Vector3d sonar, Vector3d center, Matrix4f toScreen,
             SonarScan scan, float front) {
         scan.contacts.clear();
         Plotter plotter = new Plotter(scan, sonar, center, toScreen, front, new Vector4f());
-        Level level = sub.getLevel();
-        plotMines(plotter, level, sub);
+        Level level = subLevel.getLevel();
+        plotMines(plotter, level, subLevel);
         plotCreatures(plotter, level, mc.player, sonar);
-        plotVessels(plotter, sub, sonar);
+        plotVessels(plotter, subLevel, sonar);
     }
 
     private static void plotMines(Plotter plotter, Level level, ClientSubLevel own) {
@@ -83,12 +81,12 @@ final class SonarReadings {
         SubLevelContainer container = SubLevelContainer.getContainer(own.getLevel());
         if (container == null)
             return found;
+
         for (SubLevel other : container.getAllSubLevels()) {
-            if (other == own || !(other instanceof ClientSubLevel csl) || csl.isRemoved() || csl.getPlot() == null)
+            if (other == own || !(other instanceof ClientSubLevel vessel) || vessel.isRemoved() || vessel.getPlot() == null)
                 continue;
-            BoundingBox3dc bb = csl.boundingBox();
-            if (bb != null && overlapsZone(bb, sonar))
-                found.add(csl);
+            if (overlapsZone(vessel.boundingBox(), sonar))
+                found.add(vessel);
         }
         return found;
     }
@@ -127,9 +125,9 @@ final class SonarReadings {
         }
     }
 
-    static float floorClearance(ClientSubLevel sub, Pose3dc pose) {
-        BoundingBox3ic box = sub.getPlot().getBoundingBox();
-        List<Vector3d> probes = new ArrayList<>(5);
+    static float floorClearance(ClientSubLevel subLevel, Pose3dc pose) {
+        BoundingBox3ic box = subLevel.getPlot().getBoundingBox();
+        List<Vector3d> probes = new ArrayList<>();
         double keel = Double.MAX_VALUE;
         Vector3d corner = new Vector3d();
         for (int i = 0; i < 8; i++) {
@@ -149,7 +147,7 @@ final class SonarReadings {
 
         float best = Float.NaN;
         for (Vector3d probe : probes) {
-            float clearance = clearanceBelow(sub.getLevel(), Mth.floor(probe.x), Mth.floor(probe.z), keel);
+            float clearance = clearanceBelow(subLevel.getLevel(), Mth.floor(probe.x), Mth.floor(probe.z), keel);
             if (!Float.isNaN(clearance) && (Float.isNaN(best) || clearance < best))
                 best = clearance;
         }
@@ -160,13 +158,13 @@ final class SonarReadings {
         ChunkAccess chunk = level.getChunk(x >> 4, z >> 4, ChunkStatus.FULL, false);
         if (chunk == null)
             return Float.NaN;
+
         int top = (int) Math.floor(keel);
         int bottom = Math.max(level.getMinBuildHeight(), top - SonarView.FLOOR_REACH);
-        BlockPos.MutableBlockPos p = new BlockPos.MutableBlockPos();
-        for (int y = top; y >= bottom; y--) {
-            if (CompartmentTracker.realBlockState(chunk, p.set(x, y, z)).blocksMotion())
+        BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
+        for (int y = top; y >= bottom; y--)
+            if (CompartmentTracker.realBlockState(chunk, pos.set(x, y, z)).blocksMotion())
                 return (float) Math.max(0, keel - (y + 1));
-        }
         return Float.NaN;
     }
 }

@@ -83,14 +83,17 @@ public abstract class SodiumShaderLoaderMixin {
             boolean skip;
             if (inBlockComment) {
                 skip = true;
-                if (trimmed.contains("*/")) inBlockComment = false;
+                if (trimmed.contains("*/"))
+                    inBlockComment = false;
             } else if (trimmed.startsWith("/*")) {
                 skip = true;
-                if (!trimmed.contains("*/")) inBlockComment = true;
+                if (!trimmed.contains("*/"))
+                    inBlockComment = true;
             } else {
                 skip = trimmed.isEmpty() || trimmed.startsWith("//") || SAFE_DIRECTIVE.matcher(trimmed).find();
             }
-            if (!skip) break;
+            if (!skip)
+                break;
             pos += line.length() + 1;
         }
         return Math.min(pos, source.length());

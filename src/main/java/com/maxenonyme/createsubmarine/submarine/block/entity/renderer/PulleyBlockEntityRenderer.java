@@ -75,16 +75,16 @@ public class PulleyBlockEntityRenderer implements BlockEntityRenderer<PulleyBloc
         if (!state.hasProperty(PulleyBlock.CONNECTED) || !state.getValue(PulleyBlock.CONNECTED))
             return;
 
-        SubLevelAccess sub = SableCompanion.INSTANCE.getContaining(be);
-        if (sub == null || last == 0L)
+        SubLevelAccess subLevel = SableCompanion.INSTANCE.getContaining(be);
+        if (subLevel == null || last == 0L)
             return;
 
-        double dx = sub.logicalPose().position().x() - sub.lastPose().position().x();
-        double dy = sub.logicalPose().position().y() - sub.lastPose().position().y();
-        double dz = sub.logicalPose().position().z() - sub.lastPose().position().z();
+        double dx = subLevel.logicalPose().position().x() - subLevel.lastPose().position().x();
+        double dy = subLevel.logicalPose().position().y() - subLevel.lastPose().position().y();
+        double dz = subLevel.logicalPose().position().z() - subLevel.lastPose().position().z();
 
         Vector3d localUp = new Vector3d(0, 1, 0);
-        sub.logicalPose().orientation().transform(localUp);
+        subLevel.logicalPose().orientation().transform(localUp);
         double signedSlide = dx * localUp.x + dy * localUp.y + dz * localUp.z;
 
         double frameSeconds = Math.min((now - last) / 1_000_000_000.0, MAX_FRAME_SECONDS);

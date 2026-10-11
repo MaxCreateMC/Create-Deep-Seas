@@ -1,7 +1,14 @@
 package com.maxenonyme.AbyssDimension;
 
+import com.maxenonyme.AbyssDimension.client.MagmaFlowSpriteSource;
 import com.mojang.logging.LogUtils;
 import com.maxenonyme.AbyssDimension.entities.EntityRegistry;
+import com.maxenonyme.AbyssDimension.experimental.worldgen.ExperimentalWorldgen;
+import com.maxenonyme.AbyssDimension.network.StruggleSharkPayload;
+import com.maxenonyme.AbyssDimension.system.GeothermalBreathing;
+import com.maxenonyme.AbyssDimension.system.LianaLODOptimizer;
+import com.maxenonyme.AbyssDimension.system.SubmarineLianaCommand;
+import com.maxenonyme.createsubmarine.CreateSubmarine;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
@@ -17,7 +24,10 @@ import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.loading.FMLEnvironment;
 import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
+import net.neoforged.neoforge.network.registration.PayloadRegistrar;
 import net.neoforged.neoforge.registries.DeferredRegister;
 import org.slf4j.Logger;
 import java.util.function.Supplier;
@@ -58,14 +68,14 @@ public class CreateAbyss {
                         output.accept(GeothermalRegistry.BURNING_WOOD_ITEM.get());
                         output.accept(MUSIC_DISC_SEAFOAM.get());
                         output.accept(MUSIC_DISC_SNELLS_WINDOW.get());
-                        if (com.maxenonyme.createsubmarine.CreateSubmarine.SUBMARINE_STAFF_ENABLED)
-                            output.accept(com.maxenonyme.createsubmarine.CreateSubmarine.SUBMARINE_STAFF.get());
+                        if (CreateSubmarine.SUBMARINE_STAFF_ENABLED)
+                            output.accept(CreateSubmarine.SUBMARINE_STAFF.get());
                     })
                     .build());
 
     public CreateAbyss(IEventBus modEventBus, ModContainer modContainer) {
-        if (net.neoforged.fml.loading.FMLEnvironment.dist.isClient()) {
-            modEventBus.addListener(com.maxenonyme.AbyssDimension.client.MagmaFlowSpriteSource::register);
+        if (FMLEnvironment.dist.isClient()) {
+            modEventBus.addListener(MagmaFlowSpriteSource::register);
         }
         modEventBus.addListener(this::registerPayloads);
         if (!enabled()) {
@@ -75,17 +85,17 @@ public class CreateAbyss {
         LianaRegistry.init();
         GeothermalRegistry.init();
         EntityRegistry.init(modEventBus);
-        com.maxenonyme.AbyssDimension.experimental.worldgen.ExperimentalWorldgen.init(modEventBus);
+        ExperimentalWorldgen.init(modEventBus);
         BLOCKS.register(modEventBus);
         ITEMS.register(modEventBus);
         BLOCK_ENTITIES.register(modEventBus);
         CREATIVE_MODE_TABS.register(modEventBus);
-        NeoForge.EVENT_BUS.addListener(com.maxenonyme.AbyssDimension.system.LianaLODOptimizer::onServerTick);
-        NeoForge.EVENT_BUS.addListener(com.maxenonyme.AbyssDimension.system.GeothermalBreathing::onPlayerTick);
-        NeoForge.EVENT_BUS.addListener(com.maxenonyme.AbyssDimension.system.SubmarineLianaCommand::onServerTick);
-        NeoForge.EVENT_BUS.addListener(com.maxenonyme.AbyssDimension.system.SubmarineLianaCommand::register);
+        NeoForge.EVENT_BUS.addListener(LianaLODOptimizer::onServerTick);
+        NeoForge.EVENT_BUS.addListener(GeothermalBreathing::onPlayerTick);
+        NeoForge.EVENT_BUS.addListener(SubmarineLianaCommand::onServerTick);
+        NeoForge.EVENT_BUS.addListener(SubmarineLianaCommand::register);
 
-        if (net.neoforged.fml.loading.FMLEnvironment.dist.isClient()) {
+        if (FMLEnvironment.dist.isClient()) {
             CreateAbyssClient.init(modEventBus);
         }
     }
@@ -98,14 +108,14 @@ public class CreateAbyss {
     }
 
     public static boolean enabled() {
-        return !DEV_ONLY || !net.neoforged.fml.loading.FMLEnvironment.production;
+        return !DEV_ONLY || !FMLEnvironment.production;
     }
 
-    private void registerPayloads(final net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent event) {
-        final net.neoforged.neoforge.network.registration.PayloadRegistrar registrar = event.registrar(MOD_ID).optional();
+    private void registerPayloads(final RegisterPayloadHandlersEvent event) {
+        final PayloadRegistrar registrar = event.registrar(MOD_ID).optional();
         registrar.playToServer(
-                com.maxenonyme.AbyssDimension.network.StruggleSharkPayload.TYPE,
-                com.maxenonyme.AbyssDimension.network.StruggleSharkPayload.CODEC,
-                com.maxenonyme.AbyssDimension.network.StruggleSharkPayload::handle);
+                StruggleSharkPayload.TYPE,
+                StruggleSharkPayload.CODEC,
+                StruggleSharkPayload::handle);
     }
 }

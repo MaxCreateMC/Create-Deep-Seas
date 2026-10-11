@@ -5,6 +5,7 @@ import net.minecraft.network.chat.Component;
 import net.neoforged.neoforge.common.ModConfigSpec;
 import net.neoforged.neoforge.common.TranslatableEnum;
 import net.neoforged.fml.loading.FMLEnvironment;
+import java.util.List;
 
 public class SubmarineConfig {
         public static final ModConfigSpec COMMON_SPEC;
@@ -41,7 +42,7 @@ public class SubmarineConfig {
         public static final ModConfigSpec.IntValue SHAPE_MAX_BLOCKS;
         public static final ModConfigSpec.DoubleValue REALISTIC_WALL_THICKNESS;
         public static final ModConfigSpec.IntValue REALISTIC_MAX_BLOCKS;
-        public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> LIQUID_DENSITIES;
+        public static final ModConfigSpec.ConfigValue<List<? extends String>> LIQUID_DENSITIES;
         public static final ModConfigSpec.BooleanValue LAVA_BURNS_HULL;
         public static final ModConfigSpec.BooleanValue EXPERIMENTAL_ABYSS_WORLDGEN;
 
@@ -151,7 +152,7 @@ public class SubmarineConfig {
                                 .comment("Density of each liquid compared to water, as \"fluid=density\" or \"#tag=density\".",
                                                 "A denser liquid presses harder: at the same depth, lava (3.0) cracks a hull three times sooner than water.",
                                                 "Liquids not listed count as water (1.0).")
-                                .defineListAllowEmpty("liquidDensities", java.util.List.of("#minecraft:lava=3.0"),
+                                .defineListAllowEmpty("liquidDensities", List.of("#minecraft:lava=3.0"),
                                                 () -> "#minecraft:lava=3.0", o -> o instanceof String str && str.contains("="));
                 LAVA_BURNS_HULL = server
                                 .comment("Flammable hull blocks (wood, wool...) touching lava catch fire.")

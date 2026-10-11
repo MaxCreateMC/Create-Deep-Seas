@@ -105,15 +105,15 @@ public class SonarBlockEntity extends BlockEntity {
     }
 
     public static SonarBlockEntity onSameSub(BlockEntity console) {
-        SubLevel sub = Sable.HELPER.getContaining(console);
-        if (sub == null)
+        SubLevel subLevel = Sable.HELPER.getContaining(console);
+        if (subLevel == null)
             return null;
         SonarBlockEntity best = null;
         double bestDist = Double.MAX_VALUE;
         Set<SonarBlockEntity> loaded = console.getLevel() != null && console.getLevel().isClientSide ? LOADED_ON_CLIENT
                 : LOADED_ON_SERVER;
         for (SonarBlockEntity sonar : loaded) {
-            if (sonar.isRemoved() || sonar.getLevel() != console.getLevel() || Sable.HELPER.getContaining(sonar) != sub)
+            if (sonar.isRemoved() || sonar.getLevel() != console.getLevel() || Sable.HELPER.getContaining(sonar) != subLevel)
                 continue;
             double d = sonar.getBlockPos().distSqr(console.getBlockPos());
             if (d < bestDist) {

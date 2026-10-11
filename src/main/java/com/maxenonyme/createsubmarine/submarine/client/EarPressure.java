@@ -13,13 +13,10 @@ import org.lwjgl.openal.EXTEfx;
 
 import java.util.Map;
 
-public final class EarPressure {
+public class EarPressure {
     private static volatile int filter = -1;
     private static volatile boolean unsupported;
     private static boolean engaged;
-
-    private EarPressure() {
-    }
 
     public static void apply(Minecraft mc, float muffle) {
         if (unsupported)

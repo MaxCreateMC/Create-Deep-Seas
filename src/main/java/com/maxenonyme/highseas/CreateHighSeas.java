@@ -79,6 +79,7 @@ import com.maxenonyme.highseas.oar.OarAnimSyncPayload;
 import com.maxenonyme.highseas.oar.OarClientHandler;
 import com.maxenonyme.highseas.oar.OarPropulsionSystem;
 import com.maxenonyme.highseas.oar.OarRowPayload;
+import com.maxenonyme.highseas.sail.ReefSyncPayload;
 import com.maxenonyme.highseas.sail.SailCollisionSystem;
 import com.maxenonyme.highseas.sail.SailFurlHandler;
 import com.simibubi.create.content.decoration.copycat.CopycatBlockEntity;
@@ -298,9 +299,9 @@ public class CreateHighSeas {
     private void registerPayloads(RegisterPayloadHandlersEvent event) {
         PayloadRegistrar registrar = event.registrar(MOD_ID);
         registrar.playToClient(
-                com.maxenonyme.highseas.sail.ReefSyncPayload.TYPE,
-                com.maxenonyme.highseas.sail.ReefSyncPayload.CODEC,
-                com.maxenonyme.highseas.sail.ReefSyncPayload::handle);
+                ReefSyncPayload.TYPE,
+                ReefSyncPayload.CODEC,
+                ReefSyncPayload::handle);
         registrar.playToServer(
                 OarRowPayload.TYPE,
                 OarRowPayload.CODEC,
@@ -366,7 +367,8 @@ public class CreateHighSeas {
             itemToSection.put(ResourceLocation.fromNamespaceAndPath(MOD_ID, "white_sail"), highSeasSection);
             tabItems.add(MUSIC_DISC_HIDDEN_BETWEEN_FLUENT_WATERS::get);
             itemToSection.put(ResourceLocation.fromNamespaceAndPath(MOD_ID, "music_disc_hidden_between_fluent_waters"), highSeasSection);
-        } catch (Exception ignored) {
+        } catch (ReflectiveOperationException | ClassCastException e) {
+            LOGGER.warn("Couldn't add our items to the Simulated creative section", e);
         }
     }
 }

@@ -6,9 +6,7 @@ import org.lwjgl.opengl.GL12;
 import org.lwjgl.opengl.GL15;
 import org.lwjgl.opengl.GL21;
 
-public final class VeilUploadGuard {
-    private VeilUploadGuard() {
-    }
+public class VeilUploadGuard {
 
     public static void onRenderStage(RenderLevelStageEvent event) {
         if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_LEVEL)

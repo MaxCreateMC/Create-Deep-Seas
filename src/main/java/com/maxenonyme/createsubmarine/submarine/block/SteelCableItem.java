@@ -92,10 +92,12 @@ public class SteelCableItem extends RopeItem {
         }
 
         RopeStrandHolderBehavior ropeHolderA = getRopeHolder(level, posA);
-        if (ropeHolderA == null) return false;
+        if (ropeHolderA == null)
+            return false;
 
         RopeStrandHolderBehavior ropeHolderB = getRopeHolder(level, posB);
-        if (ropeHolderB == null) return false;
+        if (ropeHolderB == null)
+            return false;
 
         if (ropeHolderB.blockEntity instanceof RopeWinchBlockEntity && !(ropeHolderA.blockEntity instanceof RopeWinchBlockEntity)) {
             RopeStrandHolderBehavior temp = ropeHolderA;

@@ -22,16 +22,13 @@ import org.joml.Vector3d;
 import java.util.Map;
 import java.util.UUID;
 
-public final class HullStressFx {
+public class HullStressFx {
     private static final float[] JET_SPEED = { 0f, 0.18f, 0.32f, 0.5f, 0.75f };
     private static final int[] JET_COUNT = { 0, 1, 2, 4, 7 };
     private static final float[] POP_CHANCE = { 0f, 0.004f, 0.01f, 0.025f, 0.08f };
     private static final double SPREAD = 0.18;
 
     private static FluidParticleData water;
-
-    private HullStressFx() {
-    }
 
     public static void onServerTick(ServerTickEvent.Post event) {
         Map<UUID, Map<BlockPos, Integer>> all = SubmarinePressureSystem.cracks();
@@ -68,11 +65,11 @@ public final class HullStressFx {
     private static Direction inward(UUID id, Level plot, BlockPos pos) {
         if (plot.getBlockState(pos).isAir())
             return null;
-        for (Direction d : Direction.values()) {
-            BlockPos next = pos.relative(d);
+        for (Direction direction : Direction.values()) {
+            BlockPos next = pos.relative(direction);
             BlockState state = plot.getBlockState(next);
             if ((state.isAir() || CompartmentDetector.isPermeable(state)) && CompartmentTracker.isWithinShip(id, next))
-                return d;
+                return direction;
         }
         return null;
     }

@@ -71,7 +71,8 @@ public class AbyssalCuttlefishEntity extends WaterAnimal {
     }
 
     private void tickServer() {
-        if (biteCooldown > 0) biteCooldown--;
+        if (biteCooldown > 0)
+            biteCooldown--;
 
         if (biteCooldown == 0) {
             List<Mob> nearbyMobs = this.level().getEntitiesOfClass(Mob.class, this.getBoundingBox().inflate(5.0),
@@ -160,10 +161,14 @@ public class AbyssalCuttlefishEntity extends WaterAnimal {
     }
 
     private AnimationState getActiveAnimation() {
-        if (biteAnimationState.isStarted()) return biteAnimationState;
-        if (jetUseAnimationState.isStarted()) return jetUseAnimationState;
-        if (swimAnimationState.isStarted()) return swimAnimationState;
-        if (idleAnimationState.isStarted()) return idleAnimationState;
+        if (biteAnimationState.isStarted())
+            return biteAnimationState;
+        if (jetUseAnimationState.isStarted())
+            return jetUseAnimationState;
+        if (swimAnimationState.isStarted())
+            return swimAnimationState;
+        if (idleAnimationState.isStarted())
+            return idleAnimationState;
         return null;
     }
 

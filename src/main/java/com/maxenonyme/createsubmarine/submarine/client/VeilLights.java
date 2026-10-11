@@ -13,15 +13,12 @@ import net.neoforged.neoforge.client.event.ClientTickEvent;
 import java.util.HashSet;
 import java.util.Set;
 
-public final class VeilLights {
+public class VeilLights {
     private static final ResourceLocation BUFFERS = ResourceLocation.fromNamespaceAndPath(CreateSubmarine.MOD_ID, "lights");
     private static final int LINGER_TICKS = 200;
     private static final Set<LightRenderHandle<?>> HELD = new HashSet<>();
     private static boolean pinned;
     private static int idle;
-
-    private VeilLights() {
-    }
 
     public static boolean usable() {
         if (Veil.IRIS)

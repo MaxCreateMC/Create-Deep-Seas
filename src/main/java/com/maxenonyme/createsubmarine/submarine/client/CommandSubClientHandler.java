@@ -25,9 +25,7 @@ import org.joml.Matrix4f;
 import org.joml.Vector3f;
 import org.lwjgl.glfw.GLFW;
 
-public final class CommandSubClientHandler {
-    private CommandSubClientHandler() {
-    }
+public class CommandSubClientHandler {
 
     public static final int FIELD = 0;
     public static final int SPEED_FIRST = 1;
@@ -222,16 +220,16 @@ public final class CommandSubClientHandler {
             BlockPos pos = be.getBlockPos();
             Vec3 from = eye;
             Vec3 dir = look;
-            SubLevel sub = Sable.HELPER.getContaining(be);
-            if (sub instanceof ClientSubLevel csl) {
-                from = csl.renderPose().transformPositionInverse(eye);
-                dir = csl.renderPose().transformNormalInverse(look);
+            SubLevel ship = Sable.HELPER.getContaining(be);
+            if (ship instanceof ClientSubLevel subLevel) {
+                from = subLevel.renderPose().transformPositionInverse(eye);
+                dir = subLevel.renderPose().transformNormalInverse(look);
             }
             if (from.distanceToSqr(Vec3.atCenterOf(pos)) > 64)
                 continue;
 
             double limit = reach;
-            if (hitPos != null && !hitPos.equals(pos) && sub == null)
+            if (hitPos != null && !hitPos.equals(pos) && ship == null)
                 limit = Math.min(limit, hit.getLocation().distanceTo(eye) + 1.0);
 
             Matrix4f toCanvas = CommandSubRenderer.canvasToBlock(be.getBlockState()).invert();

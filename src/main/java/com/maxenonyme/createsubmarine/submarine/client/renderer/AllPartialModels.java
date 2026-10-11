@@ -23,6 +23,11 @@ public class AllPartialModels {
     public static final PartialModel SUBMARINE_PROPELLER_REVERSED = PartialModel.of(ResourceLocation.fromNamespaceAndPath(CreateSubmarine.MOD_ID, "block/submarine_propeller/propeller_reversed"));
     public static final PartialModel SUBMARINE_PROPELLER_CONTRA = PartialModel.of(ResourceLocation.fromNamespaceAndPath(CreateSubmarine.MOD_ID, "block/submarine_propeller/propeller_contra"));
     public static final PartialModel SUBMARINE_PROPELLER_REVERSED_CONTRA = PartialModel.of(ResourceLocation.fromNamespaceAndPath(CreateSubmarine.MOD_ID, "block/submarine_propeller/propeller_reversed_contra"));
+    public static final PartialModel SUBMARINE_PROPELLER_2X2_BASE = PartialModel.of(ResourceLocation.fromNamespaceAndPath(CreateSubmarine.MOD_ID, "block/submarine_propeller/2x2_base"));
+    public static final PartialModel SUBMARINE_PROPELLER_2X2_BLADES = PartialModel.of(ResourceLocation.fromNamespaceAndPath(CreateSubmarine.MOD_ID, "block/submarine_propeller/2x2_propeller"));
+    public static final PartialModel SUBMARINE_PROPELLER_3X3_BASE = PartialModel.of(ResourceLocation.fromNamespaceAndPath(CreateSubmarine.MOD_ID, "block/submarine_propeller/3x3_base"));
+    public static final PartialModel SUBMARINE_PROPELLER_3X3_GEAR = PartialModel.of(ResourceLocation.fromNamespaceAndPath(CreateSubmarine.MOD_ID, "block/submarine_propeller/3x3_gear"));
+    public static final PartialModel SUBMARINE_PROPELLER_3X3_BLADES = PartialModel.of(ResourceLocation.fromNamespaceAndPath(CreateSubmarine.MOD_ID, "block/submarine_propeller/3x3_propeller"));
     public static final PartialModel SUBMARINE_STAFF_BASE_MODEL = PartialModel.of(ResourceLocation.fromNamespaceAndPath(CreateSubmarine.MOD_ID, "item/submarine_staff_base_model"));
     public static final PartialModel SUBMARINE_STAFF_TOPCORE_1 = PartialModel.of(ResourceLocation.fromNamespaceAndPath(CreateSubmarine.MOD_ID, "item/submarine_staff_topcore_1"));
     public static final PartialModel SUBMARINE_STAFF_TOPCORE_2 = PartialModel.of(ResourceLocation.fromNamespaceAndPath(CreateSubmarine.MOD_ID, "item/submarine_staff_topcore_2"));

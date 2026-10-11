@@ -7,9 +7,7 @@ import net.minecraft.world.entity.player.Player;
 import net.neoforged.neoforge.client.event.RenderPlayerEvent;
 import org.joml.Vector3f;
 
-public final class BuoyRenderTilt {
-    private BuoyRenderTilt() {
-    }
+public class BuoyRenderTilt {
 
     private static final float RECLINE = 40.0f;
     private static final double PIVOT = 0.7;

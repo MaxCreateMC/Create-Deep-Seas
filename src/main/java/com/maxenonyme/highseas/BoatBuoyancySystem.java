@@ -28,9 +28,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-public final class BoatBuoyancySystem {
-    private BoatBuoyancySystem() {
-    }
+public class BoatBuoyancySystem {
 
     private static final double LIFT_PER_CELL = 1.5;
     private static final double DRAG_FORWARD_LINEAR = 0.25;
@@ -98,10 +96,10 @@ public final class BoatBuoyancySystem {
         Set<BlockPos> flooded = FloodSystem.soakedCells(id);
         int count = 0;
         int minX = Integer.MAX_VALUE, maxX = Integer.MIN_VALUE, minZ = Integer.MAX_VALUE, maxZ = Integer.MIN_VALUE;
-        for (CompartmentDetector.Component c : comps) {
-            if (!c.sealed() || sunken.contains(c.anchor()))
+        for (CompartmentDetector.Component compartment : comps) {
+            if (!compartment.sealed() || sunken.contains(compartment.anchor()))
                 continue;
-            for (BlockPos cell : c.internal()) {
+            for (BlockPos cell : compartment.internal()) {
                 minX = Math.min(minX, cell.getX());
                 maxX = Math.max(maxX, cell.getX());
                 minZ = Math.min(minZ, cell.getZ());
@@ -116,10 +114,10 @@ public final class BoatBuoyancySystem {
 
         double[] cells = new double[count * 3];
         int k = 0;
-        for (CompartmentDetector.Component c : comps) {
-            if (!c.sealed() || sunken.contains(c.anchor()))
+        for (CompartmentDetector.Component compartment : comps) {
+            if (!compartment.sealed() || sunken.contains(compartment.anchor()))
                 continue;
-            for (BlockPos cell : c.internal()) {
+            for (BlockPos cell : compartment.internal()) {
                 if (flooded.contains(cell))
                     continue;
                 cells[k++] = cell.getX() + 0.5;
@@ -132,8 +130,8 @@ public final class BoatBuoyancySystem {
         if (maxX - minX != maxZ - minZ) {
             forwardIsX = maxX - minX > maxZ - minZ;
         } else if (sub.getPlot() != null) {
-            BoundingBox3ic b = sub.getPlot().getBoundingBox();
-            forwardIsX = (b.maxX() - b.minX()) >= (b.maxZ() - b.minZ());
+            BoundingBox3ic bounds = sub.getPlot().getBoundingBox();
+            forwardIsX = (bounds.maxX() - bounds.minX()) >= (bounds.maxZ() - bounds.minZ());
         }
         double length = Math.max(maxX - minX, maxZ - minZ) + 3;
         return new Hull(cells, k / 3, surface, mass, forwardIsX, length, comps, water);
@@ -144,10 +142,10 @@ public final class BoatBuoyancySystem {
         int cz = Mth.floor(z);
         int top = Mth.floor(y + SURFACE_REACH);
         int bottom = Mth.floor(y - SURFACE_REACH);
-        BlockPos.MutableBlockPos p = new BlockPos.MutableBlockPos();
+        BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
         for (int cy = top; cy >= bottom; cy--) {
-            p.set(cx, cy, cz);
-            if (CompartmentTracker.realFluidState(level, p).is(FluidTags.WATER)) {
+            pos.set(cx, cy, cz);
+            if (CompartmentTracker.realFluidState(level, pos).is(FluidTags.WATER)) {
                 return cy + 1.0;
             }
         }
@@ -207,12 +205,12 @@ public final class BoatBuoyancySystem {
         Pose3dc pose = sub.logicalPose();
         Quaterniond inverse = pose.orientation().conjugate(new Quaterniond());
 
-        Vector3d w = new Vector3d();
+        Vector3d point = new Vector3d();
         Vector3d centre = new Vector3d();
-        double base = pose.transformPosition(w.set(0.0, 0.0, 0.0)).y;
-        double ax = pose.transformPosition(w.set(1.0, 0.0, 0.0)).y - base;
-        double ay = pose.transformPosition(w.set(0.0, 1.0, 0.0)).y - base;
-        double az = pose.transformPosition(w.set(0.0, 0.0, 1.0)).y - base;
+        double base = pose.transformPosition(point.set(0.0, 0.0, 0.0)).y;
+        double ax = pose.transformPosition(point.set(1.0, 0.0, 0.0)).y - base;
+        double ay = pose.transformPosition(point.set(0.0, 1.0, 0.0)).y - base;
+        double az = pose.transformPosition(point.set(0.0, 0.0, 1.0)).y - base;
         double waterline = hull.surfaceY() + 0.5 - base;
         double volume = 0.0;
         double[] cells = hull.cells();

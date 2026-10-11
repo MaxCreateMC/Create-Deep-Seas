@@ -17,9 +17,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-public final class AlarmClient {
-    private AlarmClient() {
-    }
+public class AlarmClient {
 
     private static final Map<String, byte[]> READY = new ConcurrentHashMap<>();
     private static final Map<String, byte[][]> PARTS = new ConcurrentHashMap<>();

@@ -34,9 +34,7 @@ import java.util.Map;
 import java.util.UUID;
 
 @EventBusSubscriber(modid = CreateHighSeas.MOD_ID, value = Dist.CLIENT)
-public final class WindDebugRenderer {
-    private WindDebugRenderer() {
-    }
+public class WindDebugRenderer {
 
     private static final int SCAN_INTERVAL = 5;
     private static long lastScan = Long.MIN_VALUE;

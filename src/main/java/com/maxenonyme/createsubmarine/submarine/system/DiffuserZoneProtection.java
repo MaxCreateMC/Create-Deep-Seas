@@ -18,9 +18,7 @@ import net.neoforged.neoforge.event.level.PistonEvent;
 import java.util.HashSet;
 import java.util.Set;
 
-public final class DiffuserZoneProtection {
-    private DiffuserZoneProtection() {
-    }
+public class DiffuserZoneProtection {
 
     private static boolean isProtected(LevelAccessor level, BlockPos pos) {
         return isMachine(level.getBlockState(pos.below()));

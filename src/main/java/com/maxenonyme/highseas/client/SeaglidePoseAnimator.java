@@ -5,9 +5,7 @@ import net.minecraft.client.player.AbstractClientPlayer;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Pose;
 
-public final class SeaglidePoseAnimator {
-    private SeaglidePoseAnimator() {
-    }
+public class SeaglidePoseAnimator {
 
     private static final float IDLE_ARMS = (float) Math.toRadians(-30.0);
     private static final float WALK_ARMS = (float) Math.toRadians(-66.0);

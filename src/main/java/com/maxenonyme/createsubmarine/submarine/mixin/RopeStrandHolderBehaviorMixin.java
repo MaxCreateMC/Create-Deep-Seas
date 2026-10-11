@@ -34,6 +34,8 @@ import com.maxenonyme.createsubmarine.CreateSubmarine;
 import com.maxenonyme.createsubmarine.submarine.block.SteelCableItem;
 import com.maxenonyme.createsubmarine.submarine.config.SubmarineConfig;
 import com.maxenonyme.createsubmarine.submarine.system.CableElectrificationSystem;
+import com.simibubi.create.foundation.blockEntity.SmartBlockEntity;
+import com.simibubi.create.foundation.blockEntity.behaviour.BlockEntityBehaviour;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(value = RopeStrandHolderBehavior.class, remap = false)
@@ -50,9 +52,11 @@ public class RopeStrandHolderBehaviorMixin implements SteelCableHolderAccessor {
 
     @Inject(method = "destroyRopeIfAttachmentBroken", at = @At("HEAD"), cancellable = true)
     private void createsubmarine$destroyRopeIfAttachmentBroken(CallbackInfo ci) {
-        if (this.ownedServerStrand == null) return;
-        Level level = ((com.simibubi.create.foundation.blockEntity.behaviour.BlockEntityBehaviour) (Object) this).blockEntity.getLevel();
-        if (!(level instanceof ServerLevel serverLevel)) return;
+        if (this.ownedServerStrand == null)
+            return;
+        Level level = ((BlockEntityBehaviour) (Object) this).blockEntity.getLevel();
+        if (!(level instanceof ServerLevel serverLevel))
+            return;
 
         RopeAttachment endAttachment = this.ownedServerStrand.getAttachment(RopeAttachmentPoint.END);
         if (endAttachment != null) {
@@ -174,7 +178,7 @@ public class RopeStrandHolderBehaviorMixin implements SteelCableHolderAccessor {
     private void createsubmarine$clearFarEnd() {
         if (this.ownedServerStrand == null)
             return;
-        Level level = ((com.simibubi.create.foundation.blockEntity.behaviour.BlockEntityBehaviour) (Object) this).blockEntity.getLevel();
+        Level level = ((BlockEntityBehaviour) (Object) this).blockEntity.getLevel();
         if (!(level instanceof ServerLevel serverLevel))
             return;
         RopeAttachment end = this.ownedServerStrand.getAttachment(RopeAttachmentPoint.END);
@@ -183,7 +187,7 @@ public class RopeStrandHolderBehaviorMixin implements SteelCableHolderAccessor {
         ServerLevel endLevel = CableElectrificationSystem.getLevelForAttachment(serverLevel, end);
         if (endLevel == null || !endLevel.isLoaded(end.blockAttachment()))
             return;
-        if (endLevel.getBlockEntity(end.blockAttachment()) instanceof com.simibubi.create.foundation.blockEntity.SmartBlockEntity smart)
+        if (endLevel.getBlockEntity(end.blockAttachment()) instanceof SmartBlockEntity smart)
             createsubmarine$clearIfFree(smart.getBehaviour(RopeStrandHolderBehavior.TYPE));
     }
 

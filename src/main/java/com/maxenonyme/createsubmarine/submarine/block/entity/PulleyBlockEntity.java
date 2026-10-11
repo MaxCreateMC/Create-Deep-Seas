@@ -2,32 +2,47 @@ package com.maxenonyme.createsubmarine.submarine.block.entity;
 
 import com.maxenonyme.createsubmarine.CreateSubmarine;
 import com.maxenonyme.createsubmarine.submarine.block.PulleyBlock;
+import com.maxenonyme.createsubmarine.submarine.config.SubmarineConfig;
 import com.maxenonyme.createsubmarine.submarine.system.SteelCablePhysicsSystem;
+import com.mojang.logging.LogUtils;
 import dev.ryanhcode.sable.api.block.BlockEntitySubLevelActor;
 import dev.ryanhcode.sable.api.physics.handle.RigidBodyHandle;
 import dev.ryanhcode.sable.api.sublevel.ServerSubLevelContainer;
 import dev.ryanhcode.sable.api.sublevel.SubLevelContainer;
+import dev.ryanhcode.sable.companion.SableCompanion;
+import dev.ryanhcode.sable.companion.SubLevelAccess;
 import dev.ryanhcode.sable.sublevel.ServerSubLevel;
 import dev.simulated_team.simulated.content.blocks.rope.strand.server.ServerRopeStrand;
 import dev.simulated_team.simulated.content.blocks.rope.strand.server.ServerLevelRopeManager;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.core.HolderLookup;
+import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.Connection;
+import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
+import net.minecraft.server.TickTask;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import org.joml.Vector3d;
 import org.joml.Quaterniond;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class PulleyBlockEntity extends BlockEntity implements BlockEntitySubLevelActor {
 
-    private static final org.slf4j.Logger LOGGER = com.mojang.logging.LogUtils.getLogger();
+    private static final org.slf4j.Logger LOGGER = LogUtils.getLogger();
     private static double getMaxSlideSpeed() {
-        return com.maxenonyme.createsubmarine.submarine.config.SubmarineConfig.PULLEY_MAX_SLIDE_SPEED.get();
+        return SubmarineConfig.PULLEY_MAX_SLIDE_SPEED.get();
     }
 
-    public static final java.util.Set<java.util.UUID> SLIDING_SUBLEVELS = java.util.concurrent.ConcurrentHashMap.newKeySet();
+    public static final Set<UUID> SLIDING_SUBLEVELS = ConcurrentHashMap.newKeySet();
 
-    private static final java.util.Map<java.util.UUID, java.util.Set<PulleyBlockEntity>> SLIDERS_BY_SUBLEVEL = new java.util.concurrent.ConcurrentHashMap<>();
+    private static final Map<UUID, Set<PulleyBlockEntity>> SLIDERS_BY_SUBLEVEL = new ConcurrentHashMap<>();
 
     public float clientWheelAngle = 0f;
     public long clientLastNanos = 0L;
@@ -50,9 +65,9 @@ public class PulleyBlockEntity extends BlockEntity implements BlockEntitySubLeve
     public void setRemoved() {
         super.setRemoved();
         if (this.level != null && !this.level.isClientSide) {
-            dev.ryanhcode.sable.companion.SubLevelAccess sub = dev.ryanhcode.sable.companion.SableCompanion.INSTANCE.getContaining(this.level, this.worldPosition);
-            if (sub != null) {
-                java.util.Set<PulleyBlockEntity> peers = SLIDERS_BY_SUBLEVEL.get(sub.getUniqueId());
+            SubLevelAccess ship = SableCompanion.INSTANCE.getContaining(this.level, this.worldPosition);
+            if (ship != null) {
+                Set<PulleyBlockEntity> peers = SLIDERS_BY_SUBLEVEL.get(ship.getUniqueId());
                 if (peers != null) {
                     peers.remove(this);
                 }
@@ -66,7 +81,7 @@ public class PulleyBlockEntity extends BlockEntity implements BlockEntitySubLeve
                     }
                 }
                 if (!anyConnected) {
-                    SLIDING_SUBLEVELS.remove(sub.getUniqueId());
+                    SLIDING_SUBLEVELS.remove(ship.getUniqueId());
                 }
             }
         }
@@ -74,10 +89,11 @@ public class PulleyBlockEntity extends BlockEntity implements BlockEntitySubLeve
 
     private void updateSlidingStatus(ServerSubLevel subLevel) {
         boolean anyConnected = false;
-        java.util.Set<PulleyBlockEntity> peers = SLIDERS_BY_SUBLEVEL.get(subLevel.getUniqueId());
+        Set<PulleyBlockEntity> peers = SLIDERS_BY_SUBLEVEL.get(subLevel.getUniqueId());
         if (peers != null) {
             for (PulleyBlockEntity peer : peers) {
-                if (peer.isRemoved()) continue;
+                if (peer.isRemoved())
+                    continue;
                 if (peer.lastTickClampedAndConnected) {
                     anyConnected = true;
                     break;
@@ -93,20 +109,22 @@ public class PulleyBlockEntity extends BlockEntity implements BlockEntitySubLeve
 
     @Override
     public void sable$physicsTick(ServerSubLevel subLevel, RigidBodyHandle handle, double timeStep) {
-        if (subLevel.getPlot() == null) return;
+        if (subLevel.getPlot() == null)
+            return;
 
         BlockState state = getBlockState();
-        if (!state.hasProperty(PulleyBlock.FACING)) return;
-        net.minecraft.core.Direction facing = state.getValue(PulleyBlock.FACING);
+        if (!state.hasProperty(PulleyBlock.FACING))
+            return;
+        Direction facing = state.getValue(PulleyBlock.FACING);
 
-        java.util.Set<PulleyBlockEntity> peers = SLIDERS_BY_SUBLEVEL.computeIfAbsent(subLevel.getUniqueId(), k -> java.util.concurrent.ConcurrentHashMap.newKeySet());
+        Set<PulleyBlockEntity> peers = SLIDERS_BY_SUBLEVEL.computeIfAbsent(subLevel.getUniqueId(), k -> ConcurrentHashMap.newKeySet());
         peers.removeIf(peer -> {
             if (peer == null || peer.isRemoved() || peer.getLevel() == null) {
                 return true;
             }
             try {
                 return peer.getLevel().getBlockEntity(peer.getBlockPos()) != peer;
-            } catch (Exception e) {
+            } catch (RuntimeException e) {
                 return true;
             }
         });
@@ -114,7 +132,7 @@ public class PulleyBlockEntity extends BlockEntity implements BlockEntitySubLeve
 
         Vector3d localSnapPoint = new Vector3d(worldPosition.getX() + 0.5, worldPosition.getY() + 0.5, worldPosition.getZ() + 0.5);
         localSnapPoint.add(0.0, state.getValue(PulleyBlock.INVERTED) ? -0.25 : 0.25, 0.0);
-        net.minecraft.core.Direction wheelDir = facing.getAxis().isHorizontal() ? facing.getClockWise() : net.minecraft.core.Direction.EAST;
+        Direction wheelDir = facing.getAxis().isHorizontal() ? facing.getClockWise() : Direction.EAST;
         localSnapPoint.add(wheelDir.getStepX() * 0.95, wheelDir.getStepY() * 0.95, wheelDir.getStepZ() * 0.95);
 
         PulleyBlockEntity partner = findClampPartner(subLevel);
@@ -142,7 +160,8 @@ public class PulleyBlockEntity extends BlockEntity implements BlockEntitySubLeve
 
         ServerLevel parentLevel = subLevel.getLevel();
         ServerLevelRopeManager ropeManager = ServerLevelRopeManager.getOrCreate(parentLevel);
-        if (ropeManager == null) return;
+        if (ropeManager == null)
+            return;
 
         ServerRopeStrand closestStrand = null;
         double closestDistSq = Double.MAX_VALUE;
@@ -151,18 +170,20 @@ public class PulleyBlockEntity extends BlockEntity implements BlockEntitySubLeve
         Vector3d segmentB = null;
 
         for (ServerRopeStrand strand : ropeManager.getAllStrands()) {
-            if (!strand.isActive()) continue;
-            if (!SteelCablePhysicsSystem.isSteelCable(strand, parentLevel)) continue;
+            if (!strand.isActive())
+                continue;
+            if (!SteelCablePhysicsSystem.isSteelCable(strand, parentLevel))
+                continue;
 
             List<Vector3d> points = strand.getPoints();
             for (int i = 0; i < points.size() - 1; i++) {
                 Vector3d a = points.get(i);
                 Vector3d b = points.get(i + 1);
-                Vector3d c = getClosestPointOnSegment(a, b, attachmentPointWorld);
-                double dSq = attachmentPointWorld.distanceSquared(c);
+                Vector3d point = getClosestPointOnSegment(a, b, attachmentPointWorld);
+                double dSq = attachmentPointWorld.distanceSquared(point);
                 if (dSq < closestDistSq) {
                     closestDistSq = dSq;
-                    closestPoint = c;
+                    closestPoint = point;
                     segmentA = a;
                     segmentB = b;
                     closestStrand = strand;
@@ -213,7 +234,8 @@ public class PulleyBlockEntity extends BlockEntity implements BlockEntitySubLeve
             boolean isPrimary = true;
             if (peers != null) {
                 for (PulleyBlockEntity peer : peers) {
-                    if (peer == this || peer.isRemoved()) continue;
+                    if (peer == this || peer.isRemoved())
+                        continue;
                     if (peer.lastTickClampedAndConnected) {
                         if (peer.getBlockPos().compareTo(this.worldPosition) < 0) {
                             isPrimary = false;
@@ -245,19 +267,22 @@ public class PulleyBlockEntity extends BlockEntity implements BlockEntitySubLeve
                     Vector3d closestPoint2 = null;
 
                     for (ServerRopeStrand strand : ropeManager.getAllStrands()) {
-                        if (!strand.isActive()) continue;
-                        if (strand == closestStrand) continue;
-                        if (!SteelCablePhysicsSystem.isSteelCable(strand, parentLevel)) continue;
+                        if (!strand.isActive())
+                            continue;
+                        if (strand == closestStrand)
+                            continue;
+                        if (!SteelCablePhysicsSystem.isSteelCable(strand, parentLevel))
+                            continue;
 
                         List<Vector3d> points = strand.getPoints();
                         for (int i = 0; i < points.size() - 1; i++) {
                             Vector3d a = points.get(i);
                             Vector3d b = points.get(i + 1);
-                            Vector3d c = getClosestPointOnSegment(a, b, W2_world);
-                            double dSq = W2_world.distanceSquared(c);
+                            Vector3d point = getClosestPointOnSegment(a, b, W2_world);
+                            double dSq = W2_world.distanceSquared(point);
                             if (dSq < closestDistSq2) {
                                 closestDistSq2 = dSq;
-                                closestPoint2 = c;
+                                closestPoint2 = point;
                             }
                         }
                     }
@@ -342,11 +367,11 @@ public class PulleyBlockEntity extends BlockEntity implements BlockEntitySubLeve
             BlockPos selfPos = worldPosition;
             BlockPos partnerPos = partner.getBlockPos();
             ServerLevel partnerLevel = (ServerLevel) partner.getLevel();
-            serverLevel.getServer().tell(new net.minecraft.server.TickTask(serverLevel.getServer().getTickCount() + 1, () -> {
-                serverLevel.sendParticles(net.minecraft.core.particles.ParticleTypes.LARGE_SMOKE, selfPos.getX() + 0.5, selfPos.getY() + 0.5, selfPos.getZ() + 0.5, 20, 0.15, 0.15, 0.15, 0.05);
-                serverLevel.sendParticles(net.minecraft.core.particles.ParticleTypes.FLAME, selfPos.getX() + 0.5, selfPos.getY() + 0.5, selfPos.getZ() + 0.5, 10, 0.15, 0.15, 0.15, 0.05);
-                partnerLevel.sendParticles(net.minecraft.core.particles.ParticleTypes.LARGE_SMOKE, partnerPos.getX() + 0.5, partnerPos.getY() + 0.5, partnerPos.getZ() + 0.5, 20, 0.15, 0.15, 0.15, 0.05);
-                partnerLevel.sendParticles(net.minecraft.core.particles.ParticleTypes.FLAME, partnerPos.getX() + 0.5, partnerPos.getY() + 0.5, partnerPos.getZ() + 0.5, 10, 0.15, 0.15, 0.15, 0.05);
+            serverLevel.getServer().tell(new TickTask(serverLevel.getServer().getTickCount() + 1, () -> {
+                serverLevel.sendParticles(ParticleTypes.LARGE_SMOKE, selfPos.getX() + 0.5, selfPos.getY() + 0.5, selfPos.getZ() + 0.5, 20, 0.15, 0.15, 0.15, 0.05);
+                serverLevel.sendParticles(ParticleTypes.FLAME, selfPos.getX() + 0.5, selfPos.getY() + 0.5, selfPos.getZ() + 0.5, 10, 0.15, 0.15, 0.15, 0.05);
+                partnerLevel.sendParticles(ParticleTypes.LARGE_SMOKE, partnerPos.getX() + 0.5, partnerPos.getY() + 0.5, partnerPos.getZ() + 0.5, 20, 0.15, 0.15, 0.15, 0.05);
+                partnerLevel.sendParticles(ParticleTypes.FLAME, partnerPos.getX() + 0.5, partnerPos.getY() + 0.5, partnerPos.getZ() + 0.5, 10, 0.15, 0.15, 0.15, 0.05);
                 serverLevel.destroyBlock(selfPos, true);
                 partnerLevel.destroyBlock(partnerPos, true);
             }));
@@ -354,48 +379,51 @@ public class PulleyBlockEntity extends BlockEntity implements BlockEntitySubLeve
     }
 
     @Override
-    public net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket getUpdatePacket() {
-        return net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket.create(this);
+    public ClientboundBlockEntityDataPacket getUpdatePacket() {
+        return ClientboundBlockEntityDataPacket.create(this);
     }
 
     @Override
-    public net.minecraft.nbt.CompoundTag getUpdateTag(net.minecraft.core.HolderLookup.Provider registries) {
-        net.minecraft.nbt.CompoundTag tag = new net.minecraft.nbt.CompoundTag();
+    public CompoundTag getUpdateTag(HolderLookup.Provider registries) {
+        CompoundTag tag = new CompoundTag();
         saveAdditional(tag, registries);
         return tag;
     }
 
     @Override
-    public void onDataPacket(net.minecraft.network.Connection net, net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket pkt, net.minecraft.core.HolderLookup.Provider registries) {
-        net.minecraft.nbt.CompoundTag tag = pkt.getTag();
-        if (tag != null) loadAdditional(tag, registries);
+    public void onDataPacket(Connection net, ClientboundBlockEntityDataPacket pkt, HolderLookup.Provider registries) {
+        CompoundTag tag = pkt.getTag();
+        if (tag != null)
+            loadAdditional(tag, registries);
     }
 
     @Override
-    protected void saveAdditional(net.minecraft.nbt.CompoundTag tag, net.minecraft.core.HolderLookup.Provider registries) {
+    protected void saveAdditional(CompoundTag tag, HolderLookup.Provider registries) {
         super.saveAdditional(tag, registries);
         tag.putInt("StressTicks", this.stressTicks);
     }
 
     @Override
-    protected void loadAdditional(net.minecraft.nbt.CompoundTag tag, net.minecraft.core.HolderLookup.Provider registries) {
+    protected void loadAdditional(CompoundTag tag, HolderLookup.Provider registries) {
         super.loadAdditional(tag, registries);
         this.stressTicks = tag.getInt("StressTicks");
     }
 
     private PulleyBlockEntity findClampPartner(ServerSubLevel subLevel) {
         BlockState state = getBlockState();
-        if (!state.hasProperty(PulleyBlock.FACING)) return null;
-        net.minecraft.core.Direction facing = state.getValue(PulleyBlock.FACING);
-        net.minecraft.core.Direction wheelDir = facing.getAxis().isHorizontal() ? facing.getClockWise() : net.minecraft.core.Direction.EAST;
+        if (!state.hasProperty(PulleyBlock.FACING))
+            return null;
+        Direction facing = state.getValue(PulleyBlock.FACING);
+        Direction wheelDir = facing.getAxis().isHorizontal() ? facing.getClockWise() : Direction.EAST;
         BlockPos partnerPos = worldPosition.relative(wheelDir, 2);
-        if (level == null) return null;
+        if (level == null)
+            return null;
         BlockEntity be = level.getBlockEntity(partnerPos);
         if (be instanceof PulleyBlockEntity partner && !partner.isRemoved()) {
             BlockState partnerState = partner.getBlockState();
             if (partnerState.hasProperty(PulleyBlock.FACING)) {
-                net.minecraft.core.Direction partnerFacing = partnerState.getValue(PulleyBlock.FACING);
-                net.minecraft.core.Direction partnerWheelDir = partnerFacing.getAxis().isHorizontal() ? partnerFacing.getClockWise() : net.minecraft.core.Direction.EAST;
+                Direction partnerFacing = partnerState.getValue(PulleyBlock.FACING);
+                Direction partnerWheelDir = partnerFacing.getAxis().isHorizontal() ? partnerFacing.getClockWise() : Direction.EAST;
                 if (partnerWheelDir == wheelDir.getOpposite()
                         && partnerState.getValue(PulleyBlock.INVERTED) == state.getValue(PulleyBlock.INVERTED)) {
                     return partner;
@@ -455,8 +483,8 @@ public class PulleyBlockEntity extends BlockEntity implements BlockEntitySubLeve
         if (!state.hasProperty(PulleyBlock.FACING)) {
             return new Vector3d(be.getBlockPos().getX() + 0.5, be.getBlockPos().getY() + 0.75, be.getBlockPos().getZ() + 0.5);
         }
-        net.minecraft.core.Direction facing = state.getValue(PulleyBlock.FACING);
-        net.minecraft.core.Direction wheelDir = facing.getAxis().isHorizontal() ? facing.getClockWise() : net.minecraft.core.Direction.EAST;
+        Direction facing = state.getValue(PulleyBlock.FACING);
+        Direction wheelDir = facing.getAxis().isHorizontal() ? facing.getClockWise() : Direction.EAST;
         double wheelY = state.getValue(PulleyBlock.INVERTED) ? 0.25 : 0.75;
         return new Vector3d(be.getBlockPos().getX() + 0.5, be.getBlockPos().getY() + wheelY, be.getBlockPos().getZ() + 0.5)
             .add(wheelDir.getStepX() * 0.95, wheelDir.getStepY() * 0.95, wheelDir.getStepZ() * 0.95);

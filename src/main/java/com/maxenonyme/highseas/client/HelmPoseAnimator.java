@@ -6,9 +6,7 @@ import net.minecraft.client.model.HumanoidModel;
 import net.minecraft.client.player.AbstractClientPlayer;
 import net.minecraft.util.Mth;
 
-public final class HelmPoseAnimator {
-    private HelmPoseAnimator() {
-    }
+public class HelmPoseAnimator {
 
     private static final float ARM_BACK = 1.75f;
     private static final float ARM_SWING = 0.41f;

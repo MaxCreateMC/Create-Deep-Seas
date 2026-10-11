@@ -12,9 +12,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import com.maxenonyme.highseas.config.HighSeasConfig;
 import java.util.ArrayList;
 
-public final class SailWindRegistry {
-    private SailWindRegistry() {
-    }
+public class SailWindRegistry {
 
     private static final Map<UUID, List<SailGroup>> SAILS = new ConcurrentHashMap<>();
     private static final Map<UUID, Vec3> RUDDERS = new ConcurrentHashMap<>();
@@ -79,7 +77,8 @@ public final class SailWindRegistry {
 
     public static List<DecayingSail> getDecayingSails(UUID id, long currentTick) {
         List<DecayingSail> list = DECAYING_SAILS.get(id);
-        if (list == null) return List.of();
+        if (list == null)
+            return List.of();
         list.removeIf(d -> currentTick - d.startTick() > 60);
         return list;
     }

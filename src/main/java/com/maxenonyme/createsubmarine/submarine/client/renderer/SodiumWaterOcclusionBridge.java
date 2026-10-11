@@ -15,7 +15,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 
-public final class SodiumWaterOcclusionBridge {
+public class SodiumWaterOcclusionBridge {
     public static final int CLOSE_TEXTURE_UNIT = 6;
     public static final int FAR_TEXTURE_UNIT = 7;
 
@@ -32,9 +32,6 @@ public final class SodiumWaterOcclusionBridge {
         boolean hasOcclusion() {
             return enabled >= 0;
         }
-    }
-
-    private SodiumWaterOcclusionBridge() {
     }
 
     private static ProgramUniforms locations(int programHandle) {
@@ -93,7 +90,7 @@ public final class SodiumWaterOcclusionBridge {
             if (u.farSampler >= 0)
                 GL20.glUniform1i(u.farSampler, FAR_TEXTURE_UNIT);
             return true;
-        } catch (Throwable t) {
+        } catch (RuntimeException e) {
             return false;
         }
     }

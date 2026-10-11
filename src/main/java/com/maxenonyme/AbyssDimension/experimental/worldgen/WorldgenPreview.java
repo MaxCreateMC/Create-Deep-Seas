@@ -8,6 +8,8 @@ import java.util.HashMap;
 import java.util.Map;
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
+import java.util.ArrayList;
+import java.util.Arrays;
 
 public class WorldgenPreview {
 
@@ -36,9 +38,12 @@ public class WorldgenPreview {
         long userSeed = 0;
         boolean hasSeed = false;
         for (String a : args) {
-            if (a.equals("--vanilla")) vanilla = true;
-            else if (a.equals("--large")) large = true;
-            else if (a.equals("--plates")) plates = true;
+            if (a.equals("--vanilla"))
+                vanilla = true;
+            else if (a.equals("--large"))
+                large = true;
+            else if (a.equals("--plates"))
+                plates = true;
             else try { userSeed = Long.parseLong(a); hasSeed = true; } catch (NumberFormatException ignored) {}
         }
 
@@ -59,7 +64,8 @@ public class WorldgenPreview {
             System.out.println("Mode: VANILLA (original BASE_SEED=420691337L + default.json)");
             System.out.println("  -> 1:1 with unmodified Minecraft. Every world has the same terrain.");
             System.out.println();
-            if (hasSeed) System.out.println("  Using plate config seed: " + userSeed);
+            if (hasSeed)
+                System.out.println("  Using plate config seed: " + userSeed);
         } else {
             long seed = hasSeed ? userSeed : new Random().nextLong();
             System.out.println("Mode: RANDOM (SeafloorGenerator.reset(" + seed + "))");
@@ -98,14 +104,19 @@ public class WorldgenPreview {
                 int idx = lz * REGION_SIZE + lx;
                 int h = SeafloorGenerator.getHeightAt(wx, wz);
                 heights[idx] = (short) h;
-                if (h < minH) minH = h;
-                if (h > maxH) maxH = h;
+                if (h < minH)
+                    minH = h;
+                if (h > maxH)
+                    maxH = h;
                 sumH += h;
 
                 double c = Math.abs(SeafloorGenerator.getNoiseAt(wx, wz));
-                if (c < 0.10)      biomes[idx] = 0;
-                else if (c < 0.50) biomes[idx] = 1;
-                else               biomes[idx] = 2;
+                if (c < 0.10)
+                    biomes[idx] = 0;
+                else if (c < 0.50)
+                    biomes[idx] = 1;
+                else
+                                  biomes[idx] = 2;
 
                 plateIds[idx] = (short) SeafloorGenerator.getPlateAt(wx, wz).hashCode();
             }
@@ -142,9 +153,12 @@ public class WorldgenPreview {
                 color = blend(color, biomeTint);
 
                 boolean boundary = false;
-                if (x > 0 && plateIds[idx] != plateIds[z * REGION_SIZE + (x - 1)]) boundary = true;
-                if (z > 0 && plateIds[idx] != plateIds[(z - 1) * REGION_SIZE + x]) boundary = true;
-                if (boundary) color = blend(color, COL_BOUNDARY);
+                if (x > 0 && plateIds[idx] != plateIds[z * REGION_SIZE + (x - 1)])
+                    boundary = true;
+                if (z > 0 && plateIds[idx] != plateIds[(z - 1) * REGION_SIZE + x])
+                    boundary = true;
+                if (boundary)
+                    color = blend(color, COL_BOUNDARY);
 
                 hmap.setRGB(x, z, color);
             }
@@ -171,11 +185,12 @@ public class WorldgenPreview {
 
         Integer[] order = new Integer[cols * rows];
         for (int i = 0; i < order.length; i++) order[i] = i;
-        java.util.Arrays.sort(order, (a, b) -> {
+        Arrays.sort(order, (a, b) -> {
             int ax = a % cols, az = a / cols;
             int bx = b % cols, bz = b / cols;
             int sumA = ax + az; int sumB = bx + bz;
-            if (sumA != sumB) return sumA - sumB;
+            if (sumA != sumB)
+                return sumA - sumB;
             return bx - ax;
         });
 
@@ -199,7 +214,8 @@ public class WorldgenPreview {
             int y0 = cy + (int) syPos;
 
             int colHeight = Math.max(1, (int) ((h - minH) * heightScale) + 2);
-            if (colHeight > 1500) colHeight = 1500;
+            if (colHeight > 1500)
+                colHeight = 1500;
 
             int lit = blockColor;
             if (sx > 0 && sz > 0 && sx < cols - 1 && sz < rows - 1) {
@@ -224,11 +240,13 @@ public class WorldgenPreview {
 
             for (int dy = 0; dy < colHeight; dy++) {
                 int py = y0 - dy;
-                if (py < 0 || py >= iso.getHeight()) continue;
+                if (py < 0 || py >= iso.getHeight())
+                    continue;
                 int col = (dy < colHeight * 0.15) ? lit : darken(lit, 0.55);
                 for (int ddx = -1; ddx <= 1; ddx++) {
                     int px = x0 + ddx;
-                    if (px < 0 || px >= iso.getWidth()) continue;
+                    if (px < 0 || px >= iso.getWidth())
+                        continue;
                     int pixel = (ddx < 0) ? darken(col, 0.7) : (ddx > 0 ? lighten(col, 1.12) : col);
                     iso.setRGB(px, py, pixel);
                 }
@@ -253,7 +271,8 @@ public class WorldgenPreview {
 
         if (vanilla) {
             System.out.println("Mode: VANILLA (BASE_SEED=420691337L + default.json)");
-            if (hasSeed) System.out.println("  Using plate config seed: " + userSeed);
+            if (hasSeed)
+                System.out.println("  Using plate config seed: " + userSeed);
         } else {
             long seed = hasSeed ? userSeed : new Random().nextLong();
             System.out.println("Mode: RANDOM (SeafloorGenerator.reset(" + seed + "))");
@@ -302,8 +321,10 @@ public class WorldgenPreview {
                 short pid = (short) SeafloorGenerator.getPlateAt(wx, wz).hashCode();
 
                 count++;
-                if (h < minH) minH = h;
-                if (h > maxH) maxH = h;
+                if (h < minH)
+                    minH = h;
+                if (h > maxH)
+                    maxH = h;
                 sumH += h;
                 double delta = h - mean;
                 mean += delta / count;
@@ -313,7 +334,8 @@ public class WorldgenPreview {
                 biomeCount[biome]++;
 
                 int bin = (h + 1024) / binSize;
-                if (bin >= 0 && bin < 32) hist[bin]++;
+                if (bin >= 0 && bin < 32)
+                    hist[bin]++;
 
                 int[] pc = plateStats.get(pid);
                 if (pc == null) { pc = new int[]{0}; plateStats.put(pid, pc); }
@@ -337,8 +359,10 @@ public class WorldgenPreview {
 
                 if (count == nextReport) {
                     int pct = (int)(count * 100L / totalBlocks);
-                    if (lastPct < 0) System.out.print(pct + "%");
-                    else System.out.print("." + pct + "%");
+                    if (lastPct < 0)
+                        System.out.print(pct + "%");
+                    else
+                        System.out.print("." + pct + "%");
                     lastPct = pct;
                     nextReport += totalBlocks / 50;
                 }
@@ -381,19 +405,21 @@ public class WorldgenPreview {
         int numCellsZ = (SIZE + cellSize - 1) / cellSize;
         int numSeeds = 0;
 
-        java.util.ArrayList<Integer> frontier = new java.util.ArrayList<>();
+        ArrayList<Integer> frontier = new ArrayList<>();
 
         t0 = System.nanoTime();
         System.out.print("Placing seeds...");
-        java.util.Random posRng = new java.util.Random(seed);
+        Random posRng = new Random(seed);
         for (int cz = 0; cz < numCellsZ; cz++) {
             for (int cx = 0; cx < numCellsX; cx++) {
                 int sx = cx * cellSize + posRng.nextInt(cellSize);
                 int sz = cz * cellSize + posRng.nextInt(cellSize);
-                if (sx >= SIZE || sz >= SIZE) continue;
+                if (sx >= SIZE || sz >= SIZE)
+                    continue;
                 numSeeds++;
                 byte plateIdx = (byte) (numSeeds & 0xFF);
-                if (plateIdx == 0) plateIdx = 1;
+                if (plateIdx == 0)
+                    plateIdx = 1;
                 grid[sz * SIZE + sx] = plateIdx;
                 frontier.add((sx << 16) | sz);
             }
@@ -409,7 +435,7 @@ public class WorldgenPreview {
         int lastPct = -1;
         long nextReport = N / 50;
         int[] dirOrder = new int[8];
-        java.util.ArrayList<Integer> nextFrontier = new java.util.ArrayList<>();
+        ArrayList<Integer> nextFrontier = new ArrayList<>();
 
         while (claimed < N) {
             for (int fi = 0; fi < frontier.size(); fi++) {
@@ -417,16 +443,20 @@ public class WorldgenPreview {
                 int cx = enc >> 16;
                 int cz = enc & 0xFFFF;
                 byte myPlate = grid[cz * SIZE + cx];
-                if (myPlate == 0) continue;
+                if (myPlate == 0)
+                    continue;
 
                 int uc = 0;
                 for (int d = 0; d < 8; d++) {
                     int nx = cx + dx8[d];
                     int nz = cz + dz8[d];
-                    if (nx < 0 || nx >= SIZE || nz < 0 || nz >= SIZE) continue;
-                    if (grid[nz * SIZE + nx] == 0) uc++;
+                    if (nx < 0 || nx >= SIZE || nz < 0 || nz >= SIZE)
+                        continue;
+                    if (grid[nz * SIZE + nx] == 0)
+                        uc++;
                 }
-                if (uc == 0) continue;
+                if (uc == 0)
+                    continue;
 
                 int rngState = (int)(seed ^ (cx * 374761393) ^ (cz * 668265263) ^ (myPlate * 1234567));
                 int k = 0;
@@ -437,17 +467,21 @@ public class WorldgenPreview {
                     int r = rngState & 0xFFFF;
                     if (r < P[d]) { k = d; break; }
                 }
-                if (k > uc) k = uc;
+                if (k > uc)
+                    k = uc;
 
-                if (k == 0) continue;
+                if (k == 0)
+                    continue;
 
                 int[] cand = new int[uc];
                 int ci = 0;
                 for (int d = 0; d < 8; d++) {
                     int nx = cx + dx8[d];
                     int nz = cz + dz8[d];
-                    if (nx < 0 || nx >= SIZE || nz < 0 || nz >= SIZE) continue;
-                    if (grid[nz * SIZE + nx] == 0) cand[ci++] = d;
+                    if (nx < 0 || nx >= SIZE || nz < 0 || nz >= SIZE)
+                        continue;
+                    if (grid[nz * SIZE + nx] == 0)
+                        cand[ci++] = d;
                 }
                 for (int i = 0; i < k && i < cand.length; i++) {
                     rngState ^= rngState << 13;
@@ -470,12 +504,14 @@ public class WorldgenPreview {
             }
 
             frontier = nextFrontier;
-            nextFrontier = new java.util.ArrayList<>();
+            nextFrontier = new ArrayList<>();
 
             while (claimed >= nextReport) {
                 int pct = (int)(claimed * 100L / N);
-                if (lastPct < 0) System.out.print(pct + "%");
-                else System.out.print("." + pct + "%");
+                if (lastPct < 0)
+                    System.out.print(pct + "%");
+                else
+                    System.out.print("." + pct + "%");
                 lastPct = pct;
                 nextReport += N / 50;
             }
@@ -489,7 +525,8 @@ public class WorldgenPreview {
                         for (int d = 0; d < 8; d++) {
                             int nx = x + dx8[d];
                             int nz = z + dz8[d];
-                            if (nx < 0 || nx >= SIZE || nz < 0 || nz >= SIZE) continue;
+                            if (nx < 0 || nx >= SIZE || nz < 0 || nz >= SIZE)
+                                continue;
                             byte p = grid[nz * SIZE + nx];
                             if (p != 0) { nearest = p; break; }
                         }
@@ -511,7 +548,7 @@ public class WorldgenPreview {
         int imgH = (SIZE + renderStep - 1) / renderStep;
         BufferedImage img = new BufferedImage(imgW, imgH, BufferedImage.TYPE_INT_ARGB);
 
-        java.util.Map<Byte, Integer> usedColors = new java.util.HashMap<>();
+        Map<Byte, Integer> usedColors = new HashMap<>();
         usedColors.put((byte)0, 0xFF000000);
         for (int i = 0; i < (int)N; i++) {
             byte p = grid[i];
@@ -531,15 +568,16 @@ public class WorldgenPreview {
         write(img, "platemap_" + SIZE);
         System.out.println(" (" + (System.nanoTime() - t0) / 1_000_000 + "ms)");
 
-        java.util.Map<Byte, Integer> plateAreas = new java.util.HashMap<>();
+        Map<Byte, Integer> plateAreas = new HashMap<>();
         for (int i = 0; i < (int)N; i++) {
             byte p = grid[i];
-            if (p != 0) plateAreas.merge(p, 1, Integer::sum);
+            if (p != 0)
+                plateAreas.merge(p, 1, Integer::sum);
         }
         System.out.println();
         System.out.println("--- Plate Statistics ---");
         System.out.println("  Total plates: " + plateAreas.size());
-        java.util.ArrayList<Map.Entry<Byte, Integer>> sorted = new java.util.ArrayList<>(plateAreas.entrySet());
+        ArrayList<Map.Entry<Byte, Integer>> sorted = new ArrayList<>(plateAreas.entrySet());
         sorted.sort((a, b) -> Integer.compare(b.getValue(), a.getValue()));
         for (Map.Entry<Byte, Integer> e : sorted) {
             System.out.printf("  Plate %3d: %10d blocks (%.2f%%)%n", e.getKey(), e.getValue(), 100.0 * e.getValue() / N);
@@ -552,7 +590,8 @@ public class WorldgenPreview {
 
     private static int plateColor(short pid) {
         Integer cached = plateColorCache.get(pid);
-        if (cached != null) return cached;
+        if (cached != null)
+            return cached;
         long h = pid * 374761393L;
         float hue = (h & 0xFFFFFFFFL) % 360 / 360.0f;
         int rgb = java.awt.Color.HSBtoRGB(hue, 0.35f, 1.0f);
@@ -604,7 +643,7 @@ public class WorldgenPreview {
         double stddev = Math.sqrt(varSum / n);
 
         short[] sorted = heights.clone();
-        java.util.Arrays.sort(sorted);
+        Arrays.sort(sorted);
         double median = sorted.length % 2 == 0
             ? (sorted[sorted.length / 2 - 1] + sorted[sorted.length / 2]) / 2.0
             : sorted[sorted.length / 2];
@@ -638,7 +677,8 @@ public class WorldgenPreview {
         int binSize = 64;
         for (short h : heights) {
             int bin = (h + 1024) / binSize;
-            if (bin >= 0 && bin < 32) hist[bin]++;
+            if (bin >= 0 && bin < 32)
+                hist[bin]++;
         }
 
         try {
@@ -683,7 +723,7 @@ public class WorldgenPreview {
 
             pw.println();
             pw.println("--- Plate Distribution ---");
-            java.util.ArrayList<Map.Entry<Short, Integer>> plateList = new java.util.ArrayList<>(plateCount.entrySet());
+            ArrayList<Map.Entry<Short, Integer>> plateList = new ArrayList<>(plateCount.entrySet());
             plateList.sort((a, b) -> Integer.compare(b.getValue(), a.getValue()));
             for (Map.Entry<Short, Integer> e : plateList) {
                 pw.printf("  Plate hash %d: %d blocks (%.1f%%)%n", e.getKey(), e.getValue(), 100.0 * e.getValue() / n);
@@ -693,19 +733,22 @@ public class WorldgenPreview {
             pw.println("--- Tectonic Boundary Survey ---");
             int numBoundaries = 0;
             double maxTectonicMod = 0, minTectonicMod = 0;
-            java.util.Random surveyRng = new java.util.Random(42);
+            Random surveyRng = new Random(42);
             for (int i = 0; i < 2000; i++) {
                 int sx = ox + surveyRng.nextInt(REGION_SIZE);
                 int sy = oz + surveyRng.nextInt(REGION_SIZE);
                 double mod = SeafloorGenerator.computeTectonicModifier(sx, sy);
-                if (Math.abs(mod) > 1) numBoundaries++;
-                if (mod > maxTectonicMod) maxTectonicMod = mod;
-                if (mod < minTectonicMod) minTectonicMod = mod;
+                if (Math.abs(mod) > 1)
+                    numBoundaries++;
+                if (mod > maxTectonicMod)
+                    maxTectonicMod = mod;
+                if (mod < minTectonicMod)
+                    minTectonicMod = mod;
             }
             pw.printf("  Survey (2000 samples): %d near-boundary points, mod range [%.1f, %.1f]%n", numBoundaries, minTectonicMod, maxTectonicMod);
 
             pw.println("--- 3D Density Scan (8 probe columns) ---");
-            java.util.Random volRng = new java.util.Random(99);
+            Random volRng = new Random(99);
             long colSolidSum = 0;
             int airGapCols = 0;
             for (int pi = 0; pi < 8; pi++) {
@@ -716,16 +759,22 @@ public class WorldgenPreview {
                 for (int y = -1024; y < h && !hasAirGap; y++) {
                     double sfh = h - y;
                     double grad;
-                    if (y <= -1024) grad = 30.0;
-                    else if (y >= -924) grad = -1.0;
-                    else grad = 30.0 + (double)(y + 1024) / 100.0 * -31.0;
-                    if (Math.max(sfh, grad) <= 0) hasAirGap = true;
+                    if (y <= -1024)
+                        grad = 30.0;
+                    else if (y >= -924)
+                        grad = -1.0;
+                    else
+                        grad = 30.0 + (double)(y + 1024) / 100.0 * -31.0;
+                    if (Math.max(sfh, grad) <= 0)
+                        hasAirGap = true;
                 }
                 colSolidSum += (h - (-1024));
-                if (hasAirGap) airGapCols++;
+                if (hasAirGap)
+                    airGapCols++;
             }
             pw.printf("  %d/8 columns with air gaps (%.0f avg solid blocks below surface)%n", airGapCols, colSolidSum / 8.0);
-            if (airGapCols == 0) pw.println("  -> NO interior holes");
+            if (airGapCols == 0)
+                pw.println("  -> NO interior holes");
 
             pw.println("--- Worldgen Assessment ---");
             pw.printf("  Height range: %s (%d blocks)%n", (maxH - minH > 200 ? "ADEQUATE" : "LOW"), maxH - minH);
@@ -794,7 +843,7 @@ public class WorldgenPreview {
             pw.println();
 
             pw.println("--- Plate Distribution ---");
-            java.util.ArrayList<Map.Entry<Short, int[]>> plateList = new java.util.ArrayList<>(plateRaw.entrySet());
+            ArrayList<Map.Entry<Short, int[]>> plateList = new ArrayList<>(plateRaw.entrySet());
             plateList.sort((a, b) -> Integer.compare(b.getValue()[0], a.getValue()[0]));
             for (Map.Entry<Short, int[]> e : plateList) {
                 pw.printf("  Plate hash %d: %d blocks (%.1f%%)%n", e.getKey(), e.getValue()[0], 100.0 * e.getValue()[0] / count);
@@ -804,20 +853,23 @@ public class WorldgenPreview {
             pw.println("--- Tectonic Boundary Survey ---");
             int numBoundaries = 0;
             double maxTectonicMod = 0, minTectonicMod = 0;
-            java.util.Random surveyRng = new java.util.Random(42);
+            Random surveyRng = new Random(42);
             int surveySamples = Math.min(2000, count);
             for (int i = 0; i < surveySamples; i++) {
                 int sx = ox + surveyRng.nextInt(regionSize);
                 int sy = oz + surveyRng.nextInt(regionSize);
                 double mod = SeafloorGenerator.computeTectonicModifier(sx, sy);
-                if (Math.abs(mod) > 1) numBoundaries++;
-                if (mod > maxTectonicMod) maxTectonicMod = mod;
-                if (mod < minTectonicMod) minTectonicMod = mod;
+                if (Math.abs(mod) > 1)
+                    numBoundaries++;
+                if (mod > maxTectonicMod)
+                    maxTectonicMod = mod;
+                if (mod < minTectonicMod)
+                    minTectonicMod = mod;
             }
             pw.printf("  Survey (%d samples): %d near-boundary points, mod range [%.1f, %.1f]%n", surveySamples, numBoundaries, minTectonicMod, maxTectonicMod);
 
             pw.println("--- 3D Density Scan (8 probe columns) ---");
-            java.util.Random volRng = new java.util.Random(99);
+            Random volRng = new Random(99);
             long colSolidSum = 0;
             int airGapCols = 0;
             for (int pi = 0; pi < 8; pi++) {
@@ -828,16 +880,21 @@ public class WorldgenPreview {
                 for (int y = -1024; y < h; y++) {
                     double sfh = h - y;
                     double grad;
-                    if (y <= -1024) grad = 30.0;
-                    else if (y >= -924) grad = -1.0;
-                    else grad = 30.0 + (double)(y + 1024) / 100.0 * -31.0;
+                    if (y <= -1024)
+                        grad = 30.0;
+                    else if (y >= -924)
+                        grad = -1.0;
+                    else
+                        grad = 30.0 + (double)(y + 1024) / 100.0 * -31.0;
                     if (Math.max(sfh, grad) <= 0) { hasAirGap = true; break; }
                 }
                 colSolidSum += (h - (-1024));
-                if (hasAirGap) airGapCols++;
+                if (hasAirGap)
+                    airGapCols++;
             }
             pw.printf("  %d/8 columns with air gaps (%.0f avg solid blocks below surface)%n", airGapCols, colSolidSum / 8.0);
-            if (airGapCols == 0) pw.println("  -> NO interior holes");
+            if (airGapCols == 0)
+                pw.println("  -> NO interior holes");
 
             pw.println("--- Worldgen Assessment ---");
             pw.printf("  Height range: %s (%d blocks)%n", (maxH - minH > 200 ? "ADEQUATE" : "LOW"), maxH - minH);
@@ -852,7 +909,8 @@ public class WorldgenPreview {
                 for (int i = 0; i < 10; i++) {
                     int cx = 1000 + i * 3000;
                     int cy = 1000 + i * 3000;
-                    if (cx >= regionSize || cy >= regionSize) break;
+                    if (cx >= regionSize || cy >= regionSize)
+                        break;
                     int h = SeafloorGenerator.getHeightAt(ox + cx, oz + cy);
                     double c = Math.abs(SeafloorGenerator.getNoiseAt(ox + cx, oz + cy));
                     String biomeName = c < 0.10 ? "shallows" : c < 0.50 ? "shelf" : "plains";
@@ -869,8 +927,10 @@ public class WorldgenPreview {
 
     private static int blend(int base, int overlay) {
         int aO = (overlay >> 24) & 0xFF;
-        if (aO == 0) return base;
-        if (aO >= 255) return overlay;
+        if (aO == 0)
+            return base;
+        if (aO >= 255)
+            return overlay;
         int rB = (base >> 16) & 0xFF, gB = (base >> 8) & 0xFF, bB = base & 0xFF;
         int rO = (overlay >> 16) & 0xFF, gO = (overlay >> 8) & 0xFF, bO = overlay & 0xFF;
         float a = aO / 255.0f;

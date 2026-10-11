@@ -10,9 +10,7 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
 import net.neoforged.neoforge.event.tick.PlayerTickEvent;
 
-public final class GeothermalBreathing {
-    private GeothermalBreathing() {
-    }
+public class GeothermalBreathing {
 
     private static final int PERIOD = 10;
     private static final int PLUME = 4;
@@ -31,14 +29,14 @@ public final class GeothermalBreathing {
     }
 
     private static boolean inPlume(Level level, BlockPos eye) {
-        BlockPos.MutableBlockPos p = eye.mutable();
+        BlockPos.MutableBlockPos pos = eye.mutable();
         for (int i = 0; i <= PLUME; i++) {
-            BlockState state = level.getBlockState(p);
+            BlockState state = level.getBlockState(pos);
             if (state.getBlock() instanceof GeothermalVentBlock)
                 return state.getValue(GeothermalVentBlock.WATERLOGGED);
             if (!state.getFluidState().is(FluidTags.WATER))
                 return false;
-            p.move(0, -1, 0);
+            pos.move(0, -1, 0);
         }
         return false;
     }

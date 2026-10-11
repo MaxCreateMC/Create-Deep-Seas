@@ -22,12 +22,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-public final class SubLevelCableCleanup implements SubLevelObserver {
+public class SubLevelCableCleanup implements SubLevelObserver {
 
     public static final SubLevelCableCleanup INSTANCE = new SubLevelCableCleanup();
-
-    private SubLevelCableCleanup() {
-    }
 
     public static void onLevelLoad(LevelEvent.Load event) {
         if (!(event.getLevel() instanceof ServerLevel level))

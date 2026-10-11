@@ -33,12 +33,12 @@ public class RopeTrackingSubLevelMixin {
             return;
         }
         BlockPos pos = holder.getBlockPos();
-        SubLevelAccess sub = SableCompanion.INSTANCE.getContaining(level, pos);
+        SubLevelAccess subLevel = SableCompanion.INSTANCE.getContaining(level, pos);
 
         List<ServerPlayer> projected = null;
-        if (sub != null) {
+        if (subLevel != null) {
             Vector3d where = new Vector3d(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5);
-            sub.logicalPose().transformPosition(where);
+            subLevel.logicalPose().transformPosition(where);
             projected = server.getChunkSource().chunkMap
                     .getPlayers(new ChunkPos(BlockPos.containing(where.x, where.y, where.z)), false);
         }

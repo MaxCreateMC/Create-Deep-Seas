@@ -132,14 +132,14 @@ public class BallastVentBlockEntity extends BlockEntity {
     }
 
     private boolean isSubmerged(Level level, BlockPos pos) {
-        SubLevelAccess sub = SableCompanion.INSTANCE.getContaining(level, pos);
-        if (sub == null)
+        SubLevelAccess subLevel = SableCompanion.INSTANCE.getContaining(level, pos);
+        if (subLevel == null)
             return level.getFluidState(pos).is(FluidTags.WATER);
         Vector3d worldPos = new Vector3d(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5);
-        sub.logicalPose().transformPosition(worldPos);
+        subLevel.logicalPose().transformPosition(worldPos);
         BlockPos wPos = BlockPos.containing(worldPos.x, worldPos.y, worldPos.z);
-        Level parentLevel = SubLevelRegistry.getLevel(sub.getUniqueId());
-        if (parentLevel == null && sub instanceof SubLevel sl) {
+        Level parentLevel = SubLevelRegistry.getLevel(subLevel.getUniqueId());
+        if (parentLevel == null && subLevel instanceof SubLevel sl) {
             parentLevel = sl.getLevel();
         }
         if (parentLevel == null)

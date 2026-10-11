@@ -10,9 +10,7 @@ import org.joml.Vector3dc;
 import java.util.List;
 import com.maxenonyme.highseas.config.HighSeasConfig;
 
-public final class SailForce {
-    private SailForce() {
-    }
+public class SailForce {
 
     public static Vector3d forward(Quaterniondc orientation, Vec3 rudderLocal, Vec3 centerLocal,
                                    int spanX, int spanZ, List<SailGroup> sails) {

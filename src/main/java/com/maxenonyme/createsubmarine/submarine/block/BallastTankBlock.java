@@ -62,7 +62,8 @@ public class BallastTankBlock extends Block implements EntityBlock {
 
     @Override
     public @Nullable <T extends BlockEntity> BlockEntityTicker<T> getTicker(Level level, BlockState state, BlockEntityType<T> type) {
-        if (level.isClientSide) return null;
+        if (level.isClientSide)
+            return null;
         return type == CreateSubmarine.BALLAST_TANK_BE.get() ? (lvl, p, st, be) -> BallastTankBlockEntity.serverTick(lvl, p, (BallastTankBlockEntity) be) : null;
     }
 

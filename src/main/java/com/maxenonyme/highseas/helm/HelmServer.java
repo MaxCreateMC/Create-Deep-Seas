@@ -19,9 +19,7 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import net.minecraft.world.phys.AABB;
 
-public final class HelmServer {
-    private HelmServer() {
-    }
+public class HelmServer {
 
     private static final int INPUT_DECAY = 30;
 

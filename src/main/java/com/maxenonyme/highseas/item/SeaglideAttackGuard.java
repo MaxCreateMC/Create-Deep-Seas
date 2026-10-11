@@ -5,9 +5,7 @@ import net.minecraft.world.entity.player.Player;
 import net.neoforged.neoforge.event.entity.player.AttackEntityEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
 
-public final class SeaglideAttackGuard {
-    private SeaglideAttackGuard() {
-    }
+public class SeaglideAttackGuard {
 
     public static void onLeftClickBlock(PlayerInteractEvent.LeftClickBlock event) {
         if (isHolding(event.getEntity())) {

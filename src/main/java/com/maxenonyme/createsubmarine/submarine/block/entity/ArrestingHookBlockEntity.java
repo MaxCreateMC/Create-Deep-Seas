@@ -194,7 +194,7 @@ public class ArrestingHookBlockEntity extends BlockEntity implements BlockEntity
         }
         try {
             system.getPipeline().teleport(hookCollider, hookWorld, new Quaterniond());
-        } catch (Exception ignored) {
+        } catch (RuntimeException e) {
         }
     }
 
@@ -202,7 +202,7 @@ public class ArrestingHookBlockEntity extends BlockEntity implements BlockEntity
         if (hookCollider != null && hookColliderSystem != null) {
             try {
                 hookColliderSystem.removeObject(hookCollider);
-            } catch (Exception ignored) {
+            } catch (RuntimeException e) {
             }
         }
         hookCollider = null;

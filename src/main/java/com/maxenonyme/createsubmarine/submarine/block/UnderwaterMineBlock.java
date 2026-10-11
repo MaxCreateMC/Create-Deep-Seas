@@ -65,7 +65,8 @@ public class UnderwaterMineBlock extends Block implements EntityBlock {
     @Override
     public <T extends BlockEntity> BlockEntityTicker<T> getTicker(Level level, BlockState state, BlockEntityType<T> type) {
         return level.isClientSide ? null : (l, p, s, be) -> {
-            if (be instanceof UnderwaterMineBlockEntity umbe) UnderwaterMineBlockEntity.serverTick(l, p, umbe);
+            if (be instanceof UnderwaterMineBlockEntity umbe)
+                UnderwaterMineBlockEntity.serverTick(l, p, umbe);
         };
     }
 

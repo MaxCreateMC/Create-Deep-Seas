@@ -24,6 +24,7 @@ import net.minecraft.world.entity.animal.WaterAnimal;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelAccessor;
+import net.minecraft.world.phys.Vec3;
 
 public class MagmaticSnailEntity extends WaterAnimal {
     public final AnimationState crawlAnimationState = new AnimationState();
@@ -82,7 +83,7 @@ public class MagmaticSnailEntity extends WaterAnimal {
     }
 
     @Override
-    public void travel(net.minecraft.world.phys.Vec3 travelVector) {
+    public void travel(Vec3 travelVector) {
         if (this.isEffectiveAi() && !this.isInWater() && !this.isInLava()) {
             travelVector = travelVector.scale(0.3);
         }

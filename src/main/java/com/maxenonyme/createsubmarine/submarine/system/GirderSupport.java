@@ -17,9 +17,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-public final class GirderSupport {
-    private GirderSupport() {
-    }
+public class GirderSupport {
 
     public record Support(long a, long b, long[] girders) {
     }
@@ -119,12 +117,12 @@ public final class GirderSupport {
         if (volume <= 0 || volume > MAX_VOLUME)
             return new Support[0];
         LongOpenHashSet girders = new LongOpenHashSet();
-        BlockPos.MutableBlockPos m = new BlockPos.MutableBlockPos();
+        BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
         for (int x = minX; x <= maxX; x++)
             for (int y = minY; y <= maxY; y++)
                 for (int z = minZ; z <= maxZ; z++)
-                    if (girder(level.getBlockState(m.set(x, y, z))))
-                        girders.add(m.asLong());
+                    if (girder(level.getBlockState(cursor.set(x, y, z))))
+                        girders.add(cursor.asLong());
         if (girders.isEmpty())
             return new Support[0];
         List<Support> out = new ArrayList<>();

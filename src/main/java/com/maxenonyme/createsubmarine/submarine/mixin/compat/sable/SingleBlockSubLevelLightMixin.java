@@ -38,13 +38,13 @@ public abstract class SingleBlockSubLevelLightMixin {
         for (SubLevel other : container.getAllSubLevels()) {
             if (!(other instanceof ClientSubLevel hull) || hull.getPlot() == null)
                 continue;
-            BoundingBox3ic b = hull.getPlot().getBoundingBox();
-            if ((long) (b.maxX() - b.minX() + 1) * (b.maxY() - b.minY() + 1) * (b.maxZ() - b.minZ() + 1) < 9)
+            BoundingBox3ic bounds = hull.getPlot().getBoundingBox();
+            if ((long) (bounds.maxX() - bounds.minX() + 1) * (bounds.maxY() - bounds.minY() + 1) * (bounds.maxZ() - bounds.minZ() + 1) < 9)
                 continue;
             Vector3d local = hull.renderPose().transformPositionInverse(new Vector3d(x, y, z));
             BlockPos at = BlockPos.containing(local.x, local.y, local.z);
-            if (at.getX() < b.minX() || at.getX() > b.maxX() || at.getY() < b.minY() || at.getY() > b.maxY()
-                    || at.getZ() < b.minZ() || at.getZ() > b.maxZ())
+            if (at.getX() < bounds.minX() || at.getX() > bounds.maxX() || at.getY() < bounds.minY() || at.getY() > bounds.maxY()
+                    || at.getZ() < bounds.minZ() || at.getZ() > bounds.maxZ())
                 continue;
             createsubmarine$blockLight = level.getBrightness(LightLayer.BLOCK, at);
             createsubmarine$skyLight = hull.scaleSkyLight(level.getBrightness(LightLayer.SKY, at));

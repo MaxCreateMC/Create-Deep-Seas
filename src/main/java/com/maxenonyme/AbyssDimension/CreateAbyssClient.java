@@ -1,76 +1,89 @@
 package com.maxenonyme.AbyssDimension;
 
+import com.maxenonyme.AbyssDimension.client.CookiecutterClientHandler;
 import com.maxenonyme.AbyssDimension.client.MagmaFlowModel;
 import com.maxenonyme.AbyssDimension.client.PDAManager;
+import com.maxenonyme.AbyssDimension.client.model.AbyssalCuttlefish;
+import com.maxenonyme.AbyssDimension.client.model.Amphistium;
+import com.maxenonyme.AbyssDimension.client.model.CookiecutterShark;
+import com.maxenonyme.AbyssDimension.client.model.Isopod;
+import com.maxenonyme.AbyssDimension.client.model.MagmaticSnail;
+import com.maxenonyme.AbyssDimension.client.model.PelicanEel;
+import com.maxenonyme.AbyssDimension.client.renderer.AbyssalCuttlefishRenderer;
+import com.maxenonyme.AbyssDimension.client.renderer.AmphistiumRenderer;
+import com.maxenonyme.AbyssDimension.client.renderer.CookiecutterSharkRenderer;
+import com.maxenonyme.AbyssDimension.client.renderer.IsopodRenderer;
+import com.maxenonyme.AbyssDimension.client.renderer.MagmaticSnailRenderer;
+import com.maxenonyme.AbyssDimension.client.renderer.PelicanEelRenderer;
 import com.maxenonyme.AbyssDimension.entities.EntityRegistry;
+import com.maxenonyme.AbyssDimension.experimental.worldgen.client.PlateDebugOverlay;
 import net.minecraft.client.renderer.ItemBlockRenderTypes;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.block.BlockModelShaper;
+import net.minecraft.client.renderer.entity.NoopRenderer;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
 import net.neoforged.neoforge.client.event.EntityRenderersEvent;
 import net.neoforged.neoforge.client.event.ModelEvent;
 import net.neoforged.neoforge.common.NeoForge;
 
-public final class CreateAbyssClient {
-    private CreateAbyssClient() {
-    }
+public class CreateAbyssClient {
 
     public static void init(IEventBus modEventBus) {
         modEventBus.addListener(CreateAbyssClient::onClientSetup);
         modEventBus.addListener(CreateAbyssClient::onRegisterRenderers);
         modEventBus.addListener(CreateAbyssClient::onRegisterLayers);
         modEventBus.addListener(CreateAbyssClient::onModifyBakingResult);
-        NeoForge.EVENT_BUS.addListener(com.maxenonyme.AbyssDimension.experimental.worldgen.client.PlateDebugOverlay::onDebugText);
+        NeoForge.EVENT_BUS.addListener(PlateDebugOverlay::onDebugText);
         modEventBus.register(PDAManager.ModEvents.class);
 
         NeoForge.EVENT_BUS.register(PDAManager.GameEvents.class);
-        NeoForge.EVENT_BUS.register(com.maxenonyme.AbyssDimension.client.CookiecutterClientHandler.class);
+        NeoForge.EVENT_BUS.register(CookiecutterClientHandler.class);
     }
 
     private static void onRegisterRenderers(EntityRenderersEvent.RegisterRenderers event) {
         event.registerEntityRenderer(
                 EntityRegistry.AMPHISTIUM.get(),
-                com.maxenonyme.AbyssDimension.client.renderer.AmphistiumRenderer::new);
+                AmphistiumRenderer::new);
         event.registerEntityRenderer(
                 EntityRegistry.COOKIECUTTER_SHARK.get(),
-                com.maxenonyme.AbyssDimension.client.renderer.CookiecutterSharkRenderer::new);
+                CookiecutterSharkRenderer::new);
         event.registerEntityRenderer(
                 EntityRegistry.MAGMATIC_SNAIL.get(),
-                com.maxenonyme.AbyssDimension.client.renderer.MagmaticSnailRenderer::new);
+                MagmaticSnailRenderer::new);
         event.registerEntityRenderer(
                 EntityRegistry.ISOPOD.get(),
-                com.maxenonyme.AbyssDimension.client.renderer.IsopodRenderer::new);
+                IsopodRenderer::new);
         event.registerEntityRenderer(
                 EntityRegistry.ABYSSAL_CUTTLEFISH.get(),
-                com.maxenonyme.AbyssDimension.client.renderer.AbyssalCuttlefishRenderer::new);
+                AbyssalCuttlefishRenderer::new);
         event.registerEntityRenderer(
                 EntityRegistry.PELICAN_EEL.get(),
-                com.maxenonyme.AbyssDimension.client.renderer.PelicanEelRenderer::new);
+                PelicanEelRenderer::new);
         event.registerEntityRenderer(
                 EntityRegistry.SEGMENT_HITBOX.get(),
-                net.minecraft.client.renderer.entity.NoopRenderer::new);
+                NoopRenderer::new);
     }
 
     private static void onRegisterLayers(EntityRenderersEvent.RegisterLayerDefinitions event) {
         event.registerLayerDefinition(
-                com.maxenonyme.AbyssDimension.client.model.Amphistium.LAYER_LOCATION,
-                com.maxenonyme.AbyssDimension.client.model.Amphistium::createBodyLayer);
+                Amphistium.LAYER_LOCATION,
+                Amphistium::createBodyLayer);
         event.registerLayerDefinition(
-                com.maxenonyme.AbyssDimension.client.model.CookiecutterShark.LAYER_LOCATION,
-                com.maxenonyme.AbyssDimension.client.model.CookiecutterShark::createBodyLayer);
+                CookiecutterShark.LAYER_LOCATION,
+                CookiecutterShark::createBodyLayer);
         event.registerLayerDefinition(
-                com.maxenonyme.AbyssDimension.client.model.MagmaticSnail.LAYER_LOCATION,
-                com.maxenonyme.AbyssDimension.client.model.MagmaticSnail::createBodyLayer);
+                MagmaticSnail.LAYER_LOCATION,
+                MagmaticSnail::createBodyLayer);
         event.registerLayerDefinition(
-                com.maxenonyme.AbyssDimension.client.model.Isopod.LAYER_LOCATION,
-                com.maxenonyme.AbyssDimension.client.model.Isopod::createBodyLayer);
+                Isopod.LAYER_LOCATION,
+                Isopod::createBodyLayer);
         event.registerLayerDefinition(
-                com.maxenonyme.AbyssDimension.client.model.AbyssalCuttlefish.LAYER_LOCATION,
-                com.maxenonyme.AbyssDimension.client.model.AbyssalCuttlefish::createBodyLayer);
+                AbyssalCuttlefish.LAYER_LOCATION,
+                AbyssalCuttlefish::createBodyLayer);
         event.registerLayerDefinition(
-                com.maxenonyme.AbyssDimension.client.model.PelicanEel.LAYER_LOCATION,
-                com.maxenonyme.AbyssDimension.client.model.PelicanEel::createBodyLayer);
+                PelicanEel.LAYER_LOCATION,
+                PelicanEel::createBodyLayer);
     }
 
     private static void onModifyBakingResult(ModelEvent.ModifyBakingResult event) {

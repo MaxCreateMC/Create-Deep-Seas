@@ -1,5 +1,6 @@
 package com.maxenonyme.createsubmarine.submarine.alarm;
 
+import com.maxenonyme.createsubmarine.CreateSubmarine;
 import com.maxenonyme.createsubmarine.submarine.network.AlarmSoundChunkPayload;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.fml.loading.FMLPaths;
@@ -16,9 +17,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 import java.util.zip.CRC32;
 
-public final class AlarmSounds {
-    private AlarmSounds() {
-    }
+public class AlarmSounds {
 
     public static final long MAX_SIZE = 8L * 1024 * 1024;
     public static final int MAX_FILES = 128;
@@ -32,7 +31,8 @@ public final class AlarmSounds {
         Path path = FMLPaths.CONFIGDIR.get().resolve("create_submarine").resolve("alarms");
         try {
             Files.createDirectories(path);
-        } catch (IOException ignored) {
+        } catch (IOException e) {
+            CreateSubmarine.LOGGER.warn("Couldn't create the alarm sound folder {}", path, e);
         }
         return path;
     }

@@ -35,9 +35,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-public final class FloodSystem {
-    private FloodSystem() {
-    }
+public class FloodSystem {
 
     private static final int STEP = 5;
     private static final double STEP_SECONDS = STEP / 20.0;
@@ -58,7 +56,7 @@ public final class FloodSystem {
     private static final int AIR_POCKET = 10;
     private static final int FLAGS = Block.UPDATE_CLIENTS | Block.UPDATE_KNOWN_SHAPE;
 
-    private static final class Domain {
+    private static class Domain {
         final CompartmentDetector.Component comp;
         final BlockPos[] cells;
         final BlockPos[] open;
@@ -84,7 +82,7 @@ public final class FloodSystem {
         }
     }
 
-    private static final class Flood {
+    private static class Flood {
         List<CompartmentDetector.Component> comps;
         Set<BlockPos> plugs = Set.of();
         List<Domain> domains = List.of();
@@ -147,8 +145,8 @@ public final class FloodSystem {
             SubLevelContainer container = SubLevelContainer.getContainer(level);
             if (container == null)
                 continue;
-            for (SubLevel sub : container.getAllSubLevels()) {
-                UUID id = sub.getUniqueId();
+            for (SubLevel subLevel : container.getAllSubLevels()) {
+                UUID id = subLevel.getUniqueId();
                 List<CompartmentDetector.Component> comps = CompartmentTracker.getCompartments(id);
                 if (comps.isEmpty()) {
                     Flood adrift = FLOODS.get(id);
@@ -157,7 +155,7 @@ public final class FloodSystem {
                     continue;
                 }
                 seen.add(id);
-                step(level, sub, id, comps);
+                step(level, subLevel, id, comps);
             }
         }
         FLOODS.keySet().retainAll(seen);
@@ -173,22 +171,22 @@ public final class FloodSystem {
         double g = Math.abs(DimensionPhysicsData.getGravity(level).y);
         double dt = event.getTimeStep();
         for (SubLevel raw : container.getAllSubLevels()) {
-            if (!(raw instanceof ServerSubLevel sub))
+            if (!(raw instanceof ServerSubLevel subLevel))
                 continue;
-            UUID id = sub.getUniqueId();
+            UUID id = subLevel.getUniqueId();
             Flood flood = FLOODS.get(id);
             if (flood == null || flood.weight == 0)
                 continue;
-            RigidBodyHandle handle = event.getPhysicsSystem().getPhysicsHandle(sub);
+            RigidBodyHandle handle = event.getPhysicsSystem().getPhysicsHandle(subLevel);
             if (handle == null || !handle.isValid())
                 continue;
             Vector3d weight = new Vector3d(0.0, -flood.weight * WATER_WEIGHT * g * dt, 0.0);
-            sub.logicalPose().orientation().conjugate(new Quaterniond()).transform(weight);
+            subLevel.logicalPose().orientation().conjugate(new Quaterniond()).transform(weight);
             handle.applyImpulseAtPoint(new Vector3d(flood.centre), weight);
         }
     }
 
-    private static void step(ServerLevel level, SubLevel sub, UUID id, List<CompartmentDetector.Component> comps) {
+    private static void step(ServerLevel level, SubLevel subLevel, UUID id, List<CompartmentDetector.Component> comps) {
         Flood flood = FLOODS.computeIfAbsent(id, k -> new Flood());
         Set<BlockPos> plugs = CompartmentTracker.plugs(id);
         if (flood.comps != comps || !flood.plugs.equals(plugs)) {
@@ -201,7 +199,7 @@ public final class FloodSystem {
         Set<BlockPos> soaked = new HashSet<>();
         Set<BlockPos> awash = new HashSet<>();
         if (!flood.domains.isEmpty()) {
-            Pose3dc pose = sub.logicalPose();
+            Pose3dc pose = subLevel.logicalPose();
             Tilt tilt = Tilt.of(pose);
             Map<Long, Double> surfaces = new HashMap<>();
             for (Domain domain : flood.domains) {
@@ -212,7 +210,7 @@ public final class FloodSystem {
                 if (sunken)
                     drown(level, domain, water, soaked);
                 else if (domain.cells.length > 0)
-                    settle(level, sub, id, pose, tilt, domain, surfaces, water, soaked);
+                    settle(level, subLevel, id, pose, tilt, domain, surfaces, water, soaked);
             }
         }
         if (water.equals(flood.water) && soaked.equals(flood.soaked) && awash.equals(flood.awash))
@@ -282,14 +280,14 @@ public final class FloodSystem {
 
     private static void swamp(ServerLevel level, Pose3dc pose, Domain domain, boolean sunken, Set<BlockPos> soaked,
             Set<BlockPos> awash) {
-        Vector3d w = new Vector3d();
+        Vector3d point = new Vector3d();
         Map<BlockPos, Boolean> drowned = new HashMap<>();
         for (int i = 0; i < domain.open.length; i++) {
             if (!sunken) {
                 Boolean under = drowned.computeIfAbsent(domain.vents[i], vent -> {
-                    w.set(vent.getX() + 0.5, vent.getY() + 0.1, vent.getZ() + 0.5);
-                    pose.transformPosition(w);
-                    return CompartmentTracker.realFluidState(level, BlockPos.containing(w.x, w.y, w.z)).is(FluidTags.WATER);
+                    point.set(vent.getX() + 0.5, vent.getY() + 0.1, vent.getZ() + 0.5);
+                    pose.transformPosition(point);
+                    return CompartmentTracker.realFluidState(level, BlockPos.containing(point.x, point.y, point.z)).is(FluidTags.WATER);
                 });
                 if (!under)
                     continue;
@@ -315,7 +313,7 @@ public final class FloodSystem {
         }
     }
 
-    private static void settle(ServerLevel level, SubLevel sub, UUID id, Pose3dc pose, Tilt tilt, Domain domain,
+    private static void settle(ServerLevel level, SubLevel subLevel, UUID id, Pose3dc pose, Tilt tilt, Domain domain,
             Map<Long, Double> surfaces, Set<BlockPos> water, Set<BlockPos> soaked) {
         BlockPos[] cells = domain.cells;
         if (domain.openings.length == 0) {
@@ -333,26 +331,26 @@ public final class FloodSystem {
         double plane = Double.NEGATIVE_INFINITY;
         double highestInlet = Double.NEGATIVE_INFINITY;
         boolean crush = false;
-        Vector3d w = new Vector3d();
+        Vector3d point = new Vector3d();
         for (int k = 0; k < count; k++) {
             BlockPos o = domain.openings[k];
-            w.set(o.getX() + 0.5, o.getY() + 0.5, o.getZ() + 0.5);
-            pose.transformPosition(w);
-            BlockPos wp = BlockPos.containing(w.x, w.y, w.z);
+            point.set(o.getX() + 0.5, o.getY() + 0.5, o.getZ() + 0.5);
+            pose.transformPosition(point);
+            BlockPos wp = BlockPos.containing(point.x, point.y, point.z);
             if (!level.isLoaded(wp))
                 continue;
             if (CompartmentTracker.realFluidState(level, wp).is(FluidTags.WATER)) {
                 double surface = surface(level, wp, surfaces);
-                inletY[inlets] = w.y;
+                inletY[inlets] = point.y;
                 inletSurface[inlets] = surface;
                 inletMouth[inlets] = domain.mouths[k];
                 inlets++;
                 plane = Math.max(plane, surface);
-                highestInlet = Math.max(highestInlet, w.y + 0.5);
-                if (domain.breaches[k] && surface - w.y > crushDepth())
+                highestInlet = Math.max(highestInlet, point.y + 0.5);
+                if (domain.breaches[k] && surface - point.y > crushDepth())
                     crush = true;
             } else {
-                outletY[outlets++] = w.y - 0.5;
+                outletY[outlets++] = point.y - 0.5;
             }
         }
 
@@ -388,7 +386,7 @@ public final class FloodSystem {
         int air = capacity - held - strays.size();
         if (crush && air * AIR_POCKET > capacity && !SubmarineConfig.DISABLE_IMPLOSION.get()) {
             domain.crushed = true;
-            SubmarineSinkingSystem.implodeCompartment(id, sub, level, domain.comp);
+            SubmarineSinkingSystem.implodeCompartment(id, subLevel, level, domain.comp);
             return;
         }
 

@@ -9,16 +9,13 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
 
-public final class DeviceGlitch {
+public class DeviceGlitch {
     private static final double REACH = 32.0;
     private static final float MAX_SPIN = 60f;
 
     private static float spin;
     private static float previousSpin;
     private static float spinSpeed;
-
-    private DeviceGlitch() {
-    }
 
     public static void onClientTick(ClientTickEvent.Post event) {
         if (Minecraft.getInstance().isPaused())

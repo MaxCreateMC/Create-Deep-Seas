@@ -19,9 +19,7 @@ import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import org.joml.Vector3d;
 import org.joml.Vector3dc;
 
-public final class FluentWatersJukebox {
-    private FluentWatersJukebox() {
-    }
+public class FluentWatersJukebox {
 
     private static final int INTERVAL = 20;
     private static final double RADIUS = 8.0;
@@ -52,8 +50,8 @@ public final class FluentWatersJukebox {
         for (SubLevel ship : container.getAllSubLevels()) {
             if (ship.isRemoved() || ship.getPlot() == null)
                 continue;
-            Vector3dc c = ship.logicalPose().position();
-            if (at.distanceToSqr(c.x(), c.y(), c.z()) > SHIP_REACH * SHIP_REACH)
+            Vector3dc point = ship.logicalPose().position();
+            if (at.distanceToSqr(point.x(), point.y(), point.z()) > SHIP_REACH * SHIP_REACH)
                 continue;
             Vector3d local = ship.logicalPose().transformPositionInverse(new Vector3d(at.x, at.y, at.z));
             if (playing(level, ship.getPlot(), new Vec3(local.x, local.y, local.z)))
@@ -66,11 +64,11 @@ public final class FluentWatersJukebox {
         int x0 = Mth.floor(at.x - RADIUS) >> 4, x1 = Mth.floor(at.x + RADIUS) >> 4;
         int z0 = Mth.floor(at.z - RADIUS) >> 4, z1 = Mth.floor(at.z + RADIUS) >> 4;
         if (plot != null) {
-            BoundingBox3ic b = plot.getBoundingBox();
-            x0 = Math.max(x0, b.minX() >> 4);
-            x1 = Math.min(x1, b.maxX() >> 4);
-            z0 = Math.max(z0, b.minZ() >> 4);
-            z1 = Math.min(z1, b.maxZ() >> 4);
+            BoundingBox3ic bounds = plot.getBoundingBox();
+            x0 = Math.max(x0, bounds.minX() >> 4);
+            x1 = Math.min(x1, bounds.maxX() >> 4);
+            z0 = Math.max(z0, bounds.minZ() >> 4);
+            z1 = Math.min(z1, bounds.maxZ() >> 4);
         }
         for (int cx = x0; cx <= x1; cx++) {
             for (int cz = z0; cz <= z1; cz++) {

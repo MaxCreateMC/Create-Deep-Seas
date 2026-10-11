@@ -4,6 +4,7 @@ import com.maxenonyme.createsubmarine.submarine.config.HullStrengthConfig;
 import com.maxenonyme.createsubmarine.submarine.config.SubmarineConfig;
 import net.minecraft.core.Direction;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
@@ -11,20 +12,18 @@ import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 
-public final class MaterialProperties {
+public class MaterialProperties {
     private static final Map<ResourceLocation, double[]> PROPERTIES = new HashMap<>();
     private static final Map<ResourceLocation, double[]> DIRECTIONAL_MODIFIERS = new HashMap<>();
-    private static final Map<net.minecraft.world.level.block.Block, double[]> RESOLVED = new java.util.concurrent.ConcurrentHashMap<>();
+    private static final Map<Block, double[]> RESOLVED = new ConcurrentHashMap<>();
 
     private static final double[] METAL = { 2.00e11, 2.50e8, 0.29, 101 };
     private static final double[] STONE = { 5.00e10, 1.50e8, 0.25, 80 };
     private static final double[] WOOD = { 1.10e10, 4.00e7, 0.30, 44 };
     private static final double[] GLASS = { 7.00e10, 4.00e7, 0.25, 30 };
     private static final double[] SOFT = { 5.00e9, 2.50e7, 0.30, 40 };
-
-    private MaterialProperties() {
-    }
 
     static {
         for (String wood : new String[]{"oak", "spruce", "birch", "jungle", "acacia", "dark_oak", "mangrove", "cherry",
@@ -614,7 +613,7 @@ public final class MaterialProperties {
         SoundType sound;
         try {
             sound = state.getSoundType();
-        } catch (Throwable e) {
+        } catch (RuntimeException e) {
             return SOFT;
         }
         if (sound == SoundType.METAL || sound == SoundType.NETHERITE_BLOCK || sound == SoundType.COPPER

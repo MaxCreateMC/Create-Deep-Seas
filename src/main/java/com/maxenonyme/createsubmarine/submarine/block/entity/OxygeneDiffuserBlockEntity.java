@@ -84,14 +84,15 @@ public class OxygeneDiffuserBlockEntity extends BlockEntity implements IHaveGogg
     }
 
     public static void tick(Level level, BlockPos pos, BlockState state, OxygeneDiffuserBlockEntity be) {
-        if (level == null || DiffuserZoneProtection.evict(level, pos)) return;
+        if (level == null || DiffuserZoneProtection.evict(level, pos))
+            return;
 
         boolean canRun = level.hasNeighborSignal(pos) && be.oxygenTank.getFluidAmount() > 0;
 
         SubLevelAccess subAccess = SableCompanion.INSTANCE.getContaining(level, pos);
 
-        if (subAccess instanceof SubLevel sub && canRun) {
-            be.currentSubLevelId = sub.getUniqueId();
+        if (subAccess instanceof SubLevel subLevel && canRun) {
+            be.currentSubLevelId = subLevel.getUniqueId();
             long gameTick = level.getGameTime();
 
             boolean owner = SubmarineDriverRegistry.claim(be.currentSubLevelId, pos, SubmarineDriverRegistry.OXYGEN_DIFFUSER, gameTick);
@@ -123,21 +124,21 @@ public class OxygeneDiffuserBlockEntity extends BlockEntity implements IHaveGogg
                     || CompartmentTracker.isStructureDirty(be.currentSubLevelId)
                     || sinceUpdate >= 200;
             if (!CompartmentTracker.isScanActive(be.currentSubLevelId) && scanDue && sinceUpdate >= 20) {
-                CompartmentTracker.beginScanIfIdle(be.currentSubLevelId, sub);
+                CompartmentTracker.beginScanIfIdle(be.currentSubLevelId, subLevel);
             }
             if (CompartmentTracker.isScanActive(be.currentSubLevelId)) {
-                boolean done = CompartmentTracker.stepScan(be.currentSubLevelId, sub, SCAN_BUDGET, gameTick);
+                boolean done = CompartmentTracker.stepScan(be.currentSubLevelId, subLevel, SCAN_BUDGET, gameTick);
                 if (done && !level.isClientSide) {
                     SubmarinePressureSystem.setSealedCompartments(
                         be.currentSubLevelId, CompartmentTracker.getCompartments(be.currentSubLevelId));
                 }
             }
 
-            LevelPlot plot = sub.getPlot();
+            LevelPlot plot = subLevel.getPlot();
             if (plot != null) {
                 BoundingBox3ic bounds = plot.getBoundingBox();
                 Vector3d dimensions = CompartmentTracker.getOrComputeDimensions(be.currentSubLevelId, bounds);
-                Pose3dc pose = sub.logicalPose();
+                Pose3dc pose = subLevel.logicalPose();
                 if (CompartmentTracker.poseMovedEnough(be.currentSubLevelId, pose, 0.01, 1e-6)) {
                     SubmarineHullManager.updateHull(be.currentSubLevelId, pose.position(), dimensions, pose.orientation());
                     CompartmentTracker.updateAABB(be.currentSubLevelId, pose.position(), dimensions);
@@ -146,7 +147,7 @@ public class OxygeneDiffuserBlockEntity extends BlockEntity implements IHaveGogg
                 if (!be.subLevelRegistered) {
                     if (!level.isClientSide) {
                         SubLevelRegistry.register(
-                                be.currentSubLevelId, sub, level,
+                                be.currentSubLevelId, subLevel, level,
                                 new SubLevelRegistry.PlotBounds(
                                         bounds.minX(), bounds.maxX(),
                                         bounds.minY(), bounds.maxY(),

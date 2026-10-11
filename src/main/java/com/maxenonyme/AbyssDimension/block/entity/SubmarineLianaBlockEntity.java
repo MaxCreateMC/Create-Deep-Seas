@@ -1,6 +1,7 @@
 package com.maxenonyme.AbyssDimension.block.entity;
 
 import com.maxenonyme.AbyssDimension.LianaRegistry;
+import com.maxenonyme.AbyssDimension.system.PlantPhysicsRegistry;
 import dev.ryanhcode.sable.api.block.BlockEntitySubLevelActor;
 import dev.ryanhcode.sable.api.physics.force.ForceTotal;
 import dev.ryanhcode.sable.api.physics.handle.RigidBodyHandle;
@@ -160,9 +161,9 @@ public class SubmarineLianaBlockEntity extends BlockEntity implements BlockEntit
     private ServerSubLevel findSubLevelByPlot(ServerSubLevelContainer container, int plotX, int plotZ) {
         if (plotX == -1 || level == null || level.getGameTime() < retryLookupAt)
             return null;
-        for (ServerSubLevel sub : container.getAllSubLevels()) {
-            if (sub.getPlot() != null && sub.getPlot().plotPos.x == plotX && sub.getPlot().plotPos.z == plotZ) {
-                return sub;
+        for (ServerSubLevel segment : container.getAllSubLevels()) {
+            if (segment.getPlot() != null && segment.getPlot().plotPos.x == plotX && segment.getPlot().plotPos.z == plotZ) {
+                return segment;
             }
         }
         retryLookupAt = level.getGameTime() + LOOKUP_COOLDOWN;
@@ -179,9 +180,9 @@ public class SubmarineLianaBlockEntity extends BlockEntity implements BlockEntit
         }
 
         if (this.parentPlotX == -1 && !this.isController && this.groundAnchor == null) {
-            com.maxenonyme.AbyssDimension.system.PlantPhysicsRegistry registry = com.maxenonyme.AbyssDimension.system.PlantPhysicsRegistry
+            PlantPhysicsRegistry registry = PlantPhysicsRegistry
                     .get(subLevel.getLevel());
-            com.maxenonyme.AbyssDimension.system.PlantPhysicsRegistry.SegmentData data = registry
+            PlantPhysicsRegistry.SegmentData data = registry
                     .getSegment(subLevel.getPlot().plotPos.x, subLevel.getPlot().plotPos.z);
             if (data != null) {
                 this.isController = data.root();

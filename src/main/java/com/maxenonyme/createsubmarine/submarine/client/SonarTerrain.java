@@ -40,9 +40,7 @@ import static com.maxenonyme.createsubmarine.submarine.client.SonarView.RANGE;
 import static com.maxenonyme.createsubmarine.submarine.client.SonarView.SHELLS;
 import static com.maxenonyme.createsubmarine.submarine.client.SonarView.UP;
 
-final class SonarTerrain {
-    private SonarTerrain() {
-    }
+class SonarTerrain {
 
     private static final int SKIN = 4;
     private static final int SPAN = RANGE * 2 + 1;
@@ -76,15 +74,15 @@ final class SonarTerrain {
         if (chunk == null)
             return;
 
-        BlockPos.MutableBlockPos p = new BlockPos.MutableBlockPos();
+        BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
         int buried = 0;
         for (int y = y1; y >= y0; y--) {
-            BlockState state = CompartmentTracker.realBlockState(chunk, p.set(x, y, z));
+            BlockState state = CompartmentTracker.realBlockState(chunk, cursor.set(x, y, z));
             if (state.isAir() || state.getRenderShape() != RenderShape.MODEL) {
                 buried = 0;
                 continue;
             }
-            if (!state.isSolidRender(level, p))
+            if (!state.isSolidRender(level, cursor))
                 buried = 0;
             else if (++buried > SKIN)
                 continue;
@@ -105,7 +103,7 @@ final class SonarTerrain {
             bytes = new ByteBufferBuilder(RenderType.cutout().bufferSize());
         Region region = new Region(level, origin, states);
         BlockRenderDispatcher dispatcher = mc.getBlockRenderer();
-        BlockPos.MutableBlockPos p = new BlockPos.MutableBlockPos();
+        BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
         PoseStack ms = new PoseStack();
 
         VertexBuffer[] shells = new VertexBuffer[SHELLS];
@@ -119,10 +117,10 @@ final class SonarTerrain {
                 int dx = cell % SPAN - RANGE;
                 int dz = (cell / SPAN) % SPAN - RANGE;
                 int dy = cell / (SPAN * SPAN) - DOWN;
-                p.set(origin.getX() + dx, origin.getY() + dy, origin.getZ() + dz);
+                cursor.set(origin.getX() + dx, origin.getY() + dy, origin.getZ() + dz);
                 ms.pushPose();
                 ms.translate(dx, dy, dz);
-                dispatcher.renderBatched(states[cell], p, region, ms, builder, true, RANDOM);
+                dispatcher.renderBatched(states[cell], cursor, region, ms, builder, true, RANDOM);
                 ms.popPose();
             }
             shells[shell] = upload(builder.build());
@@ -190,7 +188,7 @@ final class SonarTerrain {
                 (float) (origin.getZ() - center.z));
     }
 
-    private static final class Region implements BlockAndTintGetter {
+    private static class Region implements BlockAndTintGetter {
         private final Level level;
         private final BlockPos origin;
         private final BlockState[] states;

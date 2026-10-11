@@ -113,9 +113,11 @@ public class PelicanEelEntity extends WaterAnimal implements HasSegments {
     }
 
     private void updateSegmentPositions() {
-        if (segments.isEmpty()) return;
+        if (segments.isEmpty())
+            return;
         for (var seg : segments) {
-            if (seg == null) return;
+            if (seg == null)
+                return;
         }
 
         Vec3 up = new Vec3(0, 1, 0);
@@ -144,7 +146,8 @@ public class PelicanEelEntity extends WaterAnimal implements HasSegments {
             cumulativeDir = new Vec3(lx, ly, lz);
 
             Vec3 right = cumulativeDir.cross(up);
-            if (right.lengthSqr() < 1.0E-7) right = new Vec3(1, 0, 0);
+            if (right.lengthSqr() < 1.0E-7)
+                right = new Vec3(1, 0, 0);
             right = right.normalize();
 
             double segDist = (i == 0) ? def.forwardOffset() : def.forwardOffset() - prevFwd;
@@ -189,7 +192,8 @@ public class PelicanEelEntity extends WaterAnimal implements HasSegments {
     @Override
     public void recreateSegments() {
         for (var seg : segments) {
-            if (seg != null) seg.discard();
+            if (seg != null)
+                seg.discard();
         }
         segments.clear();
         for (int i = 0; i < SEGMENT_DEFS.size(); i++) {

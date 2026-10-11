@@ -24,9 +24,7 @@ import net.minecraft.client.resources.model.ModelResourceLocation;
 import net.minecraft.resources.ResourceLocation;
 import net.neoforged.neoforge.client.event.ModelEvent;
 
-public final class SailRenderClient {
-    private SailRenderClient() {
-    }
+public class SailRenderClient {
 
     private static volatile Boolean billows;
 

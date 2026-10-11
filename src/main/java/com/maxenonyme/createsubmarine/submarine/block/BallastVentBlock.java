@@ -63,8 +63,10 @@ public class BallastVentBlock extends Block implements EntityBlock, IWrenchable 
     }
     private static boolean canConnectTo(BlockGetter level, BlockPos neighborPos, Direction faceTowardsNeighbor) {
         BlockEntity be = level.getBlockEntity(neighborPos);
-        if (be == null) return false;
-        if (be.getLevel() == null) return false;
+        if (be == null)
+            return false;
+        if (be.getLevel() == null)
+            return false;
         IFluidHandler handler = be.getLevel().getCapability(Capabilities.FluidHandler.BLOCK, neighborPos, faceTowardsNeighbor.getOpposite());
         return handler != null;
     }

@@ -8,9 +8,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-public final class FurlState {
-    private FurlState() {
-    }
+public class FurlState {
 
     private static final Map<UUID, Map<Long, Float>> REEF = new ConcurrentHashMap<>();
 

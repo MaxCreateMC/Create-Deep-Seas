@@ -12,7 +12,7 @@ import net.minecraft.world.phys.shapes.VoxelShape;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.ForkJoinWorkerThread;
 
-public final class RealisticHull {
+public class RealisticHull {
     public static final float UNBREAKABLE = 1.0e6f;
     private static final double REFERENCE_DEPTH_PER_PASCAL = 3.85e-6;
 
@@ -27,9 +27,6 @@ public final class RealisticHull {
 
     public record Material(double stiffness, double yield, double nu, double volume, Direction.Axis grainAxis,
             double[] grain) {
-    }
-
-    private RealisticHull() {
     }
 
     public static Material material(BlockState state) {
@@ -98,15 +95,15 @@ public final class RealisticHull {
         return out;
     }
 
-    private static double grain(Material m, int dx, int dy, int dz) {
-        if (m.grainAxis() == null || m.grain() == null)
+    private static double grain(Material mat, int dx, int dy, int dz) {
+        if (mat.grainAxis() == null || mat.grain() == null)
             return 1.0;
-        double along = switch (m.grainAxis()) {
+        double along = switch (mat.grainAxis()) {
             case X -> Math.abs(dx);
             case Y -> Math.abs(dy);
             case Z -> Math.abs(dz);
         };
         double weight = along / Math.sqrt(dx * dx + dy * dy + dz * dz);
-        return m.grain()[0] * weight + m.grain()[1] * (1.0 - weight);
+        return mat.grain()[0] * weight + mat.grain()[1] * (1.0 - weight);
     }
 }

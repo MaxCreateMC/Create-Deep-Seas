@@ -37,9 +37,7 @@ import dev.eriksonn.aeronautics.content.particle.GustParticleData;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
 
-public final class SailWindSystem {
-    private SailWindSystem() {
-    }
+public class SailWindSystem {
 
     private static final double SERVER_STEP = 0.05;
     private static final double MAX_ACCEL = 3.0;
@@ -51,14 +49,14 @@ public final class SailWindSystem {
     private static final Map<UUID, Trim> TRIMS = new HashMap<>();
     private static final Map<UUID, Double> HEADING = new HashMap<>();
 
-    private static final class Trim {
+    private static class Trim {
         double speed;
         double push;
         double modelled;
         double hidden;
     }
 
-    private static final class Drive {
+    private static class Drive {
         final Vector3d keel;
         final boolean afloat;
         final Vector3d drift = new Vector3d();
@@ -138,7 +136,7 @@ public final class SailWindSystem {
         Collection<SubLevel> chain;
         try {
             chain = SubLevelHelper.getConnectedChain(root);
-        } catch (Exception e) {
+        } catch (RuntimeException e) {
             chain = List.of(root);
         }
         double sign = 0.0;
@@ -159,7 +157,7 @@ public final class SailWindSystem {
         Collection<SubLevel> chain;
         try {
             chain = SubLevelHelper.getConnectedChain(root);
-        } catch (Exception e) {
+        } catch (RuntimeException e) {
             return null;
         }
         for (SubLevel s : chain) {
@@ -183,11 +181,11 @@ public final class SailWindSystem {
         double x0 = bb.minX() + 0.5, x1 = bb.maxX() + 0.5, xm = (x0 + x1) * 0.5;
         double z0 = bb.minZ() + 0.5, z1 = bb.maxZ() + 0.5, zm = (z0 + z1) * 0.5;
         double[][] probes = { { xm, zm }, { x0, z0 }, { x0, z1 }, { x1, z0 }, { x1, z1 }, { xm, z0 }, { xm, z1 }, { x0, zm }, { x1, zm } };
-        Vector3d p = new Vector3d();
+        Vector3d vec = new Vector3d();
         for (int dy = 0; dy <= 1; dy++) {
             for (double[] probe : probes) {
-                pose.transformPosition(p.set(probe[0], bb.minY() + 0.5 + dy, probe[1]));
-                if (!level.getFluidState(BlockPos.containing(p.x, p.y, p.z)).isEmpty())
+                pose.transformPosition(vec.set(probe[0], bb.minY() + 0.5 + dy, probe[1]));
+                if (!level.getFluidState(BlockPos.containing(vec.x, vec.y, vec.z)).isEmpty())
                     return true;
             }
         }
@@ -198,8 +196,8 @@ public final class SailWindSystem {
             double factor, double speedRatio, Drive drive) {
         if (!BoatClassifier.inAir(level, source, group.localCenter()))
             return;
-        Vec3 c = group.localCenter();
-        Vector3d worldCenter = sailPose.transformPosition(new Vector3d(c.x, c.y, c.z));
+        Vec3 point = group.localCenter();
+        Vector3d worldCenter = sailPose.transformPosition(new Vector3d(point.x, point.y, point.z));
         Vec3 ln = group.localNormal();
         Vector3d normal = sailPose.orientation().transform(new Vector3d(ln.x, ln.y, ln.z));
         normal.y = 0.0;
@@ -259,9 +257,9 @@ public final class SailWindSystem {
         for (SailGroup group : sails) {
             if (group.axis() == Direction.Axis.Y)
                 continue;
-            Vec3 c = group.localCenter();
+            Vec3 point = group.localCenter();
             double drag = group.area() * DimensionPhysicsData.getAirPressure(parentLevel,
-                    sailPose.transformPosition(new Vector3d(c.x, c.y, c.z)));
+                    sailPose.transformPosition(new Vector3d(point.x, point.y, point.z)));
             Vec3 ln = group.localNormal();
             Vector3d normal = sailPose.orientation().transform(new Vector3d(ln.x, ln.y, ln.z));
             drive.dragXX += drag * normal.x * normal.x;

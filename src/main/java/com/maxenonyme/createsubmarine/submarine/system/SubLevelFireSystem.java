@@ -21,9 +21,7 @@ import org.joml.Vector3d;
 
 import java.util.UUID;
 
-public final class SubLevelFireSystem {
-    private SubLevelFireSystem() {
-    }
+public class SubLevelFireSystem {
 
     private static final int INTERVAL = 10;
     private static int ticks;
@@ -35,25 +33,25 @@ public final class SubLevelFireSystem {
             SubLevelContainer container = SubLevelContainer.getContainer(level);
             if (container == null)
                 continue;
-            for (SubLevel sub : container.getAllSubLevels()) {
-                if (!sub.isRemoved() && sub.getPlot() != null)
-                    douse(level, sub);
+            for (SubLevel subLevel : container.getAllSubLevels()) {
+                if (!subLevel.isRemoved() && subLevel.getPlot() != null)
+                    douse(level, subLevel);
             }
         }
     }
 
-    private static void douse(ServerLevel level, SubLevel sub) {
-        LevelPlot plot = sub.getPlot();
-        BoundingBox3ic b = plot.getBoundingBox();
-        UUID id = sub.getUniqueId();
+    private static void douse(ServerLevel level, SubLevel subLevel) {
+        LevelPlot plot = subLevel.getPlot();
+        BoundingBox3ic bounds = plot.getBoundingBox();
+        UUID id = subLevel.getUniqueId();
         BlockPos.MutableBlockPos m = new BlockPos.MutableBlockPos();
-        Vector3d w = new Vector3d();
-        for (int cx = b.minX() >> 4; cx <= b.maxX() >> 4; cx++) {
-            for (int cz = b.minZ() >> 4; cz <= b.maxZ() >> 4; cz++) {
+        Vector3d point = new Vector3d();
+        for (int cx = bounds.minX() >> 4; cx <= bounds.maxX() >> 4; cx++) {
+            for (int cz = bounds.minZ() >> 4; cz <= bounds.maxZ() >> 4; cz++) {
                 LevelChunk chunk = plot.getChunk(plot.toLocal(new ChunkPos(cx, cz)));
                 if (chunk == null)
                     continue;
-                for (int cy = b.minY() >> 4; cy <= b.maxY() >> 4; cy++) {
+                for (int cy = bounds.minY() >> 4; cy <= bounds.maxY() >> 4; cy++) {
                     int si = chunk.getSectionIndexFromSectionY(cy);
                     if (si < 0 || si >= chunk.getSections().length)
                         continue;
@@ -69,14 +67,14 @@ public final class SubLevelFireSystem {
                                 m.set((cx << 4) + x, (cy << 4) + y, (cz << 4) + z);
                                 if (CompartmentTracker.isWithinShip(id, m))
                                     continue;
-                                sub.logicalPose().transformPosition(w.set(m.getX() + 0.5, m.getY() + 0.5, m.getZ() + 0.5));
-                                BlockPos world = BlockPos.containing(w.x, w.y, w.z);
+                                subLevel.logicalPose().transformPosition(point.set(m.getX() + 0.5, m.getY() + 0.5, m.getZ() + 0.5));
+                                BlockPos world = BlockPos.containing(point.x, point.y, point.z);
                                 if (!CompartmentTracker.realFluidState(level, world).is(FluidTags.WATER))
                                     continue;
                                 level.setBlock(m, Blocks.AIR.defaultBlockState(), 3);
                                 level.playSound(null, world, SoundEvents.FIRE_EXTINGUISH, SoundSource.BLOCKS, 0.5f,
                                         2.6f + (level.random.nextFloat() - level.random.nextFloat()) * 0.8f);
-                                level.sendParticles(ParticleTypes.LARGE_SMOKE, w.x, w.y, w.z, 4, 0.2, 0.2, 0.2, 0.01);
+                                level.sendParticles(ParticleTypes.LARGE_SMOKE, point.x, point.y, point.z, 4, 0.2, 0.2, 0.2, 0.01);
                             }
                 }
             }

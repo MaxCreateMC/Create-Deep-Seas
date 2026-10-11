@@ -25,9 +25,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-public final class ImplosionCinematics {
-    private ImplosionCinematics() {
-    }
+public class ImplosionCinematics {
 
     private static final int BLACKOUT_HOLD = 60;
     private static final int BLACKOUT_FADE = 20;

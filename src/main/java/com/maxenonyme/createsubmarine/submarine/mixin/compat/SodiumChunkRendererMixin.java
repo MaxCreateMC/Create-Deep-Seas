@@ -19,7 +19,8 @@ public abstract class SodiumChunkRendererMixin {
 
     @Inject(method = "begin", at = @At("TAIL"), remap = false, require = 0)
     private void createsubmarine$applyOcclusionUniforms(@Coerce Object pass, CallbackInfo ci) {
-        if (createsubmarine$lookupFailed) return;
+        if (createsubmarine$lookupFailed)
+            return;
         try {
             Field field = createsubmarine$activeProgramField;
             if (field == null) {
@@ -32,7 +33,8 @@ public abstract class SodiumChunkRendererMixin {
                 createsubmarine$activeProgramField = field;
             }
             Object program = field.get(this);
-            if (program == null) return;
+            if (program == null)
+                return;
             int handle = (int) program.getClass().getMethod("handle").invoke(program);
             boolean translucent = (boolean) pass.getClass().getMethod("isTranslucent").invoke(pass);
             SodiumWaterOcclusionBridge.applyToProgram(handle, translucent);

@@ -27,9 +27,7 @@ import java.util.Set;
 import java.util.UUID;
 import net.minecraft.world.phys.Vec3;
 
-public final class Halyard {
-    private Halyard() {
-    }
+public class Halyard {
 
     public static final double FOLD = 0.55;
     private static final double SUPPORT_SHIFT = 0.375;
@@ -177,13 +175,13 @@ public final class Halyard {
     }
 
     private static boolean holds(Level level, BlockPos pos) {
-        BlockState s = level.getBlockState(pos);
-        return !s.isAir() && s.getFluidState().isEmpty() && !s.is(BoatSailBlock.SAILS);
+        BlockState blockState = level.getBlockState(pos);
+        return !blockState.isAir() && blockState.getFluidState().isEmpty() && !blockState.is(BoatSailBlock.SAILS);
     }
 
     private static boolean sail(Level level, BlockPos pos, Direction.Axis axis) {
-        BlockState s = level.getBlockState(pos);
-        return s.getBlock() instanceof BoatSailBlock && s.getValue(BoatSailBlock.AXIS) == axis;
+        BlockState blockState = level.getBlockState(pos);
+        return blockState.getBlock() instanceof BoatSailBlock && blockState.getValue(BoatSailBlock.AXIS) == axis;
     }
 
     public static boolean isHalyard(Level level, BlockPos pos) {

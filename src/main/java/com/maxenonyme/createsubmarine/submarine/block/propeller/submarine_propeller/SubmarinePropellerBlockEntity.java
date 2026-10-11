@@ -196,15 +196,15 @@ public class SubmarinePropellerBlockEntity extends BasePropellerBlockEntity {
         if (level == null) {
             return false;
         }
-        SubLevelAccess sub = SableCompanion.INSTANCE.getContaining(level, worldPosition);
-        if (sub == null) {
+        SubLevelAccess ship = SableCompanion.INSTANCE.getContaining(level, worldPosition);
+        if (ship == null) {
             return level.getFluidState(worldPosition).is(FluidTags.WATER);
         }
         Vector3d worldPos = new Vector3d(worldPosition.getX() + 0.5, worldPosition.getY() + 0.5, worldPosition.getZ() + 0.5);
-        sub.logicalPose().transformPosition(worldPos);
+        ship.logicalPose().transformPosition(worldPos);
         BlockPos wPos = BlockPos.containing(worldPos.x, worldPos.y, worldPos.z);
-        Level parentLevel = SubLevelRegistry.getLevel(sub.getUniqueId());
-        if (parentLevel == null && sub instanceof SubLevel sl) {
+        Level parentLevel = SubLevelRegistry.getLevel(ship.getUniqueId());
+        if (parentLevel == null && ship instanceof SubLevel sl) {
             parentLevel = sl.getLevel();
         }
         if (parentLevel == null) {
@@ -284,7 +284,8 @@ public class SubmarinePropellerBlockEntity extends BasePropellerBlockEntity {
     }
 
     private void spawnSubmarineBubbles() {
-        if (level == null) return;
+        if (level == null)
+            return;
         SubmarinePropellerBlockEntity source = clusterDriver();
         int particleCount = (int) (Math.abs(source.rotationSpeed) * 0.05f) + 1;
         float speed = (float)(this.getConfigAirflow() * source.getDirectionIndependentSpeed() / 20f);

@@ -15,9 +15,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-public final class LiquidDensity {
-    private LiquidDensity() {
-    }
+public class LiquidDensity {
 
     private record TagDensity(TagKey<Fluid> tag, double density) {
     }

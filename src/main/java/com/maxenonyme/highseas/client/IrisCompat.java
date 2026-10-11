@@ -2,9 +2,7 @@ package com.maxenonyme.highseas.client;
 
 import java.lang.reflect.Method;
 
-public final class IrisCompat {
-    private IrisCompat() {
-    }
+public class IrisCompat {
 
     private static Object nonePhase;
     private static boolean noneResolved;

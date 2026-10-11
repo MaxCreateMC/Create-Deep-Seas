@@ -38,9 +38,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-public final class GirderFailure {
-    private GirderFailure() {
-    }
+public class GirderFailure {
 
     private static final int DURATION = 80;
     private static final int FLIGHT = 60;
@@ -57,7 +55,7 @@ public final class GirderFailure {
     private static final int MAX_IMPACTS = 3;
     private static final Random RAND = new Random();
 
-    private static final class Failure {
+    private static class Failure {
         final Level plotLevel;
         final SubLevelAccess sub;
         final GirderSupport.Support support;
@@ -354,10 +352,10 @@ public final class GirderFailure {
     }
 
     public static boolean loose(Level level, SubLevel piece) {
-        BoundingBox3ic b = piece.getPlot().getBoundingBox();
-        if (b.minX() != b.maxX() || b.minY() != b.maxY() || b.minZ() != b.maxZ())
+        BoundingBox3ic bounds = piece.getPlot().getBoundingBox();
+        if (bounds.minX() != bounds.maxX() || bounds.minY() != bounds.maxY() || bounds.minZ() != bounds.maxZ())
             return false;
-        return GirderSupport.girder(level.getBlockState(new BlockPos(b.minX(), b.minY(), b.minZ())));
+        return GirderSupport.girder(level.getBlockState(new BlockPos(bounds.minX(), bounds.minY(), bounds.minZ())));
     }
 
     private static boolean indoors(Vector3dc at) {

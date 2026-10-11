@@ -61,9 +61,7 @@ import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 
 @EventBusSubscriber(modid = CreateSubmarine.MOD_ID, value = Dist.CLIENT)
-public final class HullPressureRenderer {
-    private HullPressureRenderer() {
-    }
+public class HullPressureRenderer {
 
     private static final int REFRESH_TICKS = 10;
     private static final int SETTLE_TICKS = 10;
@@ -78,7 +76,7 @@ public final class HullPressureRenderer {
             Long2FloatOpenHashMap factors) {
     }
 
-    private static final class Mesh {
+    private static class Mesh {
         final Shape shape;
         final int n;
         final int[] lx, ly, lz;
@@ -226,7 +224,7 @@ public final class HullPressureRenderer {
         }
         LongArrayList solid = new LongArrayList();
         List<RealisticHull.Material> materials = realistic ? new ArrayList<>() : null;
-        BlockPos.MutableBlockPos m = new BlockPos.MutableBlockPos();
+        BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
         for (int cx = minX >> 4; cx <= maxX >> 4; cx++) {
             for (int cz = minZ >> 4; cz <= maxZ >> 4; cz++) {
                 LevelChunk chunk = plot.getChunk(plot.toLocal(new ChunkPos(cx, cz)));
@@ -248,7 +246,7 @@ public final class HullPressureRenderer {
                                 BlockState state = section.getBlockState(x & 15, y & 15, z & 15);
                                 if (CompartmentDetector.isPermeable(state))
                                     continue;
-                                solid.add(m.set(x, y, z).asLong());
+                                solid.add(pos.set(x, y, z).asLong());
                                 if (materials != null)
                                     materials.add(RealisticHull.material(state));
                             }
@@ -349,24 +347,24 @@ public final class HullPressureRenderer {
         float[] base = new float[cap], factor = new float[cap];
         LongOpenHashSet present = new LongOpenHashSet(cap);
         int n = 0;
-        BlockPos.MutableBlockPos m = new BlockPos.MutableBlockPos();
+        BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
         for (Long2FloatMap.Entry e : factors.long2FloatEntrySet()) {
-            m.set(e.getLongKey());
-            BlockState state = level.getBlockState(m);
+            pos.set(e.getLongKey());
+            BlockState state = level.getBlockState(pos);
             if (state.isAir())
                 continue;
             Optional<HullStrengthConfig.HullProperty> prop = HullStrengthConfig
-                    .getFor(SubmarinePressureSystem.getActualBlockState(level, m, state));
+                    .getFor(SubmarinePressureSystem.getActualBlockState(level, pos, state));
             if (prop.isEmpty())
                 continue;
-            lx[n] = m.getX() - shape.ax();
-            ly[n] = m.getY() - shape.ay();
-            lz[n] = m.getZ() - shape.az();
+            lx[n] = pos.getX() - shape.ax();
+            ly[n] = pos.getY() - shape.ay();
+            lz[n] = pos.getZ() - shape.az();
             if (shape.realistic()) {
                 base[n] = (float) Math.max(1.0, e.getFloatValue() * SubmarineConfig.MAX_DEPTH_MULTIPLIER.get());
                 factor[n] = 1f;
             } else {
-                base[n] = (float) (prop.get().maxWaterDepth() * GirderSupport.factor(supports, m));
+                base[n] = (float) (prop.get().maxWaterDepth() * GirderSupport.factor(supports, pos));
                 factor[n] = e.getFloatValue();
             }
             present.add(e.getLongKey());

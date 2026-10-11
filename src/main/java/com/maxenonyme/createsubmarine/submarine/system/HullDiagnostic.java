@@ -19,9 +19,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
-public final class HullDiagnostic {
-    private HullDiagnostic() {
-    }
+public class HullDiagnostic {
 
     private static final Direction[] START_ORDER = { Direction.UP, Direction.NORTH, Direction.SOUTH, Direction.EAST,
             Direction.WEST, Direction.DOWN };
@@ -30,11 +28,11 @@ public final class HullDiagnostic {
         Level level = console.getLevel();
         BlockPos pos = console.getBlockPos();
         SubLevelAccess access = level == null ? null : SableCompanion.INSTANCE.getContaining(level, pos);
-        if (!(access instanceof SubLevel sub) || sub.getPlot() == null)
+        if (!(access instanceof SubLevel subLevel) || subLevel.getPlot() == null)
             return DiagnosticPayload.noVessel(pos);
 
-        UUID id = sub.getUniqueId();
-        Pose3dc pose = sub.logicalPose();
+        UUID id = subLevel.getUniqueId();
+        Pose3dc pose = subLevel.logicalPose();
 
         SubmarinePressureSystem.WeakPoint weak = SubmarinePressureSystem.weakestHull(id, level);
         String weakest = weak == null ? "" : weak.state().getBlock().getDescriptionId();
@@ -47,16 +45,16 @@ public final class HullDiagnostic {
         boolean hermetic = false;
         if (start != null) {
             CompartmentDetector.Component room = null;
-            for (CompartmentDetector.Component c : comps) {
-                if (c.internal().contains(start)) {
-                    room = c;
+            for (CompartmentDetector.Component compartment : comps) {
+                if (compartment.internal().contains(start)) {
+                    room = compartment;
                     break;
                 }
             }
             hermetic = room != null && room.sealed() && !CompartmentTracker.isCompromised(id, room.anchor())
                     && !CompartmentTracker.isBreached(id, room);
             if (!hermetic && (room == null || !room.sealed())) {
-                SubmarineInfoCommand.Leaks leaks = SubmarineInfoCommand.findLeaks(level, sub.getPlot().getBoundingBox(),
+                SubmarineInfoCommand.Leaks leaks = SubmarineInfoCommand.findLeaks(level, subLevel.getPlot().getBoundingBox(),
                         start);
                 if (leaks.status() == SubmarineInfoCommand.LeakStatus.LEAKING)
                     breaches.addAll(leaks.blocks());
@@ -64,10 +62,10 @@ public final class HullDiagnostic {
         }
 
         List<BlockPos> listed = new ArrayList<>();
-        for (BlockPos p : breaches) {
+        for (BlockPos blockPos : breaches) {
             if (listed.size() >= DiagnosticPayload.MAX_LISTED)
                 break;
-            listed.add(toWorld(pose, p));
+            listed.add(toWorld(pose, blockPos));
         }
 
         int depth = console.syncedDepth;
@@ -86,8 +84,8 @@ public final class HullDiagnostic {
     }
 
     private static BlockPos toWorld(Pose3dc pose, BlockPos plotPos) {
-        Vector3d w = new Vector3d(plotPos.getX() + 0.5, plotPos.getY() + 0.5, plotPos.getZ() + 0.5);
-        pose.transformPosition(w);
-        return BlockPos.containing(w.x, w.y, w.z);
+        Vector3d point = new Vector3d(plotPos.getX() + 0.5, plotPos.getY() + 0.5, plotPos.getZ() + 0.5);
+        pose.transformPosition(point);
+        return BlockPos.containing(point.x, point.y, point.z);
     }
 }
