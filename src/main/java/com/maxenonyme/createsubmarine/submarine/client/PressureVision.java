@@ -41,6 +41,8 @@ public class PressureVision {
     private static float beatIn;
     private static float grey;
     private static float previousGrey;
+    private static float squeeze;
+    private static float previousSqueeze;
     private static float duck = 1f;
     private static float pushedDuck = 1f;
     private static float muffle;
@@ -66,6 +68,14 @@ public class PressureVision {
         grey += (greyTarget - grey) * (greyTarget > grey ? 0.0125f : 0.04f);
         if (grey < 0.005f)
             grey = 0f;
+        float squeezeTarget = mc.player == null || mc.level == null || !enabled() ? 0f : ImplosionCinematics.squeeze();
+        previousSqueeze = squeeze;
+        if (squeezeTarget > squeeze)
+            squeeze = Math.min(squeezeTarget, squeeze + 1f / 60f);
+        else
+            squeeze += (squeezeTarget - squeeze) * 0.03f;
+        if (squeeze < 0.005f)
+            squeeze = 0f;
         previousGasp = gasp;
         gasp += Mth.TWO_PI * Mth.lerp(danger, 0.25f, 1.1f) / 20f;
         if (gasp > Mth.TWO_PI * 64f) {
@@ -97,6 +107,11 @@ public class PressureVision {
         mc.getSoundManager().play(drone);
     }
 
+    public static void dropSqueeze() {
+        squeeze = 0f;
+        previousSqueeze = 0f;
+    }
+
     public static float panic() {
         return grey;
     }
@@ -111,7 +126,7 @@ public class PressureVision {
         duck += (duckTarget - duck) * (silent ? 0.45f : 0.1f);
         if (Math.abs(duck - duckTarget) < 0.005f)
             duck = duckTarget;
-        float muffleTarget = silent ? 1f : fear();
+        float muffleTarget = silent ? 1f : Math.max(fear(), squeeze);
         muffle += (muffleTarget - muffle) * (silent ? 0.2f : 0.1f);
         if (Math.abs(duck - pushedDuck) < 0.01f && (duck < 1f || pushedDuck == 1f))
             return;
@@ -142,7 +157,8 @@ public class PressureVision {
 
     public static void onCameraAngles(ViewportEvent.ComputeCameraAngles event) {
         Minecraft mc = Minecraft.getInstance();
-        if (mc.isPaused() || danger < HEART_THRESHOLD && previous < HEART_THRESHOLD)
+        if (mc.isPaused() || mc.player == null || mc.player.isDeadOrDying()
+                || danger < HEART_THRESHOLD && previous < HEART_THRESHOLD)
             return;
         float partialTick = (float) event.getPartialTick();
         float fear = Mth.clamp((Mth.lerp(partialTick, previous, danger) - HEART_THRESHOLD) / (1f - HEART_THRESHOLD), 0f, 1f);
@@ -158,7 +174,8 @@ public class PressureVision {
 
     public static void onRenderGui(RenderGuiEvent.Pre event) {
         float partialTick = event.getPartialTick().getGameTimeDeltaPartialTick(false);
-        float strength = Mth.lerp(partialTick, previous, danger);
+        float tunnel = Mth.lerp(partialTick, previousSqueeze, squeeze);
+        float strength = Math.max(Mth.lerp(partialTick, previous, danger), tunnel);
         if (strength < 0.01f)
             return;
         Minecraft mc = Minecraft.getInstance();
@@ -170,6 +187,7 @@ public class PressureVision {
         effect.setUniform("Strength", strength);
         effect.setUniform("Grey", fade);
         effect.setUniform("VeilLights", lights != null ? 1f : 0f);
+        effect.setUniform("Tunnel", tunnel);
         effect.process(partialTick);
         if (lights != null) {
             lights.bind(false);

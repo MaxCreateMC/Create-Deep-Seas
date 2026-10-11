@@ -5,6 +5,7 @@ uniform sampler2D VeilLightSampler;
 uniform float Strength;
 uniform float Grey;
 uniform float VeilLights;
+uniform float Tunnel;
 
 in vec2 texCoord;
 in vec2 oneTexel;
@@ -16,8 +17,8 @@ void main() {
     centered.x *= oneTexel.y / oneTexel.x;
     float dist = length(centered);
 
-    float inner = mix(0.62, 0.14, Strength);
-    float band = mix(0.42, 0.32, Strength);
+    float inner = mix(0.62, 0.14, Strength) - 0.12 * Tunnel;
+    float band = mix(0.42, 0.32, Strength) - 0.1 * Tunnel;
     float edge = smoothstep(inner, inner + band, dist);
     float radius = edge * Strength * 4.0;
 

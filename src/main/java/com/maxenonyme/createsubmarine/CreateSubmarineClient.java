@@ -50,6 +50,8 @@ import com.maxenonyme.createsubmarine.submarine.client.DeepSeasUpdateScreen;
 import com.maxenonyme.createsubmarine.submarine.client.DeepSeasSafetyScreen;
 import com.maxenonyme.createsubmarine.submarine.client.DeviceGlitch;
 import com.maxenonyme.createsubmarine.submarine.client.HullStrengthConfigScreen;
+import com.maxenonyme.createsubmarine.submarine.client.DiverHud;
+import com.maxenonyme.createsubmarine.submarine.client.EarPressure;
 import com.maxenonyme.createsubmarine.submarine.client.ImplosionCinematics;
 import com.maxenonyme.createsubmarine.submarine.client.LightFailureRenderer;
 import com.maxenonyme.createsubmarine.submarine.client.LithostitchedMissingScreen;
@@ -93,6 +95,7 @@ public class CreateSubmarineClient {
         modEventBus.addListener(CreateSubmarineClient::onRegisterClientExtensions);
         modEventBus.addListener(CreateSubmarineClient::onModifyBakingResult);
         modEventBus.addListener(PressureVision::onRegisterReloadListeners);
+        modEventBus.addListener(DiverHud::onRegisterReloadListeners);
         CrackUtil.setChecker(SubLevelCrackRenderer::hasCrack);
         ImplosionFxPayload.handler = (payload, context) -> context
                 .enqueueWork(() -> ImplosionCinematics.accept(payload));
@@ -158,6 +161,14 @@ public class CreateSubmarineClient {
                 .addListener(PressureVision::onRenderGui);
         NeoForge.EVENT_BUS
                 .addListener(PressureVision::onCameraAngles);
+        NeoForge.EVENT_BUS
+                .addListener(DiverHud::onClientTick);
+        NeoForge.EVENT_BUS
+                .addListener(DiverHud::onRenderGui);
+        NeoForge.EVENT_BUS
+                .addListener(EarPressure::onSoundStart);
+        NeoForge.EVENT_BUS
+                .addListener(EarPressure::onStreamStart);
         NeoForge.EVENT_BUS
                 .addListener(DeviceGlitch::onClientTick);
         NeoForge.EVENT_BUS

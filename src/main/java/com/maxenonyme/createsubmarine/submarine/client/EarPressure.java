@@ -8,6 +8,9 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.resources.sounds.SoundInstance;
 import net.minecraft.client.sounds.ChannelAccess;
 import net.minecraft.sounds.SoundSource;
+import net.neoforged.neoforge.client.event.sound.PlaySoundSourceEvent;
+import net.neoforged.neoforge.client.event.sound.PlayStreamingSourceEvent;
+import net.neoforged.neoforge.client.event.sound.SoundEvent;
 import org.lwjgl.openal.AL10;
 import org.lwjgl.openal.EXTEfx;
 
@@ -16,7 +19,7 @@ import java.util.Map;
 public class EarPressure {
     private static volatile int filter = -1;
     private static volatile boolean unsupported;
-    private static boolean engaged;
+    private static volatile boolean engaged;
 
     public static void apply(Minecraft mc, float muffle) {
         if (unsupported)
@@ -25,8 +28,11 @@ public class EarPressure {
         if (off && !engaged)
             return;
         engaged = !off;
-        float gain = 1f - 0.25f * muffle;
-        float gainHf = 1f - 0.93f * muffle;
+        int lowpass = off ? 0 : lowpass();
+        if (lowpass > 0) {
+            EXTEfx.alFilterf(lowpass, EXTEfx.AL_LOWPASS_GAIN, 1f - 0.25f * muffle);
+            EXTEfx.alFilterf(lowpass, EXTEfx.AL_LOWPASS_GAINHF, 1f - 0.93f * muffle);
+        }
         Map<SoundInstance, ChannelAccess.ChannelHandle> channels =
                 ((SoundEngineAccessor) ((SoundManagerAccessor) mc.getSoundManager()).createsubmarine$engine()).createsubmarine$channels();
         for (Map.Entry<SoundInstance, ChannelAccess.ChannelHandle> entry : channels.entrySet()) {
@@ -38,14 +44,25 @@ public class EarPressure {
                         AL10.alSourcei(source, EXTEfx.AL_DIRECT_FILTER, EXTEfx.AL_FILTER_NULL);
                     return;
                 }
-                int lowpass = lowpass();
-                if (lowpass <= 0)
-                    return;
-                EXTEfx.alFilterf(lowpass, EXTEfx.AL_LOWPASS_GAIN, gain);
-                EXTEfx.alFilterf(lowpass, EXTEfx.AL_LOWPASS_GAINHF, gainHf);
-                AL10.alSourcei(source, EXTEfx.AL_DIRECT_FILTER, lowpass);
+                if (lowpass > 0)
+                    AL10.alSourcei(source, EXTEfx.AL_DIRECT_FILTER, lowpass);
             });
         }
+    }
+
+    public static void onSoundStart(PlaySoundSourceEvent event) {
+        muffleOnStart(event);
+    }
+
+    public static void onStreamStart(PlayStreamingSourceEvent event) {
+        muffleOnStart(event);
+    }
+
+    private static void muffleOnStart(SoundEvent.SoundSourceEvent event) {
+        if (!engaged || filter <= 0 || event.getSound().getSource() == SoundSource.MASTER)
+            return;
+        int source = ((ChannelAccessor) event.getChannel()).createsubmarine$source();
+        AL10.alSourcei(source, EXTEfx.AL_DIRECT_FILTER, filter);
     }
 
     private static int lowpass() {
