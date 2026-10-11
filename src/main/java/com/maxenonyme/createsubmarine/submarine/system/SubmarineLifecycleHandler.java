@@ -23,6 +23,7 @@ public final class SubmarineLifecycleHandler {
     public static void onServerStopping(ServerStoppingEvent event) {
         SubmarineSinkingSystem.clearCrashed();
         ImplosionSequence.clearAll();
+        LightFailure.clear(false);
         com.maxenonyme.createsubmarine.submarine.compartment.FloodSystem.clearAll();
         SubmarinePressureSystem.clearAll();
         SubLevelRegistry.clearAll();

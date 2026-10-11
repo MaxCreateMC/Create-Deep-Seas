@@ -5,6 +5,7 @@ import com.maxenonyme.createsubmarine.submarine.network.ImplosionFxPayload;
 import com.maxenonyme.createsubmarine.submarine.util.SubLevelRegistry;
 import dev.ryanhcode.sable.companion.SubLevelAccess;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.particles.BlockParticleOption;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
@@ -15,6 +16,7 @@ import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.damagesource.DamageType;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import net.neoforged.neoforge.network.PacketDistributor;
@@ -33,6 +35,7 @@ public final class ImplosionSequence {
     }
 
     public static final int BUILD_UP = 60;
+    public static final int SILENCE = 10;
     private static final double STRESS_REACH = 48.0;
     private static final double BLAST_REACH = 64.0;
     private static final double BLAST_RADIUS = 14.0;
@@ -43,7 +46,7 @@ public final class ImplosionSequence {
     private static final ResourceKey<DamageType> IMPLOSION = ResourceKey.create(Registries.DAMAGE_TYPE,
             ResourceLocation.fromNamespaceAndPath(CreateSubmarine.MOD_ID, "implosion"));
 
-    private record Pending(ServerLevel level, Vec3 origin, long start, Runnable burst) {
+    private record Pending(ServerLevel level, Vec3 origin, BlockState state, long start, Runnable burst) {
     }
 
     private static final Map<UUID, Pending> PENDING = new ConcurrentHashMap<>();
@@ -56,8 +59,8 @@ public final class ImplosionSequence {
         return PENDING.containsKey(id);
     }
 
-    public static void buildUp(ServerLevel level, UUID id, Vec3 origin, Runnable burst) {
-        if (PENDING.putIfAbsent(id, new Pending(level, origin, level.getServer().getTickCount(), burst)) != null)
+    public static void buildUp(ServerLevel level, UUID id, Vec3 origin, BlockState state, Runnable burst) {
+        if (PENDING.putIfAbsent(id, new Pending(level, origin, state, level.getServer().getTickCount(), burst)) != null)
             return;
         for (ServerPlayer player : level.players()) {
             double distance = Math.sqrt(player.distanceToSqr(origin));
@@ -79,11 +82,37 @@ public final class ImplosionSequence {
                 if (creak == age)
                     creak(pending, age / (float) BUILD_UP);
             }
+            crumble(pending, age);
+            if (age == BUILD_UP - SILENCE)
+                cue(pending, ImplosionFxPayload.SILENCE);
             if (age >= BUILD_UP) {
                 it.remove();
-                pending.burst().run();
+                try {
+                    pending.burst().run();
+                } catch (RuntimeException e) {
+                    CreateSubmarine.LOGGER.error("Implosion burst failed at {}", pending.origin(), e);
+                }
+                cue(pending, ImplosionFxPayload.END);
             }
         }
+    }
+
+    private static void cue(Pending pending, int kind) {
+        for (ServerPlayer player : pending.level().players()) {
+            if (player.distanceToSqr(pending.origin()) <= STRESS_REACH * STRESS_REACH)
+                PacketDistributor.sendToPlayer(player, new ImplosionFxPayload(kind, 0f, 0));
+        }
+    }
+
+    private static void crumble(Pending pending, long age) {
+        double t = Math.min(1.0, age / (double) BUILD_UP);
+        int every = Math.max(2, 12 - (int) (t * 10.0));
+        if (age % every != 0)
+            return;
+        Vec3 at = pending.origin();
+        pending.level().sendParticles(ParticleTypes.SMOKE, at.x, at.y, at.z, 1 + (int) (t * 6.0), 0.2, 0.4, 0.2, 0.01);
+        pending.level().sendParticles(new BlockParticleOption(ParticleTypes.BLOCK, pending.state()), at.x, at.y, at.z,
+                1 + (int) (t * 4.0), 0.25, 0.4, 0.25, 0.05);
     }
 
     private static void creak(Pending pending, float progress) {

@@ -61,6 +61,19 @@ public class CreateSubmarine {
         public static java.util.function.Function<dev.ryanhcode.sable.companion.SubLevelAccess, dev.ryanhcode.sable.companion.math.Pose3dc> clientPoseGetter = (
                         sub) -> sub.logicalPose();
         public static final DeferredRegister<Item> ITEMS = DeferredRegister.create(BuiltInRegistries.ITEM, MOD_ID);
+        public static final DeferredRegister<net.minecraft.world.item.ArmorMaterial> ARMOR_MATERIALS = DeferredRegister
+                        .create(net.minecraft.core.registries.Registries.ARMOR_MATERIAL, MOD_ID);
+        public static final net.neoforged.neoforge.registries.DeferredHolder<net.minecraft.world.item.ArmorMaterial, net.minecraft.world.item.ArmorMaterial> DIVING_SUIT_MATERIAL = ARMOR_MATERIALS
+                        .register("diving_suit", () -> new net.minecraft.world.item.ArmorMaterial(
+                                        java.util.Map.of(net.minecraft.world.item.ArmorItem.Type.HELMET, 2,
+                                                        net.minecraft.world.item.ArmorItem.Type.CHESTPLATE, 6,
+                                                        net.minecraft.world.item.ArmorItem.Type.LEGGINGS, 5,
+                                                        net.minecraft.world.item.ArmorItem.Type.BOOTS, 2),
+                                        9, net.minecraft.sounds.SoundEvents.ARMOR_EQUIP_IRON,
+                                        () -> net.minecraft.world.item.crafting.Ingredient.of(net.minecraft.world.item.Items.COPPER_INGOT),
+                                        java.util.List.of(new net.minecraft.world.item.ArmorMaterial.Layer(
+                                                        ResourceLocation.fromNamespaceAndPath(MOD_ID, "diving_suit"))),
+                                        0f, 0f));
         public static final DeferredRegister<BlockEntityType<?>> BLOCK_ENTITIES = DeferredRegister
                         .create(BuiltInRegistries.BLOCK_ENTITY_TYPE, MOD_ID);
         public static final DeferredRegister<SoundEvent> SOUNDS = DeferredRegister.create(BuiltInRegistries.SOUND_EVENT,
@@ -247,6 +260,9 @@ public class CreateSubmarine {
         public static final Supplier<SoundEvent> TINNITUS_SOUND = SOUNDS.register("acouphene",
                         () -> SoundEvent.createVariableRangeEvent(
                                         ResourceLocation.fromNamespaceAndPath(MOD_ID, "acouphene")));
+        public static final Supplier<SoundEvent> HEARTBEAT_SOUND = SOUNDS.register("heartbeat",
+                        () -> SoundEvent.createVariableRangeEvent(
+                                        ResourceLocation.fromNamespaceAndPath(MOD_ID, "heartbeat")));
         public static final Supplier<SoundEvent> IMPACT_EXPLOSION_SOUND = SOUNDS.register("impact_explosion_03",
                         () -> SoundEvent.createVariableRangeEvent(
                                         ResourceLocation.fromNamespaceAndPath(MOD_ID, "impact_explosion_03")));
@@ -327,6 +343,12 @@ public class CreateSubmarine {
         public static final Supplier<Item> STEEL_CABLE = ITEMS.register("steel_cable",
                         () -> new SteelCableItem(
                                         new net.minecraft.world.item.Item.Properties()));
+        public static final Supplier<Item> DIVING_CHESTPLATE = ITEMS.register("diving_chestplate",
+                        () -> new com.maxenonyme.createsubmarine.submarine.item.DivingSuitItem(DIVING_SUIT_MATERIAL,
+                                        net.minecraft.world.item.ArmorItem.Type.CHESTPLATE,
+                                        new net.minecraft.world.item.Item.Properties().stacksTo(1)
+                                                        .durability(net.minecraft.world.item.ArmorItem.Type.CHESTPLATE.getDurability(15)),
+                                        ResourceLocation.fromNamespaceAndPath(MOD_ID, "textures/chestplate_diving.png")));
         public static final Supplier<Item> PRESSURE_GOGGLES = ITEMS.register("pressure_goggles",
                         () -> new com.maxenonyme.createsubmarine.submarine.item.PressureGogglesItem(
                                         new net.minecraft.world.item.Item.Properties().stacksTo(1)));
@@ -391,6 +413,7 @@ public class CreateSubmarine {
                 BLOCKS.register(modEventBus);
                 FORCE_GROUP_REGISTER.register(modEventBus);
                 ITEMS.register(modEventBus);
+                ARMOR_MATERIALS.register(modEventBus);
                 BLOCK_ENTITIES.register(modEventBus);
                 SOUNDS.register(modEventBus);
                 MOB_EFFECTS.register(modEventBus);
@@ -411,6 +434,10 @@ public class CreateSubmarine {
                 NeoForge.EVENT_BUS.addListener(SubmarinePressureSystem::onBlockBroken);
                 NeoForge.EVENT_BUS.addListener(SubmarineSinkingSystem::onServerTick);
                 NeoForge.EVENT_BUS.addListener(com.maxenonyme.createsubmarine.submarine.system.ImplosionSequence::onServerTick);
+                NeoForge.EVENT_BUS.addListener(com.maxenonyme.createsubmarine.submarine.system.HullStressFx::onServerTick);
+                NeoForge.EVENT_BUS.addListener(com.maxenonyme.createsubmarine.submarine.system.LightFailure::onServerTick);
+                NeoForge.EVENT_BUS.addListener(com.maxenonyme.createsubmarine.submarine.system.LightFailure::onLogin);
+                NeoForge.EVENT_BUS.addListener(com.maxenonyme.createsubmarine.submarine.system.LightFailure::onChangeDimension);
                 NeoForge.EVENT_BUS.addListener(com.maxenonyme.createsubmarine.submarine.compartment.FloodSystem::onServerTick);
                 NeoForge.EVENT_BUS.addListener(com.maxenonyme.createsubmarine.submarine.compartment.FloodSystem::onPhysicsTick);
                 NeoForge.EVENT_BUS.addListener(SubmarineInteractionSystem::onServerTick);
@@ -463,6 +490,10 @@ public class CreateSubmarine {
                                 com.maxenonyme.createsubmarine.submarine.network.BreachSyncPayload.TYPE,
                                 com.maxenonyme.createsubmarine.submarine.network.BreachSyncPayload.CODEC,
                                 com.maxenonyme.createsubmarine.submarine.network.BreachSyncPayload::handle);
+                registrar.playToClient(
+                                com.maxenonyme.createsubmarine.submarine.network.LightFailurePayload.TYPE,
+                                com.maxenonyme.createsubmarine.submarine.network.LightFailurePayload.CODEC,
+                                com.maxenonyme.createsubmarine.submarine.network.LightFailurePayload::handle);
                 registrar.playToClient(
                                 com.maxenonyme.createsubmarine.submarine.network.SubCrackPayload.TYPE,
                                 com.maxenonyme.createsubmarine.submarine.network.SubCrackPayload.CODEC,

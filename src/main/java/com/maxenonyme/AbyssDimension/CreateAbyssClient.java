@@ -1,12 +1,15 @@
 package com.maxenonyme.AbyssDimension;
 
+import com.maxenonyme.AbyssDimension.client.MagmaFlowModel;
 import com.maxenonyme.AbyssDimension.client.PDAManager;
 import com.maxenonyme.AbyssDimension.entities.EntityRegistry;
 import net.minecraft.client.renderer.ItemBlockRenderTypes;
 import net.minecraft.client.renderer.RenderType;
+import net.minecraft.client.renderer.block.BlockModelShaper;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
 import net.neoforged.neoforge.client.event.EntityRenderersEvent;
+import net.neoforged.neoforge.client.event.ModelEvent;
 import net.neoforged.neoforge.common.NeoForge;
 
 public final class CreateAbyssClient {
@@ -17,6 +20,7 @@ public final class CreateAbyssClient {
         modEventBus.addListener(CreateAbyssClient::onClientSetup);
         modEventBus.addListener(CreateAbyssClient::onRegisterRenderers);
         modEventBus.addListener(CreateAbyssClient::onRegisterLayers);
+        modEventBus.addListener(CreateAbyssClient::onModifyBakingResult);
         NeoForge.EVENT_BUS.addListener(com.maxenonyme.AbyssDimension.experimental.worldgen.client.PlateDebugOverlay::onDebugText);
         modEventBus.register(PDAManager.ModEvents.class);
 
@@ -67,6 +71,15 @@ public final class CreateAbyssClient {
         event.registerLayerDefinition(
                 com.maxenonyme.AbyssDimension.client.model.PelicanEel.LAYER_LOCATION,
                 com.maxenonyme.AbyssDimension.client.model.PelicanEel::createBodyLayer);
+    }
+
+    private static void onModifyBakingResult(ModelEvent.ModifyBakingResult event) {
+        for (var state : GeothermalRegistry.MAGMA.get().getStateDefinition().getPossibleStates()) {
+            var key = BlockModelShaper.stateToModelLocation(state);
+            var model = event.getModels().get(key);
+            if (model != null)
+                event.getModels().put(key, new MagmaFlowModel(model));
+        }
     }
 
     private static void onClientSetup(FMLClientSetupEvent event) {

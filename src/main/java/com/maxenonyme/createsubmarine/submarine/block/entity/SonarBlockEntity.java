@@ -5,7 +5,6 @@ import com.maxenonyme.createsubmarine.submarine.block.entity.renderer.SonarVisua
 import dev.ryanhcode.sable.Sable;
 import dev.ryanhcode.sable.sublevel.SubLevel;
 import com.maxenonyme.createsubmarine.submarine.client.VeilLights;
-import foundry.veil.api.client.render.VeilRenderSystem;
 import foundry.veil.api.client.render.light.data.PointLightData;
 import foundry.veil.api.client.render.light.renderer.LightRenderHandle;
 import net.createmod.catnip.animation.AnimationTickHolder;
@@ -91,15 +90,18 @@ public class SonarBlockEntity extends BlockEntity {
         light.setColor(r, g, b);
         light.setRadius(4.5f);
         light.setOcclusionEnabled(false);
-        return VeilRenderSystem.renderer().getLightRenderer().addLight(light);
+        return VeilLights.add(light);
     }
 
     private void freeLights() {
-        if (greenLight instanceof LightRenderHandle<?> handle)
-            handle.free();
-        if (pinkLight instanceof LightRenderHandle<?> handle)
-            handle.free();
+        VeilLights.free(greenLight);
+        VeilLights.free(pinkLight);
         greenLight = pinkLight = null;
+    }
+
+    private void forget() {
+        if (level != null)
+            (level.isClientSide ? LOADED_ON_CLIENT : LOADED_ON_SERVER).remove(this);
     }
 
     public static SonarBlockEntity onSameSub(BlockEntity console) {
@@ -132,8 +134,7 @@ public class SonarBlockEntity extends BlockEntity {
     @Override
     public void setRemoved() {
         super.setRemoved();
-        LOADED_ON_CLIENT.remove(this);
-        LOADED_ON_SERVER.remove(this);
+        forget();
         if (level != null && level.isClientSide)
             freeLights();
     }
@@ -141,8 +142,7 @@ public class SonarBlockEntity extends BlockEntity {
     @Override
     public void onChunkUnloaded() {
         super.onChunkUnloaded();
-        LOADED_ON_CLIENT.remove(this);
-        LOADED_ON_SERVER.remove(this);
+        forget();
         if (level != null && level.isClientSide)
             freeLights();
     }

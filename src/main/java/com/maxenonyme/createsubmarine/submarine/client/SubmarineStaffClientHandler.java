@@ -1,7 +1,6 @@
 package com.maxenonyme.createsubmarine.submarine.client;
 
 import com.maxenonyme.createsubmarine.CreateSubmarine;
-import foundry.veil.api.client.render.VeilRenderSystem;
 import foundry.veil.api.client.render.light.data.PointLightData;
 import foundry.veil.api.client.render.light.renderer.LightRenderHandle;
 import net.minecraft.client.Minecraft;
@@ -91,7 +90,7 @@ public class SubmarineStaffClientHandler {
         if (conduitLight == null || !conduitLight.isValid()) {
             conduitLightData = createLight(0.3f, 0.6f, 1.0f, 0.8f, 5.0f);
             conduitLightData.setPosition(conduitX, conduitY, conduitZ);
-            conduitLight = VeilRenderSystem.renderer().getLightRenderer().addLight(conduitLightData);
+            conduitLight = VeilLights.add(conduitLightData);
         } else {
             conduitLightData.setPosition(conduitX, conduitY, conduitZ);
             conduitLight.markDirty();
@@ -109,7 +108,7 @@ public class SubmarineStaffClientHandler {
 
     private static void freeLights() {
         if (conduitLight != null) {
-            conduitLight.free();
+            VeilLights.free(conduitLight);
             conduitLight = null;
             conduitLightData = null;
         }

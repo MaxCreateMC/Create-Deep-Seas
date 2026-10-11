@@ -7,6 +7,7 @@ import com.maxenonyme.createsubmarine.submarine.config.HullStrengthConfig;
 import com.maxenonyme.createsubmarine.submarine.config.SubmarineConfig;
 import com.maxenonyme.createsubmarine.submarine.item.PressureGogglesItem;
 import com.maxenonyme.createsubmarine.submarine.stress.HullShapeAnalyzer;
+import com.maxenonyme.createsubmarine.submarine.stress.RealisticHull;
 import com.maxenonyme.createsubmarine.submarine.stress.SolverCore;
 import com.maxenonyme.createsubmarine.submarine.system.GirderSupport;
 import com.maxenonyme.createsubmarine.submarine.system.SubmarinePressureSystem;
@@ -55,6 +56,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 
 @EventBusSubscriber(modid = CreateSubmarine.MOD_ID, value = Dist.CLIENT)
@@ -71,7 +74,8 @@ public final class HullPressureRenderer {
     private static final int MAX_VOLUME = 1_000_000;
     private static final int ALPHA = 0x70;
 
-    private record Shape(int edits, long bounds, int tick, int ax, int ay, int az, Long2FloatOpenHashMap factors) {
+    private record Shape(int edits, long bounds, int tick, int ax, int ay, int az, boolean realistic,
+            Long2FloatOpenHashMap factors) {
     }
 
     private static final class Mesh {
@@ -138,6 +142,7 @@ public final class HullPressureRenderer {
         Vec3 eye = mc.player.position();
         PressureGogglesItem.Mode mode = PressureGogglesItem.mode(mc.player.getItemBySlot(EquipmentSlot.HEAD));
         boolean hybrid = SubmarineConfig.hybridPressure();
+        boolean realistic = SubmarineConfig.realisticPressure();
         boolean scanned = false;
         for (SubLevel sub : container.getAllSubLevels()) {
             if (sub.isRemoved() || sub.getPlot() == null)
@@ -163,10 +168,10 @@ public final class HullPressureRenderer {
             }
             Shape shape = SHAPES.get(id);
             boolean stale = shape == null || shape.edits() != edits || shape.bounds() != bounds
-                    || ticks - shape.tick() > RESCAN_TICKS;
+                    || shape.realistic() != realistic || ticks - shape.tick() > RESCAN_TICKS;
             boolean settled = shape == null || ticks - seen[1] >= (near ? NEAR_SETTLE_TICKS : SETTLE_TICKS);
             if (stale && settled && (near || !scanned) && !PENDING.contains(id)) {
-                scan(sub.getPlot(), id, b, edits, bounds);
+                scan(sub.getPlot(), id, b, edits, bounds, realistic);
                 scanned |= !near;
             }
             if (shape == null || shape.factors().isEmpty()) {
@@ -211,15 +216,16 @@ public final class HullPressureRenderer {
         return h * 31 + b.maxZ();
     }
 
-    private static void scan(LevelPlot plot, UUID id, BoundingBox3ic b, int edits, long bounds) {
+    private static void scan(LevelPlot plot, UUID id, BoundingBox3ic b, int edits, long bounds, boolean realistic) {
         int minX = b.minX(), minY = b.minY(), minZ = b.minZ();
         int maxX = b.maxX(), maxY = b.maxY(), maxZ = b.maxZ();
         int sx = maxX - minX + 1, sy = maxY - minY + 1, sz = maxZ - minZ + 1;
         if ((long) sx * sy * sz > MAX_VOLUME) {
-            SHAPES.put(id, new Shape(edits, bounds, ticks, minX, minY, minZ, new Long2FloatOpenHashMap()));
+            SHAPES.put(id, new Shape(edits, bounds, ticks, minX, minY, minZ, realistic, new Long2FloatOpenHashMap()));
             return;
         }
         LongArrayList solid = new LongArrayList();
+        List<RealisticHull.Material> materials = realistic ? new ArrayList<>() : null;
         BlockPos.MutableBlockPos m = new BlockPos.MutableBlockPos();
         for (int cx = minX >> 4; cx <= maxX >> 4; cx++) {
             for (int cz = minZ >> 4; cz <= maxZ >> 4; cz++) {
@@ -239,9 +245,12 @@ public final class HullPressureRenderer {
                     for (int x = x0; x <= x1; x++)
                         for (int y = y0; y <= y1; y++)
                             for (int z = z0; z <= z1; z++) {
-                                if (CompartmentDetector.isPermeable(section.getBlockState(x & 15, y & 15, z & 15)))
+                                BlockState state = section.getBlockState(x & 15, y & 15, z & 15);
+                                if (CompartmentDetector.isPermeable(state))
                                     continue;
                                 solid.add(m.set(x, y, z).asLong());
+                                if (materials != null)
+                                    materials.add(RealisticHull.material(state));
                             }
                 }
             }
@@ -249,12 +258,17 @@ public final class HullPressureRenderer {
         int span = SubmarineConfig.SHAPE_REFERENCE_SPAN.get();
         double min = SubmarineConfig.SHAPE_FACTOR_MIN.get();
         double max = SubmarineConfig.SHAPE_FACTOR_MAX.get();
+        double thickness = SubmarineConfig.REALISTIC_WALL_THICKNESS.get();
+        boolean fits = solid.size() <= SubmarineConfig.REALISTIC_MAX_BLOCKS.get();
         int tick = ticks;
         PENDING.add(id);
         HullShapeAnalyzer.submit(() -> {
             try {
-                Long2FloatOpenHashMap factors = analyse(solid, minX, minY, minZ, sx, sy, sz, span, min, max);
-                SHAPES.put(id, new Shape(edits, bounds, tick, minX, minY, minZ, factors));
+                Grid grid = grid(solid, minX, minY, minZ, sx, sy, sz);
+                Long2FloatOpenHashMap factors = materials == null
+                        ? HullShapeAnalyzer.factors(grid.n(), grid.x(), grid.y(), grid.z(), grid.index(), grid.exterior(), span, min, max)
+                        : fits ? crush(grid, materials, thickness) : new Long2FloatOpenHashMap();
+                SHAPES.put(id, new Shape(edits, bounds, tick, minX, minY, minZ, realistic, factors));
             } catch (RuntimeException e) {
                 CreateSubmarine.LOGGER.warn("Pressure scan failed for {}", id, e);
             } finally {
@@ -263,8 +277,22 @@ public final class HullPressureRenderer {
         });
     }
 
-    private static Long2FloatOpenHashMap analyse(LongArrayList solid, int minX, int minY, int minZ,
-            int sx, int sy, int sz, int span, double min, double max) {
+    private record Grid(int n, int[] x, int[] y, int[] z, Long2IntOpenHashMap index, boolean[][] exterior) {
+    }
+
+    private static Long2FloatOpenHashMap crush(Grid grid, List<RealisticHull.Material> materials, double thickness) {
+        float[] depths = RealisticHull.crushDepths(grid.n(), grid.x(), grid.y(), grid.z(),
+                materials.toArray(RealisticHull.Material[]::new), grid.index(), grid.exterior(), thickness);
+        Long2FloatOpenHashMap out = new Long2FloatOpenHashMap();
+        for (int i = 0; i < grid.n(); i++) {
+            boolean[] faces = grid.exterior()[i];
+            if (faces[0] || faces[1] || faces[2] || faces[3] || faces[4] || faces[5])
+                out.put(BlockPos.asLong(grid.x()[i], grid.y()[i], grid.z()[i]), depths[i]);
+        }
+        return out;
+    }
+
+    private static Grid grid(LongArrayList solid, int minX, int minY, int minZ, int sx, int sy, int sz) {
         int n = solid.size();
         int gx = sx + 2, gy = sy + 2, gz = sz + 2;
         boolean[] filled = new boolean[gx * gy * gz];
@@ -307,7 +335,7 @@ public final class HullPressureRenderer {
                 exterior[i][d] = outside[cell(cx, cy, cz, gy, gz)];
             }
         }
-        return HullShapeAnalyzer.factors(n, x, y, z, index, exterior, span, min, max);
+        return new Grid(n, x, y, z, index, exterior);
     }
 
     private static int cell(int x, int y, int z, int gy, int gz) {
@@ -334,8 +362,13 @@ public final class HullPressureRenderer {
             lx[n] = m.getX() - shape.ax();
             ly[n] = m.getY() - shape.ay();
             lz[n] = m.getZ() - shape.az();
-            base[n] = (float) (prop.get().maxWaterDepth() * GirderSupport.factor(supports, m));
-            factor[n] = e.getFloatValue();
+            if (shape.realistic()) {
+                base[n] = (float) Math.max(1.0, e.getFloatValue() * SubmarineConfig.MAX_DEPTH_MULTIPLIER.get());
+                factor[n] = 1f;
+            } else {
+                base[n] = (float) (prop.get().maxWaterDepth() * GirderSupport.factor(supports, m));
+                factor[n] = e.getFloatValue();
+            }
             present.add(e.getLongKey());
             n++;
         }

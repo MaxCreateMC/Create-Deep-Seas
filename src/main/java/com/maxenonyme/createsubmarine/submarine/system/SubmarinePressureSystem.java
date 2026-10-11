@@ -6,6 +6,7 @@ import com.maxenonyme.createsubmarine.submarine.compartment.CompartmentTracker;
 import com.maxenonyme.createsubmarine.submarine.compartment.FloodSystem;
 import com.maxenonyme.createsubmarine.submarine.network.SubCrackPayload;
 import com.maxenonyme.createsubmarine.submarine.stress.HullShapeAnalyzer;
+import com.maxenonyme.createsubmarine.submarine.stress.RealisticHullAnalyzer;
 import com.maxenonyme.createsubmarine.submarine.util.SubLevelRegistry;
 import dev.ryanhcode.sable.companion.SubLevelAccess;
 import it.unimi.dsi.fastutil.longs.Long2FloatMap;
@@ -60,6 +61,9 @@ import com.maxenonyme.createsubmarine.submarine.network.ImplosionFxPayload;
 
 public class SubmarinePressureSystem {
     private static final int TICK_INTERVAL = 20;
+    private static final float OVERPRESSURE_RAMP = 20f;
+    private static final float OVERPRESSURE_CAP = 3f;
+    private static final int IMPLODE_MARGIN = 5;
     private static final int MAX_WATER_SCAN = 400;
     private static final ResourceLocation SOUND_METAL_STRESS = ResourceLocation
             .withDefaultNamespace("entity.iron_golem.repair");
@@ -71,6 +75,10 @@ public class SubmarinePressureSystem {
     private static final Map<UUID, Integer> CACHED_WATER_DEPTH = new ConcurrentHashMap<>();
     private static final Map<UUID, Map<BlockPos, Integer>> CRACK_LEVELS = new ConcurrentHashMap<>();
     private static final Map<UUID, Integer> WEAKEST_HULL = new ConcurrentHashMap<>();
+
+    public static Map<UUID, Map<BlockPos, Integer>> cracks() {
+        return CRACK_LEVELS;
+    }
     private static final Map<UUID, Double> CACHED_DENSITY = new ConcurrentHashMap<>();
     private static final int MAX_FIRES_PER_TICK = 8;
     private static final double STRAIN_START = 0.80;
@@ -90,6 +98,7 @@ public class SubmarinePressureSystem {
         MATERIALS.remove(id);
         WEAK_CACHE.remove(id);
         HullShapeAnalyzer.forget(id);
+        RealisticHullAnalyzer.forget(id);
         GirderSupport.forget(id);
         GirderFailure.forget(id);
     }
@@ -105,11 +114,21 @@ public class SubmarinePressureSystem {
         WEAK_CACHE.clear();
         ENVELOPES.clear();
         HullShapeAnalyzer.clear();
+        RealisticHullAnalyzer.clear();
         GirderSupport.clear();
         GirderFailure.clear();
     }
 
+    private static double realisticMultiplier() {
+        return SubmarineConfig.MAX_DEPTH_MULTIPLIER.get();
+    }
+
     public static int effectiveDepth(UUID id, BlockPos plotPos, int maxWaterDepth) {
+        if (SubmarineConfig.realisticPressure()) {
+            float crush = RealisticHullAnalyzer.depth(id, plotPos);
+            if (crush > 0)
+                return Math.max(1, (int) Math.min(1_000_000L, Math.round(crush * realisticMultiplier() / getCachedDensity(id))));
+        }
         return Math.max(1, (int) Math.round(maxWaterDepth * HullShapeAnalyzer.factor(id, plotPos)
                 * GirderSupport.factor(supports(id), plotPos) / getCachedDensity(id)));
     }
@@ -293,8 +312,9 @@ public class SubmarinePressureSystem {
                 * (bounds.maxZ() - bounds.minZ() + 1);
         int samples = (int) Math.min(250, Math.max(15, volume / 150));
 
-        if (SubmarineConfig.hybridPressure()) {
-            Long2FloatOpenHashMap exterior = HullShapeAnalyzer.exterior(id);
+        boolean realistic = SubmarineConfig.realisticPressure();
+        if (realistic || SubmarineConfig.hybridPressure()) {
+            Long2FloatOpenHashMap exterior = realistic ? RealisticHullAnalyzer.depths(id) : HullShapeAnalyzer.exterior(id);
             if (exterior != null) {
                 crackWeakest(id, plotLevel, oceanLevel, sub, exterior, breached, surfaceY, column.density(),
                         Math.max(3, samples / 5), creakPlayed);
@@ -341,6 +361,7 @@ public class SubmarinePressureSystem {
         float[] limits = new float[cap];
         HullStrengthConfig.HullProperty[] props = new HullStrengthConfig.HullProperty[cap];
         int n = 0;
+        boolean realistic = SubmarineConfig.realisticPressure();
         GirderSupport.Layout supports = supports(id);
         BlockPos.MutableBlockPos m = new BlockPos.MutableBlockPos();
         for (Long2FloatMap.Entry e : exterior.long2FloatEntrySet()) {
@@ -353,7 +374,8 @@ public class SubmarinePressureSystem {
             if (prop.isEmpty())
                 continue;
             cells[n] = e.getLongKey();
-            limits[n] = (float) (prop.get().maxWaterDepth() * e.getFloatValue() * GirderSupport.factor(supports, m));
+            limits[n] = realistic ? (float) Math.max(1.0, e.getFloatValue() * realisticMultiplier())
+                    : (float) (prop.get().maxWaterDepth() * e.getFloatValue() * GirderSupport.factor(supports, m));
             props[n] = prop.get();
             n++;
         }
@@ -417,9 +439,12 @@ public class SubmarinePressureSystem {
         double reach = Math.max(STRAIN_REACH, span);
         Vec3 origin = new Vec3(center.x(), center.y(), center.z());
         for (ServerPlayer player : server.players()) {
-            if (player.distanceToSqr(origin) <= reach * reach)
-                PacketDistributor.sendToPlayer(player,
-                        new ImplosionFxPayload(ImplosionFxPayload.STRAIN, felt, TICK_INTERVAL + 10));
+            if (player.distanceToSqr(origin) > reach * reach)
+                continue;
+            PacketDistributor.sendToPlayer(player,
+                    new ImplosionFxPayload(ImplosionFxPayload.STRAIN, felt, TICK_INTERVAL + 10));
+            PacketDistributor.sendToPlayer(player,
+                    new ImplosionFxPayload(ImplosionFxPayload.PANIC, depth - weakest, TICK_INTERVAL + 10));
         }
     }
 
@@ -539,7 +564,7 @@ public class SubmarinePressureSystem {
             return;
         }
 
-        float depthMultiplier = (float) depth / limit;
+        float depthMultiplier = Math.min(OVERPRESSURE_CAP, (depth - limit) / OVERPRESSURE_RAMP);
         if (RAND.nextFloat() >= prop.implosionChance() * depthMultiplier)
             return;
         BlockPos worldPos = BlockPos.containing(worldVec.x, worldVec.y, worldVec.z);
@@ -557,12 +582,18 @@ public class SubmarinePressureSystem {
         int crackLevel = cracks.getOrDefault(plotPos, 0) + 1;
         int blockId = BuiltInRegistries.BLOCK.getId(state.getBlock());
 
+        if (crackLevel >= 4 && depth - limit < IMPLODE_MARGIN)
+            return;
         if (crackLevel >= 4) {
             if (!(oceanLevel instanceof ServerLevel serverOcean) || ImplosionSequence.isBuilding(id))
                 return;
             Vec3 origin = new Vec3(worldVec.x, worldVec.y, worldVec.z);
             boolean crush = depth >= FloodSystem.crushDepth() && comp.hull().contains(plotPos);
-            ImplosionSequence.buildUp(serverOcean, id, origin, () -> {
+            cracks.put(plotPos, 4);
+            sendCrackPacket(oceanLevel, id, plotPos, 4, blockId);
+            HullStressFx.popAt(serverOcean, id, sub, plotLevel, plotPos, 2f);
+            LightFailure.onHullDamage(serverOcean, id, plotLevel, 3f);
+            ImplosionSequence.buildUp(serverOcean, id, origin, state, () -> {
                 cracks.remove(plotPos);
                 sendCrackPacket(oceanLevel, id, plotPos, -1, 0);
                 if (sub instanceof SubLevel gone && gone.isRemoved())
@@ -591,6 +622,8 @@ public class SubmarinePressureSystem {
             cracks.put(plotPos, crackLevel);
             sendCrackPacket(oceanLevel, id, plotPos, crackLevel, blockId);
             if (oceanLevel instanceof ServerLevel serverLevel) {
+                HullStressFx.popAt(serverLevel, id, sub, plotLevel, plotPos, crackLevel / 3f);
+                LightFailure.onHullDamage(serverLevel, id, plotLevel, crackLevel / 3f);
                 int count = crackLevel == 1 ? 5 : (crackLevel * 2);
                 serverLevel.sendParticles(ParticleTypes.DRIPPING_WATER, worldVec.x, worldVec.y, worldVec.z, count, 0.3,
                         0.3, 0.3, 0.05);

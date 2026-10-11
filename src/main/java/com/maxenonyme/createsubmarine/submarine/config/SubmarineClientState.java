@@ -15,6 +15,7 @@ public class SubmarineClientState {
 
     public static boolean lithostitchedScreenSeen = false;
     public static boolean safetyScreenSeen = false;
+    public static boolean pressureChoiceSeen = false;
     public static String ignoredUpdateVersion = "";
 
     public static void load() {
@@ -27,6 +28,9 @@ public class SubmarineClientState {
                     }
                     if (json.has("safetyScreenSeen")) {
                         safetyScreenSeen = json.get("safetyScreenSeen").getAsBoolean();
+                    }
+                    if (json.has("pressureChoiceSeen")) {
+                        pressureChoiceSeen = json.get("pressureChoiceSeen").getAsBoolean();
                     }
                     if (json.has("ignoredUpdateVersion")) {
                         ignoredUpdateVersion = json.get("ignoredUpdateVersion").getAsString();
@@ -43,6 +47,7 @@ public class SubmarineClientState {
             JsonObject json = new JsonObject();
             json.addProperty("lithostitchedScreenSeen", lithostitchedScreenSeen);
             json.addProperty("safetyScreenSeen", safetyScreenSeen);
+            json.addProperty("pressureChoiceSeen", pressureChoiceSeen);
             json.addProperty("ignoredUpdateVersion", ignoredUpdateVersion);
             Files.writeString(PATH, GSON.toJson(json));
         } catch (Exception e) {
@@ -65,6 +70,15 @@ public class SubmarineClientState {
 
     public static void setSafetyScreenSeen(boolean seen) {
         safetyScreenSeen = seen;
+        save();
+    }
+
+    public static boolean hasSeenPressureChoice() {
+        return pressureChoiceSeen;
+    }
+
+    public static void setPressureChoiceSeen(boolean seen) {
+        pressureChoiceSeen = seen;
         save();
     }
 

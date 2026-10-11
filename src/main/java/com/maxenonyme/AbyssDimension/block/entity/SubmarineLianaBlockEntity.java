@@ -18,9 +18,11 @@ import dev.ryanhcode.sable.api.physics.constraint.ConstraintJointAxis;
 import dev.ryanhcode.sable.api.physics.constraint.PhysicsConstraintHandle;
 import dev.ryanhcode.sable.api.physics.constraint.GenericConstraintConfiguration;
 import java.util.EnumSet;
+import java.util.List;
 import java.util.UUID;
 import dev.ryanhcode.sable.companion.math.BoundingBox3ic;
-import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.phys.AABB;
 
 public class SubmarineLianaBlockEntity extends BlockEntity implements BlockEntitySubLevelActor {
     private UUID parentId;
@@ -44,6 +46,11 @@ public class SubmarineLianaBlockEntity extends BlockEntity implements BlockEntit
 
     private transient Vector3d restPos = null;
     private transient Quaterniond restRot = null;
+
+    private static final int LOOKUP_COOLDOWN = 20;
+    private long retryLookupAt;
+    private long pushersTick = -1;
+    private List<LivingEntity> pushers = List.of();
 
     private final ForceTotal forceTotal = new ForceTotal();
     private final ForceTotal parentForceTotal = new ForceTotal();
@@ -151,13 +158,14 @@ public class SubmarineLianaBlockEntity extends BlockEntity implements BlockEntit
     }
 
     private ServerSubLevel findSubLevelByPlot(ServerSubLevelContainer container, int plotX, int plotZ) {
-        if (plotX == -1)
+        if (plotX == -1 || level == null || level.getGameTime() < retryLookupAt)
             return null;
         for (ServerSubLevel sub : container.getAllSubLevels()) {
             if (sub.getPlot() != null && sub.getPlot().plotPos.x == plotX && sub.getPlot().plotPos.z == plotZ) {
                 return sub;
             }
         }
+        retryLookupAt = level.getGameTime() + LOOKUP_COOLDOWN;
         return null;
     }
 
@@ -381,17 +389,24 @@ public class SubmarineLianaBlockEntity extends BlockEntity implements BlockEntit
         totalForce.add(waveSway, 0, 0);
 
         Vector3dc subPos = subLevel.logicalPose().position();
-        for (Player player : subLevel.getLevel().players()) {
-            double dx = subPos.x() - player.getX();
-            double dy = subPos.y() - (player.getY() + player.getEyeHeight() * 0.5);
-            double dz = subPos.z() - player.getZ();
+        long now = subLevel.getLevel().getGameTime();
+        if (now != pushersTick) {
+            pushersTick = now;
+            AABB reach = new AABB(subPos.x() - 1.8, subPos.y() - 1.8, subPos.z() - 1.8,
+                    subPos.x() + 1.8, subPos.y() + 1.8, subPos.z() + 1.8);
+            pushers = subLevel.getLevel().getEntitiesOfClass(LivingEntity.class, reach, e -> !e.isSpectator());
+        }
+        for (LivingEntity pusher : pushers) {
+            double dx = subPos.x() - pusher.getX();
+            double dy = subPos.y() - (pusher.getY() + pusher.getEyeHeight() * 0.5);
+            double dz = subPos.z() - pusher.getZ();
             double distSqr = dx * dx + dy * dy + dz * dz;
             if (distSqr < 3.0) {
                 double dist = Math.sqrt(distSqr);
                 if (dist > 0.01) {
                     double forceScale = (2.4 - dist) * 50.0;
-                    double playerSpeed = player.getDeltaMovement().length();
-                    double speedBonus = Math.min(playerSpeed * 100.0, 120.0);
+                    double pusherSpeed = pusher.getDeltaMovement().length();
+                    double speedBonus = Math.min(pusherSpeed * 100.0, 120.0);
                     tempVec.set(dx, dy, dz).normalize().mul((forceScale + speedBonus) * mass);
                     totalForce.add(tempVec);
                 }

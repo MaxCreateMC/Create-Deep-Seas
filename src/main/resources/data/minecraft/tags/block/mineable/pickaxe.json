@@ -26,6 +26,7 @@
     "create_high_seas:buoy",
     "create_abyss:geothermal_vent",
     "create_abyss:foam_rock_geothermal_vent",
-    "create_abyss:deepslate_geothermal_vent"
+    "create_abyss:deepslate_geothermal_vent",
+    "create_abyss:magma"
   ]
 }

@@ -23,14 +23,21 @@ import com.maxenonyme.createsubmarine.submarine.config.SubmarineConfig;
 import dev.ryanhcode.sable.sublevel.SubLevel;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.util.Mth;
+import net.minecraft.world.phys.AABB;
+import net.neoforged.neoforge.client.model.data.ModelData;
+import net.neoforged.neoforge.client.model.data.ModelProperty;
 
 public class SubmarinePropellerBlockEntity extends BasePropellerBlockEntity {
     private static final int GROUP_SCAN_INTERVAL = 10;
-    private static final float GROUP_BOOST = 4f;
+    public static final ModelProperty<Boolean> HIDDEN_BY_CLUSTER = new ModelProperty<>();
 
     private volatile BlockPos groupMaster;
+    private volatile int groupSize;
     private volatile double groupThrust;
+    private volatile BlockPos driver;
     private int groupScan;
+    private BlockPos[] members = new BlockPos[0];
+    private double memberThrust;
 
     public SubmarinePropellerBlockEntity(final BlockPos pos, final BlockState state) {
         super(CreateSubmarine.SUBMARINE_PROPELLER_BE.get(), pos, state);
@@ -57,13 +64,13 @@ public class SubmarinePropellerBlockEntity extends BasePropellerBlockEntity {
         float impact = super.calculateStressApplied();
         if (groupMaster == null)
             return impact;
-        lastStressApplied = impact * GROUP_BOOST;
+        lastStressApplied = impact * groupSize * groupSize;
         return lastStressApplied;
     }
 
     @Override
     public float getRadius() {
-        return isGroupMaster() ? 2.0f : 1.0f;
+        return isGroupMaster() ? groupSize : 1.0f;
     }
 
     @Override
@@ -71,6 +78,27 @@ public class SubmarinePropellerBlockEntity extends BasePropellerBlockEntity {
         if (groupMaster == null)
             return super.getThrust();
         return isGroupMaster() ? groupThrust : 0;
+    }
+
+    @Override
+    public double getAirflow() {
+        SubmarinePropellerBlockEntity source = clusterDriver();
+        if (source == this)
+            return super.getAirflow();
+        return getConfigAirflow() * source.getDirectionIndependentSpeed();
+    }
+
+    @Override
+    public boolean isActive() {
+        SubmarinePropellerBlockEntity source = clusterDriver();
+        return source == this ? super.isActive() : source.isActive();
+    }
+
+    public SubmarinePropellerBlockEntity clusterDriver() {
+        BlockPos pos = driver;
+        if (pos == null || !isGroupMaster() || level == null)
+            return this;
+        return level.getBlockEntity(pos) instanceof SubmarinePropellerBlockEntity prop ? prop : this;
     }
 
     @Override
@@ -95,8 +123,12 @@ public class SubmarinePropellerBlockEntity extends BasePropellerBlockEntity {
         return groupMaster != null && !isGroupMaster();
     }
 
+    public int getClusterSize() {
+        return groupMaster != null ? groupSize : 0;
+    }
+
     public Vec3 getGroupCenter() {
-        if (!isGroupMaster())
+        if (!isGroupMaster() || groupSize == 3)
             return worldPosition.getCenter();
         Direction[] plane = planeAxes(getBlockDirection());
         return worldPosition.getCenter().add(
@@ -115,31 +147,32 @@ public class SubmarinePropellerBlockEntity extends BasePropellerBlockEntity {
 
     private BlockPos[] groupMembers() {
         Direction[] plane = planeAxes(getBlockDirection());
-        return new BlockPos[] {
-                groupMaster,
-                groupMaster.relative(plane[0]),
-                groupMaster.relative(plane[1]),
-                groupMaster.relative(plane[0]).relative(plane[1])
-        };
+        BlockPos corner = groupSize == 3 ? groupMaster.relative(plane[0], -1).relative(plane[1], -1) : groupMaster;
+        BlockPos[] members = new BlockPos[groupSize * groupSize];
+        for (int i = 0; i < groupSize; i++) {
+            for (int j = 0; j < groupSize; j++)
+                members[i * groupSize + j] = corner.relative(plane[0], i).relative(plane[1], j);
+        }
+        return members;
     }
 
-    private BlockPos findGroupMaster() {
+    private BlockPos findGroupMaster(int size) {
         BlockState state = getBlockState();
         Direction[] plane = planeAxes(getBlockDirection());
-        for (int a = 0; a <= 1; a++) {
-            for (int b = 0; b <= 1; b++) {
+        for (int a = 0; a < size; a++) {
+            for (int b = 0; b < size; b++) {
                 BlockPos corner = worldPosition.relative(plane[0], -a).relative(plane[1], -b);
-                if (isIsolatedSquare(corner, plane, state))
-                    return corner;
+                if (isIsolatedSquare(corner, plane, state, size))
+                    return size == 3 ? corner.relative(plane[0]).relative(plane[1]) : corner;
             }
         }
         return null;
     }
 
-    private boolean isIsolatedSquare(BlockPos corner, Direction[] plane, BlockState reference) {
-        for (int i = -1; i <= 2; i++) {
-            for (int j = -1; j <= 2; j++) {
-                boolean inside = i >= 0 && i <= 1 && j >= 0 && j <= 1;
+    private boolean isIsolatedSquare(BlockPos corner, Direction[] plane, BlockState reference, int size) {
+        for (int i = -1; i <= size; i++) {
+            for (int j = -1; j <= size; j++) {
+                boolean inside = i >= 0 && i < size && j >= 0 && j < size;
                 BlockPos pos = corner.relative(plane[0], i).relative(plane[1], j);
                 if (matches(level.getBlockState(pos), reference) != inside)
                     return false;
@@ -185,21 +218,53 @@ public class SubmarinePropellerBlockEntity extends BasePropellerBlockEntity {
         super.tick();
         if (level != null && --groupScan <= 0) {
             groupScan = GROUP_SCAN_INTERVAL;
-            BlockPos master = findGroupMaster();
-            boolean grouped = master != null;
-            boolean wasGrouped = groupMaster != null;
+            int size = 3;
+            BlockPos master = findGroupMaster(size);
+            if (master == null) {
+                size = 2;
+                master = findGroupMaster(size);
+            }
+            if (master == null)
+                size = 0;
+            int wasCluster = getClusterSize();
+            boolean changed = size != groupSize || (master == null) != (groupMaster == null);
             groupMaster = master;
-            if (grouped != wasGrouped && !level.isClientSide && hasNetwork())
+            groupSize = size;
+            if (changed && !level.isClientSide && hasNetwork())
                 getOrCreateNetwork().updateStressFor(this, calculateStressApplied());
+            if (level.isClientSide && (wasCluster == 0) != (getClusterSize() == 0)) {
+                requestModelDataUpdate();
+                level.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), 8);
+            }
+            members = isGroupMaster() ? groupMembers() : new BlockPos[0];
+            memberThrust = 0;
+            for (BlockPos member : members) {
+                if (level.getBlockEntity(member) instanceof SubmarinePropellerBlockEntity prop)
+                    memberThrust += prop.getConfigThrust();
+            }
         }
         if (isGroupMaster()) {
-            double total = 0;
-            for (BlockPos member : groupMembers()) {
-                if (level.getBlockEntity(member) instanceof SubmarinePropellerBlockEntity prop)
-                    total += prop.getConfigThrust() * prop.getDirectionIndependentSpeed();
+            SubmarinePropellerBlockEntity fastest = this;
+            for (BlockPos member : members) {
+                if (level.getBlockEntity(member) instanceof SubmarinePropellerBlockEntity prop
+                        && Math.abs(prop.rotationSpeed) > Math.abs(fastest.rotationSpeed))
+                    fastest = prop;
             }
-            groupThrust = total * GROUP_BOOST;
+            driver = fastest.worldPosition;
+            groupThrust = memberThrust * fastest.getDirectionIndependentSpeed() * groupSize * groupSize;
+        } else {
+            driver = null;
         }
+    }
+
+    @Override
+    public ModelData getModelData() {
+        return getClusterSize() != 0 ? ModelData.builder().with(HIDDEN_BY_CLUSTER, true).build() : ModelData.EMPTY;
+    }
+
+    @Override
+    protected AABB createRenderBoundingBox() {
+        return new AABB(worldPosition).inflate(3);
     }
 
     @Override
@@ -220,8 +285,9 @@ public class SubmarinePropellerBlockEntity extends BasePropellerBlockEntity {
 
     private void spawnSubmarineBubbles() {
         if (level == null) return;
-        int particleCount = (int) (Math.abs(this.rotationSpeed) * 0.05f) + 1;
-        float speed = (float)(this.getConfigAirflow() * getDirectionIndependentSpeed() / 20f);
+        SubmarinePropellerBlockEntity source = clusterDriver();
+        int particleCount = (int) (Math.abs(source.rotationSpeed) * 0.05f) + 1;
+        float speed = (float)(this.getConfigAirflow() * source.getDirectionIndependentSpeed() / 20f);
         speed = Mth.clamp(speed, -5f, 5f);
 
         Direction dir = getBlockDirection();

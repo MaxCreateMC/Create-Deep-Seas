@@ -137,7 +137,7 @@ public final class SeaglideClientHandler {
 
         boolean active = mc.player != null && mc.level != null && mc.screen == null
                 && isHolding(mc.player) && mc.options.keyAttack.isDown()
-                && mc.player.getFoodData().getFoodLevel() > 0;
+                && SeaglideDrainPayload.hasFuel(mc.player);
 
         if (active) {
             drainTicks += mc.player.isFallFlying() ? FLIGHT_DRAIN : 1;

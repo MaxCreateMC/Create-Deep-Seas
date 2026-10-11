@@ -29,6 +29,8 @@ public final class HighSeasConfig {
     public static double seaglideThrust = 0.045;
     public static double seaglideMaxSwim = 0.45;
     public static double seaglideFlightSpeed = 0.425;
+    public static boolean seaglideBacktank = false;
+    public static int seaglideAirPerSecond = 1;
 
     public static double buoyRise = 9.0;
     public static double buoySink = 6.0;
@@ -65,6 +67,8 @@ public final class HighSeasConfig {
     private static final ModConfigSpec.DoubleValue SEAGLIDE_THRUST;
     private static final ModConfigSpec.DoubleValue SEAGLIDE_MAX_SWIM;
     private static final ModConfigSpec.DoubleValue SEAGLIDE_FLIGHT_SPEED;
+    private static final ModConfigSpec.BooleanValue SEAGLIDE_BACKTANK;
+    private static final ModConfigSpec.IntValue SEAGLIDE_AIR_PER_SECOND;
 
     private static final ModConfigSpec.DoubleValue BUOY_RISE;
     private static final ModConfigSpec.DoubleValue BUOY_SINK;
@@ -163,6 +167,14 @@ public final class HighSeasConfig {
                 .comment("Speed the seaglide pulls you to while gliding with an elytra, in blocks per tick.",
                         "0.425 is about 8.5 blocks per second, a quarter of the speed of a firework rocket (about 1.7).")
                 .defineInRange("seaglideFlightSpeed", 0.425, 0.0, 5.0);
+        SEAGLIDE_BACKTANK = server
+                .comment("Run the seaglide on the air of a worn Create backtank instead of the player's hunger.",
+                        "It stops when every backtank is empty.")
+                .define("seaglideUsesBacktank", false);
+        SEAGLIDE_AIR_PER_SECOND = server
+                .comment("Backtank air used per second of running when seaglideUsesBacktank is on.",
+                        "Gliding with an elytra counts double. A plain copper backtank holds 900.")
+                .defineInRange("seaglideAirPerSecond", 1, 1, 100);
         server.pop();
 
         server.push("buoy");
@@ -234,6 +246,8 @@ public final class HighSeasConfig {
         seaglideThrust = SEAGLIDE_THRUST.get();
         seaglideMaxSwim = SEAGLIDE_MAX_SWIM.get();
         seaglideFlightSpeed = SEAGLIDE_FLIGHT_SPEED.get();
+        seaglideBacktank = SEAGLIDE_BACKTANK.get();
+        seaglideAirPerSecond = SEAGLIDE_AIR_PER_SECOND.get();
 
         buoyRise = BUOY_RISE.get();
         buoySink = BUOY_SINK.get();
