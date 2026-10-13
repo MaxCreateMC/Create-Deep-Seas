@@ -1,5 +1,13 @@
 package com.maxenonyme.createsubmarine.submarine.mixin;
 
+import com.maxenonyme.createsubmarine.submarine.compartment.CompartmentTracker;
+import com.maxenonyme.createsubmarine.submarine.util.SubLevelRegistry;
+import dev.ryanhcode.sable.companion.SableCompanion;
+import dev.ryanhcode.sable.companion.SubLevelAccess;
+import dev.ryanhcode.sable.sublevel.SubLevel;
+import net.minecraft.core.BlockPos;
+import net.minecraft.tags.FluidTags;
+import net.minecraft.tags.TagKey;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
@@ -7,27 +15,36 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.material.Fluid;
+import net.minecraft.world.level.material.FluidState;
+import net.minecraft.world.phys.Vec3;
+import net.neoforged.neoforge.common.NeoForgeMod;
+import net.neoforged.neoforge.fluids.FluidType;
+import org.joml.Vector3d;
 
 @Mixin(Entity.class)
 public abstract class EntityWaterPhysicsMixin {
 
     @Inject(method = "isInWater", at = @At("HEAD"), cancellable = true)
     private void createsubmarine$isInWater(CallbackInfoReturnable<Boolean> cir) {
-        if (createsubmarine$isInsideAirtightSub()) cir.setReturnValue(false);
+        if (createsubmarine$isInsideAirtightSub())
+            cir.setReturnValue(false);
     }
 
     @Inject(method = "getFluidHeight(Lnet/minecraft/tags/TagKey;)D", at = @At("HEAD"), cancellable = true)
-    private void createsubmarine$getFluidHeight(net.minecraft.tags.TagKey<?> fluidTag, CallbackInfoReturnable<Double> cir) {
-        if (createsubmarine$isInsideAirtightSub()) cir.setReturnValue(0.0D);
+    private void createsubmarine$getFluidHeight(TagKey<?> fluidTag, CallbackInfoReturnable<Double> cir) {
+        if (createsubmarine$isInsideAirtightSub())
+            cir.setReturnValue(0.0D);
     }
 
     @org.spongepowered.asm.mixin.Shadow
     protected boolean wasTouchingWater;
     @org.spongepowered.asm.mixin.Shadow
-    protected it.unimi.dsi.fastutil.objects.Object2DoubleMap<net.minecraft.tags.TagKey<net.minecraft.world.level.material.Fluid>> fluidHeight;
+    protected it.unimi.dsi.fastutil.objects.Object2DoubleMap<TagKey<Fluid>> fluidHeight;
     @org.spongepowered.asm.mixin.Shadow(remap = false)
     @org.spongepowered.asm.mixin.Final
-    private it.unimi.dsi.fastutil.objects.Object2DoubleMap<net.neoforged.neoforge.fluids.FluidType> forgeFluidTypeHeight;
+    private it.unimi.dsi.fastutil.objects.Object2DoubleMap<FluidType> forgeFluidTypeHeight;
 
     @Inject(method = "updateInWaterStateAndDoFluidPushing", at = @At("HEAD"), cancellable = true)
     private void createsubmarine$cancelWaterPushing(CallbackInfoReturnable<Boolean> cir) {
@@ -40,24 +57,38 @@ public abstract class EntityWaterPhysicsMixin {
     }
 
     @Inject(method = "isEyeInFluid", at = @At("HEAD"), cancellable = true)
-    private void createsubmarine$isEyeInFluid(net.minecraft.tags.TagKey<?> fluidTag, CallbackInfoReturnable<Boolean> cir) {
-        if (createsubmarine$isInsideAirtightSub()) cir.setReturnValue(false);
+    private void createsubmarine$isEyeInFluid(TagKey<?> fluidTag, CallbackInfoReturnable<Boolean> cir) {
+        if (createsubmarine$isInsideAirtightSub())
+            cir.setReturnValue(false);
     }
 
     @Inject(method = "doWaterSplashEffect", at = @At("HEAD"), cancellable = true)
     private void createsubmarine$noSplashWhileSubmerged(org.spongepowered.asm.mixin.injection.callback.CallbackInfo ci) {
         Entity entity = (Entity) (Object) this;
-        net.minecraft.core.BlockPos eye = net.minecraft.core.BlockPos.containing(entity.getX(), entity.getEyeY(), entity.getZ());
-        net.minecraft.world.level.material.FluidState fs = entity.level().getFluidState(eye);
-        if (fs.is(net.minecraft.tags.FluidTags.WATER)
+        BlockPos eye = BlockPos.containing(entity.getX(), entity.getEyeY(), entity.getZ());
+        FluidState fs = entity.level().getFluidState(eye);
+        if (fs.is(FluidTags.WATER)
                 && entity.getEyeY() < eye.getY() + fs.getHeight(entity.level(), eye)) {
             ci.cancel();
         }
     }
 
+    @Inject(method = {"onInsideBubbleColumn", "onAboveBubbleCol"}, at = @At("HEAD"), cancellable = true)
+    private void createsubmarine$ignoreBubbleColumn(boolean downwards, org.spongepowered.asm.mixin.injection.callback.CallbackInfo ci) {
+        if (createsubmarine$isInsideAirtightSub())
+            ci.cancel();
+    }
+
+    @Inject(method = {"isInWaterOrBubble", "isInWaterRainOrBubble"}, at = @At("HEAD"), cancellable = true)
+    private void createsubmarine$dryInsideSub(CallbackInfoReturnable<Boolean> cir) {
+        if (createsubmarine$isInsideAirtightSub())
+            cir.setReturnValue(false);
+    }
+
     @Inject(method = "isUnderWater", at = @At("HEAD"), cancellable = true)
     private void createsubmarine$isUnderWater(CallbackInfoReturnable<Boolean> cir) {
-        if (createsubmarine$isInsideAirtightSub()) cir.setReturnValue(false);
+        if (createsubmarine$isInsideAirtightSub())
+            cir.setReturnValue(false);
     }
 
     @Inject(method = "updateFluidOnEyes", at = @At("HEAD"), cancellable = true)
@@ -68,9 +99,9 @@ public abstract class EntityWaterPhysicsMixin {
     }
 
     @Inject(method = "getEyeInFluidType", at = @At("HEAD"), cancellable = true, remap = false)
-    private void createsubmarine$getEyeInFluidType(CallbackInfoReturnable<net.neoforged.neoforge.fluids.FluidType> cir) {
+    private void createsubmarine$getEyeInFluidType(CallbackInfoReturnable<FluidType> cir) {
         if (createsubmarine$isInsideAirtightSub()) {
-            cir.setReturnValue(net.neoforged.neoforge.common.NeoForgeMod.EMPTY_TYPE.value());
+            cir.setReturnValue(NeoForgeMod.EMPTY_TYPE.value());
         }
     }
 
@@ -85,7 +116,8 @@ public abstract class EntityWaterPhysicsMixin {
 
     @Inject(method = "isSwimming", at = @At("HEAD"), cancellable = true)
     private void createsubmarine$isSwimming(CallbackInfoReturnable<Boolean> cir) {
-        if (createsubmarine$isInsideAirtightSub()) cir.setReturnValue(false);
+        if (createsubmarine$isInsideAirtightSub())
+            cir.setReturnValue(false);
     }
 
     @Unique
@@ -98,8 +130,9 @@ public abstract class EntityWaterPhysicsMixin {
     @Unique
     private boolean createsubmarine$isInsideAirtightSub() {
         Entity entity = (Entity) (Object) this;
-        net.minecraft.world.level.Level level = entity.level();
-        if (level == null) return false;
+        Level level = entity.level();
+        if (level == null)
+            return false;
 
         long tick = level.getGameTime();
         double x = entity.getX(), y = entity.getY(), z = entity.getZ(), eyeY = entity.getEyeY();
@@ -109,34 +142,38 @@ public abstract class EntityWaterPhysicsMixin {
             return createsubmarine$cachedInside;
         }
 
-        net.minecraft.world.phys.Vec3 eyePos = new net.minecraft.world.phys.Vec3(x, eyeY, z);
-        boolean inside = com.maxenonyme.createsubmarine.submarine.compartment.CompartmentTracker.isInSealedExact(level, eyePos);
+        Vec3 eyePos = new Vec3(x, eyeY, z);
+        boolean inside = CompartmentTracker.isInSealedExact(level, eyePos);
         if (!inside) {
-            inside = com.maxenonyme.createsubmarine.submarine.compartment.CompartmentTracker.isInSealedExact(level, entity.position());
+            inside = CompartmentTracker.isInSealedExact(level, entity.position());
         }
 
         if (inside) {
-            dev.ryanhcode.sable.companion.SubLevelAccess sub = dev.ryanhcode.sable.companion.SableCompanion.INSTANCE.getContaining(level, eyePos);
-            if (sub != null) {
-                org.joml.Vector3d localPos = new org.joml.Vector3d(x, eyeY, z);
-                sub.logicalPose().transformPositionInverse(localPos);
-                net.minecraft.core.BlockPos localBlockPos = net.minecraft.core.BlockPos.containing(localPos.x, localPos.y, localPos.z);
+            SubLevelAccess ship = SableCompanion.INSTANCE.getContaining(level, eyePos);
+            if (ship != null) {
+                Vector3d localPos = new Vector3d(x, eyeY, z);
+                ship.logicalPose().transformPositionInverse(localPos);
+                BlockPos localBlockPos = BlockPos.containing(localPos.x, localPos.y, localPos.z);
                 
-                net.minecraft.world.level.Level subLevel = com.maxenonyme.createsubmarine.submarine.util.SubLevelRegistry.getLevel(sub.getUniqueId());
-                if (subLevel == null && sub instanceof dev.ryanhcode.sable.sublevel.SubLevel sl) {
+                Level subLevel = SubLevelRegistry.getLevel(ship.getUniqueId());
+                if (subLevel == null && ship instanceof SubLevel sl) {
                     subLevel = sl.getLevel();
                 }
                 
                 if (subLevel != null) {
-                    net.minecraft.world.level.material.FluidState fs = subLevel.getFluidState(localBlockPos);
-                    if (fs.is(net.minecraft.tags.FluidTags.WATER)) {
+                    FluidState fs = subLevel.getFluidState(localBlockPos);
+                    if (fs.is(FluidTags.WATER)) {
                         inside = false;
                     } else {
-                        org.joml.Vector3d localFeet = new org.joml.Vector3d(x, y, z);
-                        sub.logicalPose().transformPositionInverse(localFeet);
-                        net.minecraft.core.BlockPos localFeetPos = net.minecraft.core.BlockPos.containing(localFeet.x, localFeet.y, localFeet.z);
-                        if (subLevel.getFluidState(localFeetPos).is(net.minecraft.tags.FluidTags.WATER)) {
-                            inside = false;
+                        double[] probes = { y + 0.15, y + entity.getBbHeight() * 0.5 };
+                        for (double probe : probes) {
+                            Vector3d local = new Vector3d(x, probe, z);
+                            ship.logicalPose().transformPositionInverse(local);
+                            BlockPos cell = BlockPos.containing(local.x, local.y, local.z);
+                            if (subLevel.getFluidState(cell).is(FluidTags.WATER)) {
+                                inside = false;
+                                break;
+                            }
                         }
                     }
                 }

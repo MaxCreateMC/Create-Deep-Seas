@@ -1,0 +1,56 @@
+{
+  "variants": {
+    "facing=down,seized=false": {
+      "model": "create_submarine:block/pump_controller/block",
+      "x": 180
+    },
+    "facing=down,seized=true": {
+      "model": "create_submarine:block/pump_controller/block_seized",
+      "x": 180
+    },
+    "facing=east,seized=false": {
+      "model": "create_submarine:block/pump_controller/block",
+      "x": 90,
+      "y": 90
+    },
+    "facing=east,seized=true": {
+      "model": "create_submarine:block/pump_controller/block_seized",
+      "x": 90,
+      "y": 90
+    },
+    "facing=north,seized=false": {
+      "model": "create_submarine:block/pump_controller/block",
+      "x": 90
+    },
+    "facing=north,seized=true": {
+      "model": "create_submarine:block/pump_controller/block_seized",
+      "x": 90
+    },
+    "facing=south,seized=false": {
+      "model": "create_submarine:block/pump_controller/block",
+      "x": 90,
+      "y": 180
+    },
+    "facing=south,seized=true": {
+      "model": "create_submarine:block/pump_controller/block_seized",
+      "x": 90,
+      "y": 180
+    },
+    "facing=up,seized=false": {
+      "model": "create_submarine:block/pump_controller/block"
+    },
+    "facing=up,seized=true": {
+      "model": "create_submarine:block/pump_controller/block_seized"
+    },
+    "facing=west,seized=false": {
+      "model": "create_submarine:block/pump_controller/block",
+      "x": 90,
+      "y": 270
+    },
+    "facing=west,seized=true": {
+      "model": "create_submarine:block/pump_controller/block_seized",
+      "x": 90,
+      "y": 270
+    }
+  }
+}

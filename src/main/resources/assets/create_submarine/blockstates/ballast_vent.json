@@ -1,13 +1,6 @@
 {
   "multipart": [
-    { "when": { "facing": "north" },
-      "apply": { "model": "create_submarine:block/ballast_vent_core" } },
-    { "when": { "facing": "south" },
-      "apply": { "model": "create_submarine:block/ballast_vent_core", "y": 180 } },
-    { "when": { "facing": "east" },
-      "apply": { "model": "create_submarine:block/ballast_vent_core", "y": 90 } },
-    { "when": { "facing": "west" },
-      "apply": { "model": "create_submarine:block/ballast_vent_core", "y": 270 } },
+    { "apply": { "model": "create_submarine:block/ballast_vent_core" } },
 
     { "when": { "down": "true" },
       "apply": { "model": "create_submarine:block/ballast_vent_skin_pipe" } },
@@ -15,16 +8,16 @@
     { "when": { "up": "true" },
       "apply": { "model": "create_submarine:block/ballast_vent_skin_pipe", "x": 180 } },
 
-    { "when": { "facing": "north|east|west", "north": "true" },
+    { "when": { "north": "true" },
       "apply": { "model": "create_submarine:block/ballast_vent_skin_pipe", "x": 90 } },
 
-    { "when": { "facing": "south|east|west", "south": "true" },
+    { "when": { "south": "true" },
       "apply": { "model": "create_submarine:block/ballast_vent_skin_pipe", "x": 270 } },
 
-    { "when": { "facing": "north|south|east", "east": "true" },
+    { "when": { "east": "true" },
       "apply": { "model": "create_submarine:block/ballast_vent_skin_pipe", "x": 90, "y": 270 } },
 
-    { "when": { "facing": "north|south|west", "west": "true" },
+    { "when": { "west": "true" },
       "apply": { "model": "create_submarine:block/ballast_vent_skin_pipe", "x": 90, "y": 90 } }
   ]
 }

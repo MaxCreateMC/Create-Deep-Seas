@@ -1,13 +1,16 @@
 package com.maxenonyme.createsubmarine.submarine.system;
 
+import com.maxenonyme.createsubmarine.submarine.block.entity.UnderwaterMineBlockEntity;
 import com.maxenonyme.createsubmarine.submarine.compartment.CompartmentTracker;
+import com.maxenonyme.createsubmarine.submarine.compartment.FloodSystem;
+import com.maxenonyme.createsubmarine.submarine.config.HullStrengthConfig;
+import com.maxenonyme.createsubmarine.submarine.network.HullConfigSyncPayload;
 import com.maxenonyme.createsubmarine.submarine.network.SubCrackPayload;
 import com.maxenonyme.createsubmarine.submarine.network.SubLevelBoundsPayload;
 import com.maxenonyme.createsubmarine.submarine.util.SubLevelRegistry;
 import dev.ryanhcode.sable.companion.SubLevelAccess;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.world.level.Level;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.level.LevelEvent;
@@ -17,18 +20,19 @@ import net.neoforged.neoforge.network.PacketDistributor;
 import java.util.Map;
 import java.util.UUID;
 
-public final class SubmarineLifecycleHandler {
-
-    private SubmarineLifecycleHandler() {}
+public class SubmarineLifecycleHandler {
 
     public static void onServerStopping(ServerStoppingEvent event) {
         SubmarineSinkingSystem.clearCrashed();
+        ImplosionSequence.clearAll();
+        LightFailure.clear(false);
+        FloodSystem.clearAll();
         SubmarinePressureSystem.clearAll();
         SubLevelRegistry.clearAll();
         CompartmentTracker.clearAll();
         SubmarineDriverRegistry.clearAll();
         SubmarineInteractionSystem.clearAll();
-        com.maxenonyme.createsubmarine.submarine.block.entity.UnderwaterMineBlockEntity.clearAll();
+        UnderwaterMineBlockEntity.clearAll();
     }
 
     public static void onLevelUnload(LevelEvent.Unload event) {
@@ -38,11 +42,12 @@ public final class SubmarineLifecycleHandler {
     }
 
     public static void onPlayerLoggedIn(PlayerEvent.PlayerLoggedInEvent event) {
-        if (!(event.getEntity() instanceof ServerPlayer player)) return;
+        if (!(event.getEntity() instanceof ServerPlayer player))
+            return;
 
         PacketDistributor.sendToPlayer(player,
-                new com.maxenonyme.createsubmarine.submarine.network.HullConfigSyncPayload(
-                        com.maxenonyme.createsubmarine.submarine.config.HullStrengthConfig.getValues()));
+                new HullConfigSyncPayload(
+                        HullStrengthConfig.getValues()));
 
         for (Map.Entry<UUID, SubLevelAccess> entry : SubLevelRegistry.getAll().entrySet()) {
             UUID subId = entry.getKey();
@@ -54,15 +59,11 @@ public final class SubmarineLifecycleHandler {
             }
 
             Map<BlockPos, Integer> cracks = SubmarinePressureSystem.getAllCracks().get(subId);
-            if (cracks == null) continue;
-            Level plotLevel = SubLevelRegistry.getLevel(subId);
+            if (cracks == null)
+                continue;
             for (Map.Entry<BlockPos, Integer> c : cracks.entrySet()) {
-                int blockId = 0;
-                if (plotLevel != null) {
-                    blockId = net.minecraft.core.registries.BuiltInRegistries.BLOCK.getId(plotLevel.getBlockState(c.getKey()).getBlock());
-                }
                 PacketDistributor.sendToPlayer(player,
-                        new SubCrackPayload(subId, c.getKey(), c.getValue(), blockId));
+                        new SubCrackPayload(subId, c.getKey(), c.getValue(), 0));
             }
         }
     }

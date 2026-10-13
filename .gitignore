@@ -51,3 +51,6 @@ classpath.txt
 
 src/main/java/com/maxenonyme/createsubmarine/submarine/stress/WarmStartProbe.java
 docs
+/.eclipse
+/sodium_shaders
+/Wiki

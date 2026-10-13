@@ -1,0 +1,10 @@
+{
+  "comparator_output": 5,
+  "description": {
+    "translate": "jukebox_song.create_high_seas.hidden_between_fluent_waters"
+  },
+  "length_in_seconds": 137.25,
+  "sound_event": {
+    "sound_id": "create_high_seas:music_disc.hidden_between_fluent_waters"
+  }
+}

@@ -4,6 +4,7 @@ import com.maxenonyme.createsubmarine.submarine.client.renderer.SodiumWaterOcclu
 import com.maxenonyme.createsubmarine.submarine.compartment.CompartmentTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.SectionPos;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.material.FluidState;
 import org.spongepowered.asm.mixin.Mixin;
@@ -23,6 +24,7 @@ public abstract class SodiumFluidRendererMixin {
             return;
         Minecraft mc = Minecraft.getInstance();
         if (mc.level != null && CompartmentTracker.isOccluded(mc.level, blockPos)) {
+            SodiumWaterOcclusionBridge.FALLBACK_HOLES.add(SectionPos.asLong(blockPos));
             ci.cancel();
         }
     }

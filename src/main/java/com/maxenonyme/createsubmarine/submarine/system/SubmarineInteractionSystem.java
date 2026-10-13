@@ -2,21 +2,29 @@ package com.maxenonyme.createsubmarine.submarine.system;
 import com.maxenonyme.createsubmarine.submarine.util.SubLevelRegistry;
 import com.maxenonyme.createsubmarine.submarine.math.OrientedBoundingBox3d;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.core.SectionPos;
+import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.tags.EntityTypeTags;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.animal.WaterAnimal;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.chunk.LevelChunk;
+import net.minecraft.world.level.chunk.LevelChunkSection;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import org.joml.Vector3d;
 import java.util.Map;
+import java.util.Random;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 public class SubmarineInteractionSystem {
-    private static final java.util.concurrent.ConcurrentHashMap<UUID, Vector3d> LAST_POSITIONS = new java.util.concurrent.ConcurrentHashMap<>();
-    private static final java.util.concurrent.ConcurrentHashMap<UUID, Double> SUB_VELOCITIES = new java.util.concurrent.ConcurrentHashMap<>();
+    private static final ConcurrentHashMap<UUID, Vector3d> LAST_POSITIONS = new ConcurrentHashMap<>();
+    private static final ConcurrentHashMap<UUID, Double> SUB_VELOCITIES = new ConcurrentHashMap<>();
     private static int tickCounter = 0;
 
     public static void clearAll() {
@@ -27,7 +35,6 @@ public class SubmarineInteractionSystem {
 
     public static void onServerTick(ServerTickEvent.Post event) {
         tickCounter++;
-        if (tickCounter % 3 != 0) return;
         Map<UUID, OrientedBoundingBox3d> hulls = SubmarineHullManager.getActiveHulls();
         if (hulls.isEmpty()) {
             LAST_POSITIONS.clear();
@@ -39,8 +46,6 @@ public class SubmarineInteractionSystem {
             OrientedBoundingBox3d obb = entry.getValue();
             Level level = SubLevelRegistry.getLevel(id);
             if (level instanceof ServerLevel serverLevel) {
-                final AABB box = obb.getWorldAABB();
-                if (box.maxY >= serverLevel.getSeaLevel()) continue;
                 Vector3d currentPos = new Vector3d(obb.getPosition());
                 Vector3d lastPos = LAST_POSITIONS.get(id);
                 double velocity = 0;
@@ -49,63 +54,84 @@ public class SubmarineInteractionSystem {
                 }
                 LAST_POSITIONS.put(id, currentPos);
                 SUB_VELOCITIES.put(id, velocity);
-                blockEntities(serverLevel, obb, velocity, box);
-                if (velocity > 0.01 && tickCounter % 10 == 0) {
-                    clearVegetation(serverLevel, obb, box);
+                blockEntities(serverLevel, obb, velocity);
+                if (velocity > 0.01 && tickCounter % 5 == 0) {
+                    clearVegetation(serverLevel, obb);
                 }
             }
         }
     }
-    private static void blockEntities(ServerLevel level, OrientedBoundingBox3d obb, double velocity, final AABB searchBox) {
+    private static void blockEntities(ServerLevel level, OrientedBoundingBox3d obb, double velocity) {
         Vector3d pos = obb.getPosition();
+        Vector3d dim = obb.getDimensions();
         boolean isHighSpeed = velocity > 1.0;
-        final java.util.List<Entity> aquatic = level.getEntities((Entity)null, searchBox,
-            e -> e instanceof WaterAnimal || e.getType().is(net.minecraft.tags.EntityTypeTags.AQUATIC));
-        for (final Entity e : aquatic) {
-            if (!SubmarineHullManager.contains(obb, e.getX(), e.getY(), e.getZ())) continue;
-            Vec3 center = new Vec3(pos.x, pos.y, pos.z);
-            Vec3 pushDir = e.position().subtract(center).normalize();
-            if (pushDir.lengthSqr() < 0.01) pushDir = new Vec3(0, 1, 0);
-            if (isHighSpeed) {
-                e.setDeltaMovement(e.getDeltaMovement().add(pushDir.scale(velocity * 1.5)));
-                e.hurt(level.damageSources().generic(), (float)(velocity * 10.0));
-            } else {
-                e.setDeltaMovement(e.getDeltaMovement().add(pushDir.scale(0.2)));
+        double maxDim = Math.max(dim.x, Math.max(dim.y, dim.z)) * 0.8;
+        AABB searchBox = new AABB(
+            pos.x - maxDim, pos.y - maxDim, pos.z - maxDim,
+            pos.x + maxDim, pos.y + maxDim, pos.z + maxDim
+        );
+        for (Entity entity : level.getEntitiesOfClass(Entity.class, searchBox)) {
+            if (entity instanceof WaterAnimal || entity.getType().is(EntityTypeTags.AQUATIC)) {
+                if (SubmarineHullManager.contains(obb, entity.getX(), entity.getY(), entity.getZ())) {
+                    Vec3 center = new Vec3(pos.x, pos.y, pos.z);
+                    Vec3 pushDir = entity.position().subtract(center).normalize();
+                    if (pushDir.lengthSqr() < 0.01)
+                        pushDir = new Vec3(0, 1, 0);
+                    if (isHighSpeed) {
+                        entity.setDeltaMovement(entity.getDeltaMovement().add(pushDir.scale(velocity * 1.5)));
+                        entity.hurt(level.damageSources().generic(), (float)(velocity * 10.0));
+                    } else {
+                        entity.setDeltaMovement(entity.getDeltaMovement().add(pushDir.scale(0.2)));
+                    }
+                    entity.hasImpulse = true;
+                }
             }
-            e.hasImpulse = true;
         }
     }
-    private static void clearVegetation(ServerLevel level, OrientedBoundingBox3d obb, final AABB box) {
-        int minX = (int) Math.floor(box.minX);
-        int maxX = (int) Math.ceil(box.maxX);
-        int minY = Math.max((int) Math.floor(box.minY), level.getMinBuildHeight());
-        int maxY = Math.min((int) Math.ceil(box.maxY), level.getMaxBuildHeight() - 1);
-        int minZ = (int) Math.floor(box.minZ);
-        int maxZ = (int) Math.ceil(box.maxZ);
+    private static void clearVegetation(ServerLevel level, OrientedBoundingBox3d obb) {
+        Vector3d pos = obb.getPosition();
+        Vector3d dim = obb.getDimensions();
+        Vector3d ax = obb.getOrientation().transform(new Vector3d(dim.x * 0.5, 0, 0));
+        Vector3d ay = obb.getOrientation().transform(new Vector3d(0, dim.y * 0.5, 0));
+        Vector3d az = obb.getOrientation().transform(new Vector3d(0, 0, dim.z * 0.5));
+        double hx = Math.abs(ax.x) + Math.abs(ay.x) + Math.abs(az.x);
+        double hy = Math.abs(ax.y) + Math.abs(ay.y) + Math.abs(az.y);
+        double hz = Math.abs(ax.z) + Math.abs(ay.z) + Math.abs(az.z);
+        int minX = (int) Math.floor(pos.x - hx);
+        int maxX = (int) Math.ceil(pos.x + hx);
+        int minY = Math.max((int) Math.floor(pos.y - hy), level.getMinBuildHeight());
+        int maxY = Math.min((int) Math.ceil(pos.y + hy), level.getMaxBuildHeight() - 1);
+        int minZ = (int) Math.floor(pos.z - hz);
+        int maxZ = (int) Math.ceil(pos.z + hz);
         BlockPos.MutableBlockPos mutablePos = new BlockPos.MutableBlockPos();
         for (int cx = minX >> 4; cx <= maxX >> 4; cx++) {
             for (int cz = minZ >> 4; cz <= maxZ >> 4; cz++) {
-                net.minecraft.world.level.chunk.LevelChunk chunk = level.getChunkSource().getChunkNow(cx, cz);
-                if (chunk == null) continue;
+                LevelChunk chunk = level.getChunkSource().getChunkNow(cx, cz);
+                if (chunk == null)
+                    continue;
                 int x0 = Math.max(minX, cx << 4), x1 = Math.min(maxX, (cx << 4) + 15);
                 int z0 = Math.max(minZ, cz << 4), z1 = Math.min(maxZ, (cz << 4) + 15);
-                net.minecraft.world.level.chunk.LevelChunkSection[] sections = chunk.getSections();
+                LevelChunkSection[] sections = chunk.getSections();
                 for (int sy = chunk.getSectionIndex(minY); sy <= chunk.getSectionIndex(maxY); sy++) {
-                    if (sy < 0 || sy >= sections.length) continue;
-                    net.minecraft.world.level.chunk.LevelChunkSection section = sections[sy];
-                    if (section == null || section.hasOnlyAir() || !section.maybeHas(SubmarineInteractionSystem::isVegetation)) continue;
-                    int yBase = net.minecraft.core.SectionPos.sectionToBlockCoord(chunk.getSectionYFromSectionIndex(sy));
+                    if (sy < 0 || sy >= sections.length)
+                        continue;
+                    LevelChunkSection section = sections[sy];
+                    if (section == null || section.hasOnlyAir() || !section.maybeHas(SubmarineInteractionSystem::isVegetation))
+                        continue;
+                    int yBase = SectionPos.sectionToBlockCoord(chunk.getSectionYFromSectionIndex(sy));
                     int y0 = Math.max(minY, yBase), y1 = Math.min(maxY, yBase + 15);
                     for (int y = y0; y <= y1; y++) {
                         for (int x = x0; x <= x1; x++) {
                             for (int z = z0; z <= z1; z++) {
                                 BlockState state = section.getBlockState(x & 15, y & 15, z & 15);
-                                if (!isVegetation(state)) continue;
-                                if (!SubmarineHullManager.contains(obb, x + 0.5, y + 0.5, z + 0.5)) continue;
+                                if (!isVegetation(state))
+                                    continue;
+                                if (!SubmarineHullManager.contains(obb, x + 0.5, y + 0.5, z + 0.5))
+                                    continue;
                                 mutablePos.set(x, y, z);
                                 clearVegetationColumn(level, mutablePos);
                                 if (RAND.nextFloat() < 0.1f) {
-                                    level.sendParticles(net.minecraft.core.particles.ParticleTypes.BUBBLE, x + 0.5, y + 0.5, z + 0.5, 2, 0.2, 0.2, 0.2, 0.01);
+                                    level.sendParticles(ParticleTypes.BUBBLE, x + 0.5, y + 0.5, z + 0.5, 2, 0.2, 0.2, 0.2, 0.01);
                                 }
                             }
                         }
@@ -118,11 +144,12 @@ public class SubmarineInteractionSystem {
         BlockPos.MutableBlockPos cursor = pos.mutable();
         while (isVegetation(level.getBlockState(cursor))) {
             level.setBlock(cursor, Blocks.WATER.defaultBlockState(), 3);
-            cursor.move(net.minecraft.core.Direction.UP);
-            if (cursor.getY() > level.getMaxBuildHeight()) break;
+            cursor.move(Direction.UP);
+            if (cursor.getY() > level.getMaxBuildHeight())
+                break;
         }
     }
-    private static final java.util.Random RAND = new java.util.Random();
+    private static final Random RAND = new Random();
     private static boolean isVegetation(BlockState state) {
         return state.is(Blocks.KELP) || state.is(Blocks.KELP_PLANT) ||
                state.is(Blocks.SEAGRASS) || state.is(Blocks.TALL_SEAGRASS);

@@ -29,7 +29,8 @@ public class SubmarineDriverRegistry {
 
     public static boolean release(UUID id, BlockPos pos, long tick) {
         Map<BlockPos, Claim> subClaims = CLAIMS.get(id);
-        if (subClaims == null) return true;
+        if (subClaims == null)
+            return true;
         subClaims.remove(pos.immutable());
         subClaims.values().removeIf(c -> isStale(c, tick));
         if (subClaims.isEmpty()) {
@@ -41,7 +42,8 @@ public class SubmarineDriverRegistry {
 
     private static Claim bestClaim(UUID id, long tick) {
         Map<BlockPos, Claim> subClaims = CLAIMS.get(id);
-        if (subClaims == null) return null;
+        if (subClaims == null)
+            return null;
         subClaims.values().removeIf(c -> isStale(c, tick));
         if (subClaims.isEmpty()) {
             CLAIMS.remove(id);
@@ -63,9 +65,11 @@ public class SubmarineDriverRegistry {
 
     private static int lex(BlockPos a, BlockPos b) {
         int dx = Integer.compare(a.getX(), b.getX());
-        if (dx != 0) return dx;
+        if (dx != 0)
+            return dx;
         int dy = Integer.compare(a.getY(), b.getY());
-        if (dy != 0) return dy;
+        if (dy != 0)
+            return dy;
         return Integer.compare(a.getZ(), b.getZ());
     }
 

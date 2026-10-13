@@ -1,0 +1,7 @@
+{
+  "variants": {
+    "": {
+      "model": "create_high_seas:block/boat_engine_powered"
+    }
+  }
+}

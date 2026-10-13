@@ -1,0 +1,23 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    " E ",
+    "RGR"
+  ],
+  "key": {
+    "E": {
+      "item": "create:electron_tube"
+    },
+    "R": {
+      "item": "minecraft:red_stained_glass_pane"
+    },
+    "G": {
+      "item": "create:goggles"
+    }
+  },
+  "result": {
+    "id": "create_submarine:pressure_goggles",
+    "count": 1
+  }
+}

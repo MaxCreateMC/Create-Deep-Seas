@@ -5,15 +5,10 @@ import foundry.veil.api.client.render.light.data.PointLightData;
 import foundry.veil.api.client.render.light.renderer.LightRenderHandle;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.world.entity.player.Player;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.common.NeoForge;
-import team.lodestar.lodestone.registry.common.particle.LodestoneParticleTypes;
-import team.lodestar.lodestone.systems.easing.Easing;
-import team.lodestar.lodestone.systems.particle.builder.WorldParticleBuilder;
-import team.lodestar.lodestone.systems.particle.data.GenericParticleData;
-import team.lodestar.lodestone.systems.particle.data.color.ColorParticleData;
-import team.lodestar.lodestone.systems.particle.data.spin.SpinParticleData;
 
 public final class WardingEffectHandler {
     private static final int EFFECT_DURATION = 40;
@@ -83,25 +78,9 @@ public final class WardingEffectHandler {
 
                 float age = (float) i / count;
                 if (ring % 2 == 0) {
-                    WorldParticleBuilder.create(LodestoneParticleTypes.WISP_PARTICLE.get())
-                        .setColorData(ColorParticleData.create(0.5f, 0.7f, 1.0f, 1.0f, 1.0f, 1.0f).setEasing(Easing.SINE_IN_OUT).build())
-                        .setTransparencyData(GenericParticleData.create(0.8f, 0f).setEasing(Easing.SINE_IN_OUT).build())
-                        .setScaleData(GenericParticleData.create(0.4f, 0f).build())
-                        .setSpinData(SpinParticleData.create(0.2f).build())
-                        .setLifetime(25)
-                        .setGravity(0f)
-                        .enableNoClip()
-                        .spawn(level, x, y, z);
+                    level.addParticle(ParticleTypes.END_ROD, x, y, z, 0, 0.02, 0);
                 } else {
-                    WorldParticleBuilder.create(LodestoneParticleTypes.SMOKE_PARTICLE.get())
-                        .setColorData(ColorParticleData.create(0.4f, 0.6f, 1.0f, 0.8f, 0.9f, 1.0f).setEasing(Easing.SINE_IN_OUT).build())
-                        .setTransparencyData(GenericParticleData.create(0.6f, 0f).setEasing(Easing.SINE_IN_OUT).build())
-                        .setScaleData(GenericParticleData.create(0.5f, 0f).build())
-                        .setSpinData(SpinParticleData.create(0.15f).build())
-                        .setLifetime(30)
-                        .setGravity(0f)
-                        .enableNoClip()
-                        .spawn(level, x, y, z);
+                    level.addParticle(ParticleTypes.CLOUD, x, y, z, 0, 0.01, 0);
                 }
             }
         }
@@ -110,14 +89,7 @@ public final class WardingEffectHandler {
             for (int i = 0; i < 3; i++) {
                 double a = player.getRandom().nextDouble() * Math.PI * 2;
                 double r = 0.5 + player.getRandom().nextDouble() * 1.5;
-                WorldParticleBuilder.create(LodestoneParticleTypes.SPARKLE_PARTICLE.get())
-                    .setColorData(ColorParticleData.create(0.6f, 0.8f, 1.0f, 1.0f, 1.0f, 1.0f).build())
-                    .setTransparencyData(GenericParticleData.create(0.7f, 0f).setEasing(Easing.SINE_IN_OUT).build())
-                    .setScaleData(GenericParticleData.create(0.3f, 0f).build())
-                    .setLifetime(15)
-                    .setGravity(0f)
-                    .enableNoClip()
-                    .spawn(level, px + Math.cos(a) * r, py + 0.5, pz + Math.sin(a) * r);
+                level.addParticle(ParticleTypes.WITCH, px + Math.cos(a) * r, py + 0.5, pz + Math.sin(a) * r, 0, 0.05, 0);
             }
         }
 

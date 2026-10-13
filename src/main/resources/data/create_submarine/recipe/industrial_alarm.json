@@ -1,0 +1,29 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    " T ",
+    "GLG",
+    "INI"
+  ],
+  "key": {
+    "T": {
+      "item": "create:electron_tube"
+    },
+    "G": {
+      "item": "minecraft:red_stained_glass_pane"
+    },
+    "L": {
+      "item": "minecraft:redstone_lamp"
+    },
+    "I": {
+      "item": "create:iron_sheet"
+    },
+    "N": {
+      "item": "minecraft:note_block"
+    }
+  },
+  "result": {
+    "id": "create_submarine:industrial_alarm",
+    "count": 1
+  }
+}

@@ -57,11 +57,13 @@ public class IsopodSpawnEggItem extends DeferredSpawnEggItem {
         }
 
         EntityType<?> entityType = getType(stack);
-        if (!(entityType instanceof EntityType<?>)) return InteractionResult.FAIL;
+        if (!(entityType instanceof EntityType<?>))
+            return InteractionResult.FAIL;
 
         @SuppressWarnings("unchecked")
         IsopodEntity entity = ((EntityType<IsopodEntity>) entityType).create(serverLevel, null, spawnPos, MobSpawnType.SPAWN_EGG, true, !pos.equals(spawnPos) && face == Direction.UP);
-        if (entity == null) return InteractionResult.FAIL;
+        if (entity == null)
+            return InteractionResult.FAIL;
 
         entity.setSize(this.size, true);
         entity.setYRot(context.getPlayer() != null ? context.getPlayer().getYRot() : 0.0F);

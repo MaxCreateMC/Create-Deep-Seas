@@ -1,6 +1,8 @@
 package com.maxenonyme.createsubmarine.submarine.block.entity;
 
 import com.maxenonyme.createsubmarine.CreateSubmarine;
+import com.maxenonyme.createsubmarine.submarine.system.SubmarinePressureSystem;
+import com.maxenonyme.createsubmarine.submarine.util.SubLevelRegistry;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.animal.Pufferfish;
@@ -13,19 +15,17 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
 import java.util.List;
-import dev.ryanhcode.sable.companion.SubLevelAccess;
-import dev.ryanhcode.sable.sublevel.ServerSubLevel;
-import com.maxenonyme.createsubmarine.submarine.stress.SubLevelStressAnalyzer;
-import dev.ryanhcode.sable.companion.SableCompanion;
+import java.util.UUID;
 
 public class BarometerBlockEntity extends BlockEntity implements IHaveHoveringInformation {
     private Pufferfish pufferfish;
     private boolean pufferfishFailed = false;
+    private int cachedWeakestPressure = -1;
+    private long lastHullScan = -1;
 
     private Component customName;
     public int syncedDepth = 0;
     public int syncedWeakest = -1;
-    private int puffHysteresisState = 0;
     private int tickCount = 0;
 
     public BarometerBlockEntity(BlockPos pos, BlockState state) {
@@ -59,7 +59,7 @@ public class BarometerBlockEntity extends BlockEntity implements IHaveHoveringIn
                     this.pufferfish.setCustomName(this.customName);
                     this.pufferfish.setCustomNameVisible(true);
                 }
-            } catch (Throwable t) {
+            } catch (RuntimeException e) {
                 this.pufferfishFailed = true;
                 this.pufferfish = null;
             }
@@ -73,20 +73,12 @@ public class BarometerBlockEntity extends BlockEntity implements IHaveHoveringIn
             if (depth > 0 && weakest != -1) {
                 if (depth > weakest) {
                     state = 3;
-                } else if (puffHysteresisState == 2 || puffHysteresisState == 3) {
-                    if (!(depth < weakest * 0.70)) {
-                        state = 2;
-                    } else {
-                        state = 1;
-                    }
                 } else if (depth >= weakest * 0.80) {
                     state = 2;
                 } else {
                     state = 1;
                 }
             }
-
-            puffHysteresisState = state;
 
             if (state == 0) {
                 this.pufferfish.setPuffState(0);
@@ -106,32 +98,29 @@ public class BarometerBlockEntity extends BlockEntity implements IHaveHoveringIn
         return this.pufferfish;
     }
 
-    private int getStressCrushDepth() {
-        SubLevelAccess subAccess = SableCompanion.INSTANCE.getContaining(level, getBlockPos());
-        if (subAccess instanceof ServerSubLevel ssl) {
-            SubLevelStressAnalyzer analyzer = SubLevelStressAnalyzer.getOrCreate(ssl.getLevel());
-            double[] crushDepths = analyzer.getCrushDepths(ssl);
-            if (crushDepths != null && crushDepths.length > 1) {
-                int worstIdx = (int) crushDepths[crushDepths.length - 1];
-                if (worstIdx >= 0 && crushDepths[worstIdx] > 0 && Double.isFinite(crushDepths[worstIdx])) {
-                    return (int) Math.round(crushDepths[worstIdx]);
-                }
-            }
+    private int getWeakestHullPressure(UUID subId) {
+        long time = level.getGameTime();
+        if (cachedWeakestPressure != -1 && time - lastHullScan < 40) {
+            return cachedWeakestPressure;
         }
-        return -1;
+        cachedWeakestPressure = SubmarinePressureSystem
+            .getWeakestHullDepth(subId, level);
+        lastHullScan = time;
+        return cachedWeakestPressure;
     }
 
     public void tick() {
-        if (level == null || level.isClientSide) return;
+        if (level == null || level.isClientSide)
+            return;
 
         if (tickCount++ % 10 == 0) {
-            SubLevelAccess subAccess = SableCompanion.INSTANCE.getContaining(level, getBlockPos());
+            UUID subId = SubLevelRegistry.findUUID(level, getBlockPos());
             int newDepth = 0;
             int newWeakest = -1;
 
-            if (subAccess instanceof ServerSubLevel subLevel) {
-                newDepth = com.maxenonyme.createsubmarine.submarine.system.SubmarinePressureSystem.getCachedDepth(subLevel.getUniqueId());
-                newWeakest = getStressCrushDepth();
+            if (subId != null) {
+                newDepth = SubmarinePressureSystem.getCachedDepth(subId);
+                newWeakest = getWeakestHullPressure(subId);
             }
 
             if (newDepth != syncedDepth || newWeakest != syncedWeakest) {
@@ -156,8 +145,10 @@ public class BarometerBlockEntity extends BlockEntity implements IHaveHoveringIn
     @Override
     protected void loadAdditional(CompoundTag tag, HolderLookup.Provider registries) {
         super.loadAdditional(tag, registries);
-        if (tag.contains("SyncedDepth")) this.syncedDepth = tag.getInt("SyncedDepth");
-        if (tag.contains("SyncedWeakest")) this.syncedWeakest = tag.getInt("SyncedWeakest");
+        if (tag.contains("SyncedDepth"))
+            this.syncedDepth = tag.getInt("SyncedDepth");
+        if (tag.contains("SyncedWeakest"))
+            this.syncedWeakest = tag.getInt("SyncedWeakest");
         if (tag.contains("CustomName", 8)) {
             try {
                 this.customName = Component.Serializer.fromJson(tag.getString("CustomName"), registries);
@@ -165,7 +156,8 @@ public class BarometerBlockEntity extends BlockEntity implements IHaveHoveringIn
                     this.pufferfish.setCustomName(this.customName);
                     this.pufferfish.setCustomNameVisible(true);
                 }
-            } catch (Exception e) {}
+            } catch (RuntimeException e) {
+            }
         }
     }
 

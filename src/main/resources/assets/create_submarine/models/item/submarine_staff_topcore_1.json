@@ -1,0 +1,18 @@
+{
+	"textures": {
+		"2": "create_submarine:item/submarine_staff/submarine_main_staff"
+	},
+	"elements": [
+		{
+			"name": "Topcore 1",
+			"from": [7.2, 14.93685, 8.2893],
+			"to": [8.8, 20.53685, 9.4893],
+			"faces": {
+				"east": {"uv": [4, 0, 4.25, 1.375], "texture": "#2"},
+				"south": {"uv": [3.5, 0, 3.875, 1.375], "texture": "#2"},
+				"west": {"uv": [4.25, 0, 4.5, 1.375], "texture": "#2"},
+				"up": {"uv": [4.625, 4.75, 4.25, 4.5], "texture": "#2"}
+			}
+		}
+	]
+}

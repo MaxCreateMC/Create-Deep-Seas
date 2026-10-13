@@ -1,0 +1,9 @@
+{
+	"loader": "neoforge:obj",
+	"model": "create_submarine:models/item/submarine_staff.obj",
+	"flip_v": true,
+	"textures": {
+		"particle": "create_submarine:item/submarine_staff/submarine_main_staff",
+		"m_2461e6ee-a15c-1d36-4491-e92742b377e5": "create_submarine:item/submarine_staff/submarine_main_staff"
+	}
+}

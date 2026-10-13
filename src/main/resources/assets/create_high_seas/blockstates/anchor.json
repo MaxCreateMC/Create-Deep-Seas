@@ -1,0 +1,12 @@
+{
+  "variants": {
+    "facing=north,has_cable=false": { "model": "create_high_seas:block/anchor/anchor" },
+    "facing=south,has_cable=false": { "model": "create_high_seas:block/anchor/anchor", "y": 180 },
+    "facing=west,has_cable=false":  { "model": "create_high_seas:block/anchor/anchor", "y": 270 },
+    "facing=east,has_cable=false":  { "model": "create_high_seas:block/anchor/anchor", "y": 90 },
+    "facing=north,has_cable=true": { "model": "create_high_seas:block/anchor/anchor_rope" },
+    "facing=south,has_cable=true": { "model": "create_high_seas:block/anchor/anchor_rope", "y": 180 },
+    "facing=west,has_cable=true":  { "model": "create_high_seas:block/anchor/anchor_rope", "y": 270 },
+    "facing=east,has_cable=true":  { "model": "create_high_seas:block/anchor/anchor_rope", "y": 90 }
+  }
+}

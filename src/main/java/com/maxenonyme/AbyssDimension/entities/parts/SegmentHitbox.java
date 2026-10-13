@@ -49,7 +49,8 @@ public class SegmentHitbox extends Entity {
     public void tick() {
         if (!parentResolved) {
             resolveParent();
-            if (!parentResolved) return;
+            if (!parentResolved)
+                return;
         }
         Entity parent = (Entity) segmentParent;
         if (parent == null || !parent.isAlive()) {
@@ -66,7 +67,8 @@ public class SegmentHitbox extends Entity {
     }
 
     private void resolveParent() {
-        if (pendingParentId < 0 || pendingIndex < 0) return;
+        if (pendingParentId < 0 || pendingIndex < 0)
+            return;
         Entity found = this.level().getEntity(pendingParentId);
         if (found instanceof HasSegments hs) {
             List<SegmentDefinition> defs = hs.segmentDefinitions();
@@ -75,7 +77,6 @@ public class SegmentHitbox extends Entity {
                 this.index = pendingIndex;
                 this.definition = defs.get(pendingIndex);
                 this.parentResolved = true;
-                // Populate parent's segment list (needed on client for chain resolution)
                 List<SegmentHitbox> parentSegs = hs.segments();
                 while (parentSegs.size() <= pendingIndex) {
                     parentSegs.add(null);
@@ -152,7 +153,8 @@ public class SegmentHitbox extends Entity {
 
     @Override
     public EntityDimensions getDimensions(Pose pose) {
-        if (definition == null) return EntityDimensions.fixed(0.01F, 0.01F);
+        if (definition == null)
+            return EntityDimensions.fixed(0.01F, 0.01F);
         return EntityDimensions.fixed((float) definition.width(), (float) definition.height());
     }
 

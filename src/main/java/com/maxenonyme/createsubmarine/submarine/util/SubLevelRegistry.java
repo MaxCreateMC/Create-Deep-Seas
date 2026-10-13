@@ -28,9 +28,10 @@ public class SubLevelRegistry {
     private static final Map<UUID, SubLevelAccess> SUBLEVELS = new ConcurrentHashMap<>();
     private static final Map<UUID, Level> LEVELS = new ConcurrentHashMap<>();
     private static final Map<UUID, PlotBounds> BOUNDS = new ConcurrentHashMap<>();
-    public static void register(UUID id, SubLevelAccess sub, Level level, PlotBounds bounds) {
-        if (bounds.isEmpty()) return;
-        SUBLEVELS.put(id, sub);
+    public static void register(UUID id, SubLevelAccess subLevel, Level level, PlotBounds bounds) {
+        if (bounds.isEmpty())
+            return;
+        SUBLEVELS.put(id, subLevel);
         LEVELS.put(id, level);
         BOUNDS.put(id, bounds);
     }
@@ -56,7 +57,8 @@ public class SubLevelRegistry {
 
     public static void clearForLevel(Level level) {
         LEVELS.entrySet().removeIf(e -> {
-            if (e.getValue() != level) return false;
+            if (e.getValue() != level)
+                return false;
             UUID id = e.getKey();
             SUBLEVELS.remove(id);
             BOUNDS.remove(id);
@@ -75,7 +77,8 @@ public class SubLevelRegistry {
 
     public static UUID findUUID(Level level) {
         for (Map.Entry<UUID, Level> entry : LEVELS.entrySet()) {
-            if (entry.getValue() == level) return entry.getKey();
+            if (entry.getValue() == level)
+                return entry.getKey();
         }
         return null;
     }
@@ -83,9 +86,11 @@ public class SubLevelRegistry {
 
     public static UUID findUUID(Level level, BlockPos plotPos) {
         for (Map.Entry<UUID, Level> entry : LEVELS.entrySet()) {
-            if (entry.getValue() != level) continue;
+            if (entry.getValue() != level)
+                continue;
             PlotBounds bounds = BOUNDS.get(entry.getKey());
-            if (bounds != null && !bounds.isOutside(plotPos)) return entry.getKey();
+            if (bounds != null && !bounds.isOutside(plotPos))
+                return entry.getKey();
         }
         return null;
     }

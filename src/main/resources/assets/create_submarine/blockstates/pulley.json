@@ -1,16 +1,100 @@
 {
   "variants": {
-    "facing=north,connected=false": { "model": "create_submarine:block/pulley", "x": 0, "y": 0 },
-    "facing=north,connected=true": { "model": "create_submarine:block/pulley", "x": 0, "y": 0 },
-    "facing=south,connected=false": { "model": "create_submarine:block/pulley", "x": 0, "y": 180 },
-    "facing=south,connected=true": { "model": "create_submarine:block/pulley", "x": 0, "y": 180 },
-    "facing=east,connected=false": { "model": "create_submarine:block/pulley", "x": 0, "y": 90 },
-    "facing=east,connected=true": { "model": "create_submarine:block/pulley", "x": 0, "y": 90 },
-    "facing=west,connected=false": { "model": "create_submarine:block/pulley", "x": 0, "y": 270 },
-    "facing=west,connected=true": { "model": "create_submarine:block/pulley", "x": 0, "y": 270 },
-    "facing=up,connected=false": { "model": "create_submarine:block/pulley", "x": 0 },
-    "facing=up,connected=true": { "model": "create_submarine:block/pulley", "x": 0 },
-    "facing=down,connected=false": { "model": "create_submarine:block/pulley", "x": 180 },
-    "facing=down,connected=true": { "model": "create_submarine:block/pulley", "x": 180 }
+    "connected=false,facing=north,inverted=false": {
+      "model": "create_submarine:block/pulley"
+    },
+    "connected=false,facing=north,inverted=true": {
+      "model": "create_submarine:block/pulley",
+      "x": 180
+    },
+    "connected=true,facing=north,inverted=false": {
+      "model": "create_submarine:block/pulley"
+    },
+    "connected=true,facing=north,inverted=true": {
+      "model": "create_submarine:block/pulley",
+      "x": 180
+    },
+    "connected=false,facing=south,inverted=false": {
+      "model": "create_submarine:block/pulley",
+      "y": 180
+    },
+    "connected=false,facing=south,inverted=true": {
+      "model": "create_submarine:block/pulley",
+      "x": 180,
+      "y": 180
+    },
+    "connected=true,facing=south,inverted=false": {
+      "model": "create_submarine:block/pulley",
+      "y": 180
+    },
+    "connected=true,facing=south,inverted=true": {
+      "model": "create_submarine:block/pulley",
+      "x": 180,
+      "y": 180
+    },
+    "connected=false,facing=east,inverted=false": {
+      "model": "create_submarine:block/pulley",
+      "y": 90
+    },
+    "connected=false,facing=east,inverted=true": {
+      "model": "create_submarine:block/pulley",
+      "x": 180,
+      "y": 90
+    },
+    "connected=true,facing=east,inverted=false": {
+      "model": "create_submarine:block/pulley",
+      "y": 90
+    },
+    "connected=true,facing=east,inverted=true": {
+      "model": "create_submarine:block/pulley",
+      "x": 180,
+      "y": 90
+    },
+    "connected=false,facing=west,inverted=false": {
+      "model": "create_submarine:block/pulley",
+      "y": 270
+    },
+    "connected=false,facing=west,inverted=true": {
+      "model": "create_submarine:block/pulley",
+      "x": 180,
+      "y": 270
+    },
+    "connected=true,facing=west,inverted=false": {
+      "model": "create_submarine:block/pulley",
+      "y": 270
+    },
+    "connected=true,facing=west,inverted=true": {
+      "model": "create_submarine:block/pulley",
+      "x": 180,
+      "y": 270
+    },
+    "connected=false,facing=up,inverted=false": {
+      "model": "create_submarine:block/pulley"
+    },
+    "connected=false,facing=up,inverted=true": {
+      "model": "create_submarine:block/pulley",
+      "x": 180
+    },
+    "connected=true,facing=up,inverted=false": {
+      "model": "create_submarine:block/pulley"
+    },
+    "connected=true,facing=up,inverted=true": {
+      "model": "create_submarine:block/pulley",
+      "x": 180
+    },
+    "connected=false,facing=down,inverted=false": {
+      "model": "create_submarine:block/pulley",
+      "x": 180
+    },
+    "connected=false,facing=down,inverted=true": {
+      "model": "create_submarine:block/pulley"
+    },
+    "connected=true,facing=down,inverted=false": {
+      "model": "create_submarine:block/pulley",
+      "x": 180
+    },
+    "connected=true,facing=down,inverted=true": {
+      "model": "create_submarine:block/pulley"
+    }
   }
 }

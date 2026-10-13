@@ -6,15 +6,18 @@ import com.maxenonyme.AbyssDimension.entities.parts.SegmentHitbox;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.MobCategory;
+import net.minecraft.world.entity.SpawnPlacementTypes;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.level.levelgen.Heightmap;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.common.DeferredSpawnEggItem;
 import net.minecraft.world.item.Item;
 import net.neoforged.neoforge.event.entity.EntityAttributeCreationEvent;
+import net.neoforged.neoforge.event.entity.RegisterSpawnPlacementsEvent;
 import net.neoforged.neoforge.registries.DeferredRegister;
 import java.util.function.Supplier;
 
-public final class EntityRegistry {
+public class EntityRegistry {
     public static final DeferredRegister<EntityType<?>> ENTITY_TYPES = DeferredRegister.create(BuiltInRegistries.ENTITY_TYPE, CreateAbyss.MOD_ID);
 
     public static final Supplier<EntityType<MagmaticSnailEntity>> MAGMATIC_SNAIL = ENTITY_TYPES.register("magmatic_snail",
@@ -99,20 +102,48 @@ public final class EntityRegistry {
         event.put(PELICAN_EEL.get(), PelicanEelEntity.createAttributes().build());
     }
 
-    public static void registerSpawnPlacements(net.neoforged.neoforge.event.entity.RegisterSpawnPlacementsEvent event) {
+    public static void registerSpawnPlacements(RegisterSpawnPlacementsEvent event) {
         event.register(
                 AMPHISTIUM.get(),
-                net.minecraft.world.entity.SpawnPlacementTypes.IN_WATER,
-                net.minecraft.world.level.levelgen.Heightmap.Types.WORLD_SURFACE,
+                SpawnPlacementTypes.IN_WATER,
+                Heightmap.Types.WORLD_SURFACE,
                 AmphistiumEntity::checkSpawnRules,
-                net.neoforged.neoforge.event.entity.RegisterSpawnPlacementsEvent.Operation.OR
+                RegisterSpawnPlacementsEvent.Operation.OR
         );
         event.register(
                 COOKIECUTTER_SHARK.get(),
-                net.minecraft.world.entity.SpawnPlacementTypes.IN_WATER,
-                net.minecraft.world.level.levelgen.Heightmap.Types.WORLD_SURFACE,
+                SpawnPlacementTypes.IN_WATER,
+                Heightmap.Types.WORLD_SURFACE,
                 CookiecutterSharkEntity::checkSpawnRules,
-                net.neoforged.neoforge.event.entity.RegisterSpawnPlacementsEvent.Operation.OR
+                RegisterSpawnPlacementsEvent.Operation.OR
+        );
+        event.register(
+                MAGMATIC_SNAIL.get(),
+                SpawnPlacementTypes.IN_WATER,
+                Heightmap.Types.WORLD_SURFACE,
+                MagmaticSnailEntity::checkSpawnRules,
+                RegisterSpawnPlacementsEvent.Operation.OR
+        );
+        event.register(
+                ISOPOD.get(),
+                SpawnPlacementTypes.IN_WATER,
+                Heightmap.Types.WORLD_SURFACE,
+                IsopodEntity::checkSpawnRules,
+                RegisterSpawnPlacementsEvent.Operation.OR
+        );
+        event.register(
+                ABYSSAL_CUTTLEFISH.get(),
+                SpawnPlacementTypes.IN_WATER,
+                Heightmap.Types.WORLD_SURFACE,
+                AbyssalCuttlefishEntity::checkSpawnRules,
+                RegisterSpawnPlacementsEvent.Operation.OR
+        );
+        event.register(
+                PELICAN_EEL.get(),
+                SpawnPlacementTypes.IN_WATER,
+                Heightmap.Types.WORLD_SURFACE,
+                PelicanEelEntity::checkSpawnRules,
+                RegisterSpawnPlacementsEvent.Operation.OR
         );
         event.register(
                 MAGMATIC_SNAIL.get(),

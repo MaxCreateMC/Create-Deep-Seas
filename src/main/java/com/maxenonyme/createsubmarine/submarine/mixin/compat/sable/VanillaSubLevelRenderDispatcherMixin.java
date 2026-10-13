@@ -21,9 +21,11 @@ public class VanillaSubLevelRenderDispatcherMixin {
     private void createsubmarine$disableWaterOcclusion(Iterable<ClientSubLevel> sublevels, RenderType renderType,
             ShaderInstance shader, double cameraX, double cameraY, double cameraZ,
             Matrix4f modelView, Matrix4f projection, float partialTicks, CallbackInfo ci) {
-        if (!WaterOcclusionRenderer.isEnabled() || shader == null) return;
+        if (!WaterOcclusionRenderer.isEnabled() || shader == null)
+            return;
         Uniform u = shader.getUniform("SableWaterOcclusionEnabled");
-        if (u == null) return;
+        if (u == null)
+            return;
         u.set(0.0F);
         u.upload();
     }

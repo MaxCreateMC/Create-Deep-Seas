@@ -1,6 +1,9 @@
 package com.maxenonyme.createsubmarine.submarine.block.entity;
 
 import com.maxenonyme.createsubmarine.CreateSubmarine;
+import com.maxenonyme.createsubmarine.submarine.compartment.CompartmentTracker;
+import com.maxenonyme.createsubmarine.submarine.config.SubmarineConfig;
+import com.maxenonyme.createsubmarine.submarine.network.CameraShakePayload;
 import com.maxenonyme.createsubmarine.submarine.system.MineOwnershipRegistry;
 import com.maxenonyme.createsubmarine.submarine.util.SablePhysicsHelper;
 import com.maxenonyme.createsubmarine.submarine.util.SubLevelRegistry;
@@ -13,9 +16,12 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import org.joml.Vector3d;
 import org.joml.Vector3dc;
+import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -31,11 +37,22 @@ import net.neoforged.neoforge.network.PacketDistributor;
 import dev.ryanhcode.sable.api.sublevel.SubLevelContainer;
 import dev.ryanhcode.sable.sublevel.SubLevel;
 import dev.ryanhcode.sable.companion.math.BoundingBox3ic;
+import net.minecraft.core.HolderLookup;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.protocol.game.ClientboundSoundPacket;
+import net.minecraft.tags.BlockTags;
+import net.minecraft.world.entity.vehicle.Boat;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.material.FluidState;
+import net.minecraft.world.phys.Vec3;
+import org.joml.Quaterniond;
 
 public class UnderwaterMineBlockEntity extends BlockEntity {
     private static final int MAX_WATER_SCAN = 200;
 
     private static final Map<UUID, Set<BlockPos>> ACTIVE_MINES = new ConcurrentHashMap<>();
+    public static final Set<UnderwaterMineBlockEntity> LOADED_ON_CLIENT = Collections.newSetFromMap(new WeakHashMap<>());
     private boolean isExploded = false;
     public UUID ownerUUID;
     private UUID trackedSubId;
@@ -47,7 +64,7 @@ public class UnderwaterMineBlockEntity extends BlockEntity {
     }
 
     @Override
-    protected void saveAdditional(net.minecraft.nbt.CompoundTag tag, net.minecraft.core.HolderLookup.Provider registries) {
+    protected void saveAdditional(CompoundTag tag, HolderLookup.Provider registries) {
         super.saveAdditional(tag, registries);
         if (this.ownerUUID != null) {
             tag.putUUID("OwnerUUID", this.ownerUUID);
@@ -55,7 +72,7 @@ public class UnderwaterMineBlockEntity extends BlockEntity {
     }
 
     @Override
-    protected void loadAdditional(net.minecraft.nbt.CompoundTag tag, net.minecraft.core.HolderLookup.Provider registries) {
+    protected void loadAdditional(CompoundTag tag, HolderLookup.Provider registries) {
         super.loadAdditional(tag, registries);
         if (tag.hasUUID("OwnerUUID")) {
             this.ownerUUID = tag.getUUID("OwnerUUID");
@@ -68,8 +85,22 @@ public class UnderwaterMineBlockEntity extends BlockEntity {
     }
 
     @Override
+    public void onLoad() {
+        super.onLoad();
+        if (level != null && level.isClientSide)
+            LOADED_ON_CLIENT.add(this);
+    }
+
+    @Override
+    public void onChunkUnloaded() {
+        super.onChunkUnloaded();
+        LOADED_ON_CLIENT.remove(this);
+    }
+
+    @Override
     public void setRemoved() {
         super.setRemoved();
+        LOADED_ON_CLIENT.remove(this);
         if (trackedSubId != null) {
             Set<BlockPos> mines = ACTIVE_MINES.get(trackedSubId);
             if (mines != null) {
@@ -112,7 +143,8 @@ public class UnderwaterMineBlockEntity extends BlockEntity {
     }
 
     public static void serverTick(Level level, BlockPos pos, UnderwaterMineBlockEntity be) {
-        if (be.isExploded) return;
+        if (be.isExploded)
+            return;
 
         SubLevelAccess sub = SableCompanion.INSTANCE.getContaining(level, pos);
         if (sub == null)
@@ -127,7 +159,7 @@ public class UnderwaterMineBlockEntity extends BlockEntity {
         sub.logicalPose().transformPosition(worldPos);
 
         Level parentLevel = SubLevelRegistry.getLevel(sub.getUniqueId());
-        if (parentLevel == null && sub instanceof dev.ryanhcode.sable.sublevel.SubLevel sl) {
+        if (parentLevel == null && sub instanceof SubLevel sl) {
             parentLevel = sl.getLevel();
         }
 
@@ -138,10 +170,10 @@ public class UnderwaterMineBlockEntity extends BlockEntity {
             AABB triggerBox = new AABB(
                     worldPos.x - 3.0, worldPos.y - 3.0, worldPos.z - 3.0,
                     worldPos.x + 3.0, worldPos.y + 3.0, worldPos.z + 3.0);
-            java.util.List<Entity> nearbyEntities = serverParentLevel.getEntitiesOfClass(
+            List<Entity> nearbyEntities = serverParentLevel.getEntitiesOfClass(
                     Entity.class, triggerBox,
                     e -> {
-                        if (e instanceof net.minecraft.world.entity.vehicle.Boat) {
+                        if (e instanceof Boat) {
                             return true;
                         }
                         if (e instanceof Player || e instanceof LivingEntity) {
@@ -205,13 +237,13 @@ public class UnderwaterMineBlockEntity extends BlockEntity {
         BlockPos parentPos = BlockPos.containing(worldPos.x, worldPos.y, worldPos.z);
         double localWaterSurfaceY = -999.0;
 
-        net.minecraft.world.level.material.FluidState fluidState = com.maxenonyme.createsubmarine.submarine.compartment.CompartmentTracker.realFluidState(parentLevel, parentPos);
+        FluidState fluidState = CompartmentTracker.realFluidState(parentLevel, parentPos);
         if (fluidState.is(FluidTags.WATER)) {
             float h = fluidState.getHeight(parentLevel, parentPos);
             localWaterSurfaceY = parentPos.getY() + h + countWaterAbove(parentLevel, parentPos);
         } else {
             BlockPos belowPos = parentPos.below();
-            net.minecraft.world.level.material.FluidState belowFluid = com.maxenonyme.createsubmarine.submarine.compartment.CompartmentTracker.realFluidState(parentLevel, belowPos);
+            FluidState belowFluid = CompartmentTracker.realFluidState(parentLevel, belowPos);
             if (belowFluid.is(FluidTags.WATER)) {
                 float h = belowFluid.getHeight(parentLevel, belowPos);
                 localWaterSurfaceY = belowPos.getY() + h + countWaterAbove(parentLevel, belowPos);
@@ -233,7 +265,7 @@ public class UnderwaterMineBlockEntity extends BlockEntity {
         double errorY = targetVelY - perceivedVelY;
         double mass = SablePhysicsHelper.readMass(sub);
 
-        double forceMult = com.maxenonyme.createsubmarine.submarine.config.SubmarineConfig.BALLAST_FORCE_MULTIPLIER.get();
+        double forceMult = SubmarineConfig.BALLAST_FORCE_MULTIPLIER.get();
         int count = getMineCount(subId);
         double forceToApply = ((errorY * mass * 0.8 * forceMult) * submergedRatio) / count;
 
@@ -246,7 +278,8 @@ public class UnderwaterMineBlockEntity extends BlockEntity {
     }
 
     private void explode(Level level, BlockPos pos, ServerLevel parentLevel, Vector3d worldPos, SubLevelAccess sub) {
-        if (this.isExploded) return;
+        if (this.isExploded)
+            return;
         this.isExploded = true;
 
         if (level.getBlockState(pos).is(CreateSubmarine.UNDERWATER_MINE.get())) {
@@ -271,14 +304,14 @@ public class UnderwaterMineBlockEntity extends BlockEntity {
         parentLevel.sendParticles(ParticleTypes.FLASH, worldX, worldY, worldZ, 3, 0.5, 0.5, 0.5, 0.0);
 
         double maxDist = 40.0;
-        boolean mineInWater = com.maxenonyme.createsubmarine.submarine.compartment.CompartmentTracker.realFluidState(parentLevel, BlockPos.containing(worldX, worldY, worldZ)).is(FluidTags.WATER);
+        boolean mineInWater = CompartmentTracker.realFluidState(parentLevel, BlockPos.containing(worldX, worldY, worldZ)).is(FluidTags.WATER);
 
         for (ServerPlayer player : parentLevel.players()) {
             double dist = player.distanceToSqr(worldX, worldY, worldZ);
 
             if (mineInWater && player.isUnderWater() && dist < 160.0 * 160.0) {
-                player.connection.send(new net.minecraft.network.protocol.game.ClientboundSoundPacket(
-                        net.minecraft.core.registries.BuiltInRegistries.SOUND_EVENT.wrapAsHolder(CreateSubmarine.UNDERWATER_EXPLOSION_SOUND.get()),
+                player.connection.send(new ClientboundSoundPacket(
+                        BuiltInRegistries.SOUND_EVENT.wrapAsHolder(CreateSubmarine.UNDERWATER_EXPLOSION_SOUND.get()),
                         SoundSource.BLOCKS,
                         worldX, worldY, worldZ,
                         10.0f, 1.0f,
@@ -291,9 +324,10 @@ public class UnderwaterMineBlockEntity extends BlockEntity {
                 float intensity = (float) (2.5 * (1.0 - (distance / maxDist)));
                 if (intensity > 0.05f) {
                     int ticks = (int) (60.0 * (1.0 - (distance / maxDist)));
-                    if (ticks < 10) ticks = 10;
+                    if (ticks < 10)
+                        ticks = 10;
                     PacketDistributor.sendToPlayer(player,
-                            new com.maxenonyme.createsubmarine.submarine.network.CameraShakePayload(intensity, ticks));
+                            new CameraShakePayload(intensity, ticks));
                 }
             }
         }
@@ -301,7 +335,7 @@ public class UnderwaterMineBlockEntity extends BlockEntity {
         AABB damageBox = new AABB(
                 worldX - 10.0, worldY - 10.0, worldZ - 10.0,
                 worldX + 10.0, worldY + 10.0, worldZ + 10.0);
-        java.util.List<Entity> entitiesToDamage = parentLevel.getEntitiesOfClass(
+        List<Entity> entitiesToDamage = parentLevel.getEntitiesOfClass(
                 Entity.class, damageBox);
         for (Entity e : entitiesToDamage) {
             double dist = e.distanceToSqr(worldX, worldY, worldZ);
@@ -311,13 +345,13 @@ public class UnderwaterMineBlockEntity extends BlockEntity {
                 if (damage > 1.0f) {
                     e.hurt(parentLevel.damageSources().explosion(null, null), damage);
                 }
-                if (e instanceof net.minecraft.world.entity.vehicle.Boat) {
+                if (e instanceof Boat) {
                     e.setRemainingFireTicks(300);
                 }
                 double pushForce = 2.0 * (1.0 - (distance / 10.0));
-                net.minecraft.world.phys.Vec3 dir = new net.minecraft.world.phys.Vec3(e.getX() - worldX, e.getY() - worldY, e.getZ() - worldZ);
+                Vec3 dir = new Vec3(e.getX() - worldX, e.getY() - worldY, e.getZ() - worldZ);
                 if (dir.lengthSqr() < 0.01) {
-                    dir = new net.minecraft.world.phys.Vec3(0, 1, 0);
+                    dir = new Vec3(0, 1, 0);
                 } else {
                     dir = dir.normalize();
                 }
@@ -391,18 +425,20 @@ public class UnderwaterMineBlockEntity extends BlockEntity {
 
     private static boolean launchBlock(Level blockLevel, BlockPos blockPos, ServerLevel parentLevel, Vector3d worldBlockPos, Vector3d explosionSource, boolean spawnEntity) {
         BlockState state = blockLevel.getBlockState(blockPos);
-        if (state.isAir()) return false;
-        if (state.getDestroySpeed(blockLevel, blockPos) < 0) return false;
+        if (state.isAir())
+            return false;
+        if (state.getDestroySpeed(blockLevel, blockPos) < 0)
+            return false;
 
-        boolean isWood = state.is(net.minecraft.tags.BlockTags.PLANKS)
-                || state.is(net.minecraft.tags.BlockTags.LOGS)
-                || state.is(net.minecraft.tags.BlockTags.WOODEN_FENCES)
-                || state.is(net.minecraft.tags.BlockTags.WOODEN_SLABS);
+        boolean isWood = state.is(BlockTags.PLANKS)
+                || state.is(BlockTags.LOGS)
+                || state.is(BlockTags.WOODEN_FENCES)
+                || state.is(BlockTags.WOODEN_SLABS);
 
         blockLevel.removeBlock(blockPos, false);
 
         if (isWood && blockLevel.getFluidState(blockPos).isEmpty()) {
-            blockLevel.setBlock(blockPos, net.minecraft.world.level.block.Blocks.FIRE.defaultBlockState(), 3);
+            blockLevel.setBlock(blockPos, Blocks.FIRE.defaultBlockState(), 3);
         }
 
         if (spawnEntity) {
@@ -425,7 +461,7 @@ public class UnderwaterMineBlockEntity extends BlockEntity {
             double vy = Math.abs(direction.y * force) + 0.6 + parentLevel.random.nextFloat() * 0.4;
             double vz = direction.z * force + (parentLevel.random.nextFloat() - 0.5f) * 0.3;
 
-            fallingBlock.setDeltaMovement(new net.minecraft.world.phys.Vec3(vx, vy, vz));
+            fallingBlock.setDeltaMovement(new Vec3(vx, vy, vz));
             fallingBlock.hurtMarked = true;
             parentLevel.addFreshEntity(fallingBlock);
             return true;
@@ -435,10 +471,10 @@ public class UnderwaterMineBlockEntity extends BlockEntity {
 
     private static int countWaterAbove(Level level, BlockPos pos) {
         int depth = 0;
-        BlockPos.MutableBlockPos m = new BlockPos.MutableBlockPos();
+        BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
         for (int y = pos.getY() + 1; y < pos.getY() + 1 + MAX_WATER_SCAN; y++) {
-            m.set(pos.getX(), y, pos.getZ());
-            if (com.maxenonyme.createsubmarine.submarine.compartment.CompartmentTracker.realFluidState(level, m).is(FluidTags.WATER)) {
+            cursor.set(pos.getX(), y, pos.getZ());
+            if (CompartmentTracker.realFluidState(level, cursor).is(FluidTags.WATER)) {
                 depth++;
             } else {
                 break;
@@ -461,7 +497,7 @@ public class UnderwaterMineBlockEntity extends BlockEntity {
         double finalForce = (Math.abs(velY) < 0.01 && forceY < 0) ? forceY * 0.1 : forceY;
 
         Vector3d forceVec = new Vector3d(0, finalForce, 0);
-        sub.logicalPose().orientation().conjugate(new org.joml.Quaterniond()).transform(forceVec);
+        sub.logicalPose().orientation().conjugate(new Quaterniond()).transform(forceVec);
 
         SablePhysicsHelper.applyLinearImpulse(handle, forceVec);
     }

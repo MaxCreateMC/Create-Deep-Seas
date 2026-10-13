@@ -2,6 +2,7 @@ package com.maxenonyme.createsubmarine.submarine.network;
 
 import com.maxenonyme.createsubmarine.CreateSubmarine;
 import com.maxenonyme.createsubmarine.submarine.config.HullStrengthConfig;
+import net.minecraft.ResourceLocationException;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
@@ -49,15 +50,19 @@ public record HullConfigEditPayload(Map<String, HullStrengthConfig.HullProperty>
 
     public static void handle(final HullConfigEditPayload payload, final IPayloadContext context) {
         context.enqueueWork(() -> {
-            if (!(context.player() instanceof ServerPlayer player)) return;
-            if (!player.hasPermissions(2) && !player.server.isSingleplayerOwner(player.getGameProfile())) return;
+            if (!(context.player() instanceof ServerPlayer player))
+                return;
+            if (!player.hasPermissions(2) && !player.server.isSingleplayerOwner(player.getGameProfile()))
+                return;
 
             payload.changed().forEach((key, prop) -> {
-                if (key == null || key.isEmpty()) return;
-                try { net.minecraft.resources.ResourceLocation.parse(key); }
-                catch (net.minecraft.ResourceLocationException ex) { return; }
+                if (key == null || key.isEmpty())
+                    return;
+                try { ResourceLocation.parse(key); }
+                catch (ResourceLocationException ex) { return; }
                 float chance = prop.implosionChance();
-                if (!Float.isFinite(chance)) return;
+                if (!Float.isFinite(chance))
+                    return;
                 int depth = Math.max(0, Math.min(prop.maxWaterDepth(), 100000));
                 HullStrengthConfig.update(key, depth, chance);
             });

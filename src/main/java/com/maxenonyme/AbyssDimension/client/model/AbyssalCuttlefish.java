@@ -46,10 +46,8 @@ public class AbyssalCuttlefish<T extends AbyssalCuttlefishEntity> extends Hierar
         MeshDefinition meshdefinition = new MeshDefinition();
         PartDefinition partdefinition = meshdefinition.getRoot();
 
-        // body at generated root-space offset minus 24 for our root offset
         PartDefinition body = partdefinition.addOrReplaceChild("body", CubeListBuilder.create(), PartPose.offset(0.0F, 16.0F, 13.33333F));
 
-        // body cubes directly in body group (matching generated model layout)
         body.addOrReplaceChild("body_mantel", CubeListBuilder.create()
             .texOffs(0, 0).addBox(-40.0F, 0.0F, -21.33333F, 80.0F, 0.0F, 112.0F),
             PartPose.offset(0.0F, 0.0F, 0.0F));
@@ -58,20 +56,17 @@ public class AbyssalCuttlefish<T extends AbyssalCuttlefishEntity> extends Hierar
             .texOffs(0, 112).addBox(-24.0F, -16.0F, -37.33333F, 48.0F, 32.0F, 80.0F),
             PartPose.offset(0.0F, 0.0F, 0.0F));
 
-        // head at generated offset relative to body
         PartDefinition head = body.addOrReplaceChild("head", CubeListBuilder.create(), PartPose.offset(0.0F, 0.0F, -37.33333F));
 
         head.addOrReplaceChild("head_cube", CubeListBuilder.create()
             .texOffs(0, 224).addBox(-18.0F, -10.0F, -16.0F, 36.0F, 20.0F, 16.0F),
             PartPose.offset(0.0F, 0.0F, 0.0F));
 
-        // eyes
         head.addOrReplaceChild("eyes", CubeListBuilder.create()
             .texOffs(208, 224).mirror().addBox(18.0F, -8.0F, -8.0F, 16.0F, 16.0F, 16.0F)
             .texOffs(208, 224).mirror().addBox(-34.0F, -8.0F, -8.0F, 16.0F, 16.0F, 16.0F),
             PartPose.offset(0.0F, 4.0F, 0.0F));
 
-        // top_beak — generated TopBeak at its head-space pivot; cubes directly in group
         head.addOrReplaceChild("top_beak", CubeListBuilder.create()
             .texOffs(104, 240).addBox(-6.0F, 0.0F, -16.0F, 12.0F, 0.0F, 16.0F)
             .texOffs(256, 112).addBox(6.0F, -8.0F, -16.0F, 0.0F, 8.0F, 16.0F)
@@ -79,7 +74,6 @@ public class AbyssalCuttlefish<T extends AbyssalCuttlefishEntity> extends Hierar
             .texOffs(256, 112).mirror().addBox(-6.0F, -8.0F, -16.0F, 0.0F, 8.0F, 16.0F),
             PartPose.offset(0.0F, 6.0F, -16.0F));
 
-        // bottom_beak — generated BottomBeak at its head-space pivot
         head.addOrReplaceChild("bottom_beak", CubeListBuilder.create()
             .texOffs(256, 136).addBox(6.0F, 0.0F, -16.0F, 0.0F, 8.0F, 16.0F)
             .texOffs(256, 168).addBox(-6.0F, 0.0F, -16.0F, 12.0F, 8.0F, 0.0F)
@@ -87,22 +81,18 @@ public class AbyssalCuttlefish<T extends AbyssalCuttlefishEntity> extends Hierar
             .texOffs(256, 136).mirror().addBox(-6.0F, 0.0F, -16.0F, 0.0F, 8.0F, 16.0F),
             PartPose.offset(0.0F, -7.0F, -16.0F));
 
-        // tentacle_top — generated Top at its head-space pivot
         head.addOrReplaceChild("tentacle_top", CubeListBuilder.create()
             .texOffs(104, 224).addBox(-18.0F, 0.0F, -16.0F, 36.0F, 0.0F, 16.0F),
             PartPose.offset(0.0F, 10.0F, -16.0F));
 
-        // tentacle_bottom — generated Bottom at its head-space pivot
         head.addOrReplaceChild("tentacle_bottom", CubeListBuilder.create()
             .texOffs(104, 224).addBox(-18.0F, 0.0F, -16.0F, 36.0F, 0.0F, 16.0F),
             PartPose.offset(0.0F, -10.0F, -16.0F));
 
-        // tentacle_right — generated Right at its head-space pivot
         head.addOrReplaceChild("tentacle_right", CubeListBuilder.create()
             .texOffs(160, 240).addBox(0.0F, -10.0F, -16.0F, 0.0F, 20.0F, 16.0F),
             PartPose.offset(18.0F, 0.0F, -16.0F));
 
-        // tentacle_left — generated Left at its head-space pivot
         head.addOrReplaceChild("tentacle_left", CubeListBuilder.create()
             .texOffs(160, 240).addBox(0.0F, -10.0F, -16.0F, 0.0F, 20.0F, 16.0F),
             PartPose.offset(-18.0F, 0.0F, -16.0F));

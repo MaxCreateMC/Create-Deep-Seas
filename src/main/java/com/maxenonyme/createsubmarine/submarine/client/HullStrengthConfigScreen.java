@@ -1,6 +1,7 @@
 package com.maxenonyme.createsubmarine.submarine.client;
 
 import com.maxenonyme.createsubmarine.submarine.config.HullStrengthConfig;
+import com.maxenonyme.createsubmarine.submarine.network.HullConfigEditPayload;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
@@ -14,16 +15,20 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Block;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.neoforge.client.gui.ConfigurationScreen;
+import net.neoforged.neoforge.network.PacketDistributor;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
 
 public class HullStrengthConfigScreen extends Screen {
     private final ModContainer modContainer;
     private final Screen parentScreen;
     private final Map<String, HullStrengthConfig.HullProperty> editedValues = new TreeMap<>();
-    private final java.util.Set<String> dirtyKeys = new java.util.HashSet<>();
+    private final Set<String> dirtyKeys = new HashSet<>();
 
     private EditBox searchBox;
     private BlockList blockList;
@@ -34,7 +39,7 @@ public class HullStrengthConfigScreen extends Screen {
     private Button btnApply;
 
     public HullStrengthConfigScreen(ModContainer modContainer, Screen parentScreen) {
-        super(Component.literal("Hull Strength Config"));
+        super(Component.translatable("create_submarine.screen.hull_strength_config.title"));
         this.modContainer = modContainer;
         this.parentScreen = parentScreen;
         this.editedValues.putAll(HullStrengthConfig.getValues());
@@ -65,21 +70,21 @@ public class HullStrengthConfigScreen extends Screen {
         this.implosionBox.visible = false;
         this.addRenderableWidget(this.implosionBox);
 
-        this.btnApply = Button.builder(Component.literal("Apply Changes"), this::onApply)
+        this.btnApply = Button.builder(Component.translatable("create_submarine.ui.button.apply_changes"), this::onApply)
                 .bounds(rightX, 185, rightWidth, 20)
                 .build();
         this.btnApply.visible = false;
         this.addRenderableWidget(this.btnApply);
 
-        this.addRenderableWidget(Button.builder(Component.literal("Global Settings"), btn -> this.minecraft.setScreen(new ConfigurationScreen(this.modContainer, this)))
+        this.addRenderableWidget(Button.builder(Component.translatable("create_submarine.ui.button.global_settings"), btn -> this.minecraft.setScreen(new ConfigurationScreen(this.modContainer, this)))
                 .bounds(10, this.height - 30, leftWidth - 20, 20)
                 .build());
 
-        this.addRenderableWidget(Button.builder(Component.literal("Save & Exit"), btn -> this.onSave())
+        this.addRenderableWidget(Button.builder(Component.translatable("create_submarine.ui.button.save_exit"), btn -> this.onSave())
                 .bounds(this.width - 210, this.height - 30, 95, 20)
                 .build());
 
-        this.addRenderableWidget(Button.builder(Component.literal("Cancel"), btn -> this.onCancel())
+        this.addRenderableWidget(Button.builder(Component.translatable("create_submarine.ui.button.cancel"), btn -> this.onCancel())
                 .bounds(this.width - 105, this.height - 30, 95, 20)
                 .build());
 
@@ -132,7 +137,8 @@ public class HullStrengthConfigScreen extends Screen {
     }
 
     private void onApply(Button button) {
-        if (this.selectedBlock == null) return;
+        if (this.selectedBlock == null)
+            return;
         try {
             int depth = Integer.parseInt(this.maxDepthBox.getValue());
             float chance = Float.parseFloat(this.implosionBox.getValue());
@@ -143,14 +149,15 @@ public class HullStrengthConfigScreen extends Screen {
 
     private void onSave() {
         if (this.minecraft.getConnection() != null) {
-            Map<String, HullStrengthConfig.HullProperty> changed = new java.util.HashMap<>();
+            Map<String, HullStrengthConfig.HullProperty> changed = new HashMap<>();
             for (String key : this.dirtyKeys) {
                 HullStrengthConfig.HullProperty prop = this.editedValues.get(key);
-                if (prop != null) changed.put(key, prop);
+                if (prop != null)
+                    changed.put(key, prop);
             }
             if (!changed.isEmpty()) {
-                net.neoforged.neoforge.network.PacketDistributor.sendToServer(
-                        new com.maxenonyme.createsubmarine.submarine.network.HullConfigEditPayload(changed));
+                PacketDistributor.sendToServer(
+                        new HullConfigEditPayload(changed));
             }
         } else {
             this.editedValues.forEach((key, prop) ->
@@ -174,17 +181,24 @@ public class HullStrengthConfigScreen extends Screen {
         g.fill(leftWidth, 30, leftWidth + 1, this.height - 40, 0x44FFFFFF);
 
         if (this.selectedBlock == null) {
-            String text = "Select a block to edit its properties";
+            String text = Component.translatable("create_submarine.ui.text.select_block_tip").getString();
             int tw = this.font.width(text);
             g.drawString(this.font, text, leftWidth + (this.width - leftWidth - tw) / 2, this.height / 2, 0x88888888, false);
         } else {
             int rightX = leftWidth + 20;
-            g.renderFakeItem(new ItemStack(this.selectedBlock.block), rightX, 40);
+            renderBlockIcon(g, this.selectedBlock.block, rightX, 40);
             g.drawString(this.font, this.selectedBlock.name, rightX + 25, 44, 0xFFFFFFFF, false);
             g.drawString(this.font, Component.literal(this.selectedBlock.key), rightX, 65, 0x88888888, false);
 
-            g.drawString(this.font, Component.literal("Max Water Depth (meters)"), rightX, 85, 0xFFAAAAAA, false);
-            g.drawString(this.font, Component.literal("Implosion Chance (0.0 - 1.0)"), rightX, 135, 0xFFAAAAAA, false);
+            g.drawString(this.font, Component.translatable("create_submarine.ui.text.max_water_depth"), rightX, 85, 0xFFAAAAAA, false);
+            g.drawString(this.font, Component.translatable("create_submarine.ui.text.implosion_chance"), rightX, 135, 0xFFAAAAAA, false);
+        }
+    }
+
+    private void renderBlockIcon(GuiGraphics g, Block block, int x, int y) {
+        try {
+            g.renderFakeItem(new ItemStack(block), x, y);
+        } catch (RuntimeException e) {
         }
     }
 
@@ -231,7 +245,7 @@ public class HullStrengthConfigScreen extends Screen {
             } else if (isMouseOver) {
                 g.fill(left - 2, top - 2, left + width + 2, top + height + 2, 0x11FFFFFF);
             }
-            g.renderFakeItem(new ItemStack(this.block), left + 2, top + 2);
+            renderBlockIcon(g, this.block, left + 2, top + 2);
             g.drawString(font, this.name, left + 24, top + 6, 0xFFFFFFFF, false);
         }
 

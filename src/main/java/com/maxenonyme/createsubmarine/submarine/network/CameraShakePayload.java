@@ -1,5 +1,6 @@
 package com.maxenonyme.createsubmarine.submarine.network;
 
+import com.maxenonyme.AbyssDimension.client.CameraShake;
 import com.maxenonyme.createsubmarine.CreateSubmarine;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
@@ -29,16 +30,12 @@ public record CameraShakePayload(float intensity, int ticks) implements CustomPa
     }
 
     public static void handle(CameraShakePayload payload, IPayloadContext context) {
-        context.enqueueWork(() -> {
-            if (net.neoforged.fml.loading.FMLEnvironment.dist == net.neoforged.api.distmarker.Dist.CLIENT) {
-                ClientHandler.handle(payload);
-            }
-        });
+        context.enqueueWork(() -> ClientHandler.handle(payload));
     }
 
     private static class ClientHandler {
         private static void handle(CameraShakePayload payload) {
-            com.maxenonyme.AbyssDimension.client.CameraShake.shake(payload.intensity(), payload.ticks());
+            CameraShake.shake(payload.intensity(), payload.ticks());
         }
     }
 }

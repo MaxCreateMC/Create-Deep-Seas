@@ -13,6 +13,7 @@ import net.neoforged.neoforge.client.event.ScreenEvent;
 import com.maxenonyme.createsubmarine.submarine.config.SubmarineConfig;
 
 import java.util.List;
+import com.maxenonyme.createsubmarine.submarine.config.SubmarineClientState;
 
 public class LithostitchedMissingScreen extends Screen {
     private static final int PANEL_BG = 0xE6101A22;
@@ -35,7 +36,7 @@ public class LithostitchedMissingScreen extends Screen {
         if (!(event.getNewScreen() instanceof TitleScreen menu)) {
             return;
         }
-        if (!SubmarineConfig.SPEC.isLoaded()) {
+        if (!SubmarineConfig.COMMON_SPEC.isLoaded()) {
             return;
         }
 
@@ -46,9 +47,9 @@ public class LithostitchedMissingScreen extends Screen {
         if (SubmarineConfig.ENABLE_DEEPER_OCEANS.get()) {
 
             SubmarineConfig.ENABLE_DEEPER_OCEANS.set(false);
-            SubmarineConfig.SPEC.save();
+            SubmarineConfig.COMMON_SPEC.save();
 
-            if (!com.maxenonyme.createsubmarine.submarine.config.SubmarineClientState.hasSeenLithostitchedScreen()) {
+            if (!SubmarineClientState.hasSeenLithostitchedScreen()) {
                 event.setNewScreen(new LithostitchedMissingScreen(menu));
             }
         }
@@ -79,7 +80,7 @@ public class LithostitchedMissingScreen extends Screen {
                 .build());
 
         addRenderableWidget(Button.builder(
-                        Component.translatable("create_submarine.welcome.dismiss"),
+                        Component.translatable("create_submarine.ui.button.later"),
                         b -> { this.onClose(); })
                 .bounds(centerX + gap / 2, buttonsY, buttonW, 20)
                 .build());
@@ -105,7 +106,7 @@ public class LithostitchedMissingScreen extends Screen {
 
     @Override
     public void onClose() {
-        com.maxenonyme.createsubmarine.submarine.config.SubmarineClientState.setLithostitchedScreenSeen(true);
+        SubmarineClientState.setLithostitchedScreenSeen(true);
         this.minecraft.setScreen(previousScreen);
     }
 }

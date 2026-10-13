@@ -18,6 +18,9 @@ sourceSets.main.resources {
 }
 
 repositories {
+    flatDir {
+        dirs 'libs'
+    }
     maven {
         url = uri("https://www.cursemaven.com")
         content {
@@ -70,21 +73,20 @@ neoForge {
     runs {
         client {
             client()
-            jvmArgument '-Xmx8G'
-            systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
+            jvmArgument '-Xmx25G'
+            systemProperty 'neoforge.enabledGameTestNamespaces', "${project.mod_id},${project.abyss_mod_id},${project.high_seas_mod_id}"
         }
 
         server {
             server()
             programArgument '--nogui'
-            systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
+            systemProperty 'neoforge.enabledGameTestNamespaces', "${project.mod_id},${project.abyss_mod_id},${project.high_seas_mod_id}"
         }
 
         data {
             data()
-            programArguments.addAll '--mod', project.mod_id, '--all', '--output', file('src/generated/resources/').getAbsolutePath(), '--existing', file('src/main/resources/').getAbsolutePath()
+            programArguments.addAll '--mod', "${project.mod_id},${project.abyss_mod_id}", '--all', '--output', file('src/generated/resources/').getAbsolutePath(), '--existing', file('src/main/resources/').getAbsolutePath()
         }
-
 
         configureEach {
             systemProperty 'forge.logging.markers', 'REGISTRIES'
@@ -107,18 +109,29 @@ dependencies {
     implementation "curse.maven:create-328085:${create_file_id}"
     implementation "net.createmod.ponder:ponder-neoforge:1.0.82+mc1.21.1"
     implementation "dev.engine-room.flywheel:flywheel-neoforge-1.21.1:1.0.6"
-    implementation "foundry.veil:veil-neoforge-1.21.1:3.6.2"
-    implementation "maven.modrinth:lodestonelib:1.8.2"
-    compileOnly fileTree(dir: 'libs', include: '*.jar')
-    runtimeOnly files('libs/sodium-neoforge-0.6.13+mc1.21.1.jar')
+    implementation "foundry.veil:veil-neoforge-1.21.1:4.5.1"
+    compileOnly(name: 'aeronautics-neoforge-1.21.1-1.3.0')
+    compileOnly(name: 'aeronautics_core-neoforge-1.21.1-1.3.0')
+    localRuntime "maven.modrinth:oWaK0Q19:44pLdPGg"
+    compileOnly(name: 'simulated-neoforge-1.21.1-1.3.0')
+    compileOnly(name: 'sable_rapier-neoforge-1.21.1-2.0.3')
+    compileOnly "maven.modrinth:T9PomCSv:1L6XJqnY"
+    compileOnly(name: 'sodium_core-mc1.21.1-0.8.12-beta.2-neoforge')
+    compileOnly "maven.modrinth:sodium:mc1.21.1-0.8.12-beta.2-neoforge"
 
     jarJar(api("dev.ryanhcode.sable-companion:sable-companion-common-${minecraft_version}:[${sable_companion_version},)")) {
         version {
             prefer project.sable_companion_version
         }
     }
-    localRuntime "maven.modrinth:lithostitched:1.4.8-neoforge-1.21"
-    //localRuntime "maven.modrinth:spark:1.10.124-neoforge"
+    implementation "maven.modrinth:XaDC71GB:1.4.8-neoforge-1.21"
+    implementation "maven.modrinth:T9PomCSv:1L6XJqnY"
+
+    jarJar(implementation("maven.modrinth:p19vrgc2:1.2.12-neoforge-mc1.21.1")) {
+        version {
+            prefer "1.2.12-neoforge-mc1.21.1"
+        }
+    }
 }
 
 var generateModMetadata = tasks.register("generateModMetadata", ProcessResources) {
@@ -133,12 +146,12 @@ var generateModMetadata = tasks.register("generateModMetadata", ProcessResources
         mod_name               : mod_name,
         mod_license            : mod_license,
         mod_version            : mod_version,
-        abyss_mod_id           : "create_abyss",
-        abyss_mod_name         : "Create Abyss",
-        abyss_mod_version      : mod_version,
-        high_seas_mod_id       : "create_high_seas",
-        high_seas_mod_name     : "Create High Seas",
-        high_seas_mod_version  : mod_version,
+        abyss_mod_id           : abyss_mod_id,
+        abyss_mod_name         : abyss_mod_name,
+        abyss_mod_version      : abyss_mod_version,
+        high_seas_mod_id       : high_seas_mod_id,
+        high_seas_mod_name     : high_seas_mod_name,
+        high_seas_mod_version  : high_seas_mod_version,
     ]
     inputs.properties replaceProperties
     expand replaceProperties
@@ -158,8 +171,6 @@ tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
 }
 
-
-
 idea {
     module {
         downloadSources = true
@@ -167,35 +178,17 @@ idea {
     }
 }
 
-task printClasspath {
-    doLast {
-        file('classpath.txt').text = sourceSets.main.compileClasspath.join(System.getProperty('path.separator'))
+def modrinthMods = file("C:/Users/maxen/AppData/Roaming/ModrinthApp/profiles/Create_ Deep Seas (High Seas Update)/mods")
+
+tasks.register("copyToModrinth", Copy) {
+    onlyIf { modrinthMods.directory }
+    from tasks.named("jar")
+    into modrinthMods
+    doFirst {
+        fileTree(modrinthMods) { include "${mod_id}-*.jar" }.each { it.delete() }
     }
 }
 
-task runBatchSolver(type: JavaExec) {
-    classpath = sourceSets.main.runtimeClasspath
-    mainClass = 'com.maxenonyme.createsubmarine.submarine.stress.BatchSolverRunner'
-    systemProperty 'neoforge.enableModLoading', 'false'
+tasks.named("build") {
+    finalizedBy "copyToModrinth"
 }
-
-task runStressTest(type: JavaExec) {
-    classpath = sourceSets.main.runtimeClasspath
-    mainClass = 'com.maxenonyme.createsubmarine.submarine.stress.StandaloneStressTest'
-    systemProperty 'neoforge.enableModLoading', 'false'
-}
-
-task runCalibration(type: JavaExec) {
-    classpath = sourceSets.main.runtimeClasspath
-    mainClass = 'com.maxenonyme.createsubmarine.submarine.stress.CalibrationRunner'
-    systemProperty 'neoforge.enableModLoading', 'false'
-}
-
-task runWorldgenPreview(type: JavaExec) {
-    classpath = sourceSets.main.runtimeClasspath
-    mainClass = 'com.maxenonyme.createsubmarine.worldgen.WorldgenPreview'
-    systemProperty 'neoforge.enableModLoading', 'false'
-}
-
-def changelogFile = file("changelog.md")
-def changelogText = changelogFile.exists() ? changelogFile.text : "No changelog provided."

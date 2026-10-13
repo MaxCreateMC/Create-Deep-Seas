@@ -27,12 +27,15 @@ import net.minecraft.world.level.Level;
 import net.minecraft.core.BlockPos;
 
 import com.simibubi.create.foundation.blockEntity.SmartBlockEntity;
+import net.minecraft.server.MinecraftServer;
+import net.neoforged.neoforge.capabilities.Capabilities;
 
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.WeakHashMap;
 import java.util.ArrayList;
+import java.util.UUID;
 
 public class CableElectrificationSystem {
 
@@ -169,7 +172,7 @@ public class CableElectrificationSystem {
                 continue;
 
             IEnergyStorage adjStorage = level.getCapability(
-                    net.neoforged.neoforge.capabilities.Capabilities.EnergyStorage.BLOCK,
+                    Capabilities.EnergyStorage.BLOCK,
                     adjPos,
                     level.getBlockState(adjPos),
                     adjBE,
@@ -232,7 +235,7 @@ public class CableElectrificationSystem {
 
     public static ServerLevel getLevelForAttachment(ServerLevel defaultLevel, RopeAttachment attachment) {
         if (attachment.subLevelID() != null) {
-            net.minecraft.world.level.Level level = SubLevelRegistry.getLevel(attachment.subLevelID());
+            Level level = SubLevelRegistry.getLevel(attachment.subLevelID());
             if (level instanceof ServerLevel serverLevel) {
                 return serverLevel;
             }
@@ -281,7 +284,7 @@ public class CableElectrificationSystem {
     }
 
     private static void damageEntitiesAlongCable(ServerLevel level, List<Vector3d> points,
-            net.minecraft.server.MinecraftServer server) {
+            MinecraftServer server) {
         if (points.size() < 2)
             return;
         double minX = Double.MAX_VALUE, minY = Double.MAX_VALUE, minZ = Double.MAX_VALUE;
@@ -314,12 +317,12 @@ public class CableElectrificationSystem {
                 continue;
             }
 
-            java.util.UUID subId = SubLevelRegistry.findUUID(player.level());
-            SubLevelAccess sub = subId != null ? SubLevelRegistry.getAll().get(subId) : null;
-            if (sub != null && SubLevelRegistry.getLevel(subId) == level) {
+            UUID subId = SubLevelRegistry.findUUID(player.level());
+            SubLevelAccess subLevel = subId != null ? SubLevelRegistry.getAll().get(subId) : null;
+            if (subLevel != null && SubLevelRegistry.getLevel(subId) == level) {
                 Vector3d worldPos = new Vector3d(player.getX(), player.getY() + player.getBbHeight() / 2.0,
                         player.getZ());
-                sub.logicalPose().transformPosition(worldPos);
+                subLevel.logicalPose().transformPosition(worldPos);
                 tryDamage(level, player, worldPos, points);
             }
         }
@@ -328,8 +331,8 @@ public class CableElectrificationSystem {
     private static void tryDamage(ServerLevel level, LivingEntity entity, Vector3d worldPos, List<Vector3d> points) {
         double closestDist = Double.MAX_VALUE;
         for (int i = 0; i < points.size() - 1; i++) {
-            Vector3d c = getClosestPoint(points.get(i), points.get(i + 1), worldPos);
-            closestDist = Math.min(closestDist, worldPos.distance(c));
+            Vector3d vec = getClosestPoint(points.get(i), points.get(i + 1), worldPos);
+            closestDist = Math.min(closestDist, worldPos.distance(vec));
         }
         if (closestDist <= DAMAGE_RADIUS) {
             entity.hurt(level.damageSources().lightningBolt(), DAMAGE_AMOUNT);

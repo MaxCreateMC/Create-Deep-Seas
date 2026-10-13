@@ -36,13 +36,6 @@ public class PelicanEelEntity extends WaterAnimal implements HasSegments {
         List<SegmentDefinition> defs = new ArrayList<>();
         double px = 1.0 / 16.0;
 
-        // Model is built along X (head at -X, tail at +X). Model root has -90° Y rotation,
-        // so model -X → entity +Z (forward), model +X → entity -Z (backward).
-        // forwardOffset = signed distance along entity forward: positive = forward (head side).
-        // Width/height/length are model-space dimensions. After -90° Y rotation:
-        //   model width (X) → world Z, model height (Y) → world Y, model length (Z) → world X.
-        // verticalOffset = midY * px (model Y center in blocks above entity position)
-
         defs.add(new SegmentDefinition("head",        24.5 * px, 15.8 * px, 0, 10.8 * px, 6.9 * px, 22 * px));
         defs.add(new SegmentDefinition("neck",        10.75 * px, 14.1 * px, 0, 6.4 * px, 4.8 * px, 8.1 * px));
         defs.add(new SegmentDefinition("body02",      2.4 * px,  14.4 * px, 0, 6.4 * px, 5.2 * px, 9.2 * px));
@@ -120,9 +113,11 @@ public class PelicanEelEntity extends WaterAnimal implements HasSegments {
     }
 
     private void updateSegmentPositions() {
-        if (segments.isEmpty()) return;
+        if (segments.isEmpty())
+            return;
         for (var seg : segments) {
-            if (seg == null) return;
+            if (seg == null)
+                return;
         }
 
         Vec3 up = new Vec3(0, 1, 0);
@@ -151,7 +146,8 @@ public class PelicanEelEntity extends WaterAnimal implements HasSegments {
             cumulativeDir = new Vec3(lx, ly, lz);
 
             Vec3 right = cumulativeDir.cross(up);
-            if (right.lengthSqr() < 1.0E-7) right = new Vec3(1, 0, 0);
+            if (right.lengthSqr() < 1.0E-7)
+                right = new Vec3(1, 0, 0);
             right = right.normalize();
 
             double segDist = (i == 0) ? def.forwardOffset() : def.forwardOffset() - prevFwd;
@@ -196,7 +192,8 @@ public class PelicanEelEntity extends WaterAnimal implements HasSegments {
     @Override
     public void recreateSegments() {
         for (var seg : segments) {
-            if (seg != null) seg.discard();
+            if (seg != null)
+                seg.discard();
         }
         segments.clear();
         for (int i = 0; i < SEGMENT_DEFS.size(); i++) {

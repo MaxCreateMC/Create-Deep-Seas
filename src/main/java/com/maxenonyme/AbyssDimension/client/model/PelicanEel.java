@@ -44,7 +44,6 @@ public class PelicanEel<T extends PelicanEelEntity> extends HierarchicalModel<T>
         PartDefinition model = root.addOrReplaceChild("model", CubeListBuilder.create(),
             PartPose.offsetAndRotation(0.0F, 0.0F, 0.0F, 0.0F, -1.5708F, 0.0F));
 
-        // ── HEAD GROUP (pivot at head-neck joint X = -14.15) ──
         PartDefinition headGrp = model.addOrReplaceChild("head_group", CubeListBuilder.create(),
             PartPose.offsetAndRotation(-14.15F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F));
 
@@ -88,14 +87,12 @@ public class PelicanEel<T extends PelicanEelEntity> extends HierarchicalModel<T>
             .texOffs(124, 14).addBox(-7.85F, 11.15F, -4.1F, 8.0F, 1.0F, 8.2F),
             PartPose.offset(0.0F, 0.0F, 0.0F));
 
-        // ── NECK (body chain root, pivot at head-neck joint) ──
         PartDefinition neckPart = model.addOrReplaceChild("neck_part", CubeListBuilder.create(),
             PartPose.offsetAndRotation(-14.15F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F));
         neckPart.addOrReplaceChild("neck_body_01", CubeListBuilder.create()
             .texOffs(156, 14).addBox(-0.65F, 11.7F, -3.2F, 8.1F, 4.8F, 6.4F),
             PartPose.offset(0.0F, 0.0F, 0.0F));
 
-        // ── BODY CHAIN ──
         PartDefinition body02_part = neckPart.addOrReplaceChild("body02_part", CubeListBuilder.create(),
             PartPose.offsetAndRotation(7.3F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F));
         body02_part.addOrReplaceChild("body_02_core", CubeListBuilder.create()
@@ -147,7 +144,6 @@ public class PelicanEel<T extends PelicanEelEntity> extends HierarchicalModel<T>
             .texOffs(100, 25).addBox(1.8F, 9.15F, -1.4F, 1.8F, 1.3F, 2.8F),
             PartPose.offset(0.0F, 0.0F, 0.0F));
 
-        // ── PECTORAL FINS (children of tail01Part) ──
         tail01_part.addOrReplaceChild("left_pectoral_fin_outer", CubeListBuilder.create()
             .texOffs(90, 33).addBox(-22.1F, 10.4F, 3.1F, 4.8F, 1.3F, 2.8F),
             PartPose.offset(0.0F, 0.0F, 0.0F));
@@ -161,7 +157,6 @@ public class PelicanEel<T extends PelicanEelEntity> extends HierarchicalModel<T>
             .texOffs(124, 33).addBox(-18.3F, 9.8F, -7.1F, 4.8F, 1.1F, 1.7F),
             PartPose.offset(0.0F, 0.0F, 0.0F));
 
-        // ── DORSAL FIN (child of neckPart, inherits body bend rotation) ──
         neckPart.addOrReplaceChild("dorsal_head_ridge", CubeListBuilder.create()
             .texOffs(106, 25).addBox(-7.85F, 19.0F, -0.35F, 8.0F, 2.0F, 0.7F),
             PartPose.offset(0.0F, 0.0F, 0.0F));
@@ -184,7 +179,6 @@ public class PelicanEel<T extends PelicanEelEntity> extends HierarchicalModel<T>
             .texOffs(220, 25).addBox(44.75F, 14.3F, -0.1F, 9.6F, 1.5F, 0.2F),
             PartPose.offset(0.0F, 0.0F, 0.0F));
 
-        // ── ANAL/VENTRAL FIN (child of neckPart, inherits body bend rotation) ──
         neckPart.addOrReplaceChild("anal_fin_01", CubeListBuilder.create()
             .texOffs(0, 33).addBox(12.15F, 10.8F, -0.16F, 10.0F, 1.2F, 0.32F),
             PartPose.offset(0.0F, 0.0F, 0.0F));

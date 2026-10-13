@@ -1,9 +1,14 @@
 package com.maxenonyme.createsubmarine.submarine.block.entity.renderer;
 
+import com.maxenonyme.createsubmarine.submarine.block.ElectrolyzerBlock;
 import com.maxenonyme.createsubmarine.submarine.block.entity.ElectrolyzerBlockEntity;
+import com.simibubi.create.content.kinetics.base.KineticBlockEntityRenderer;
+import net.minecraft.core.Direction;
+import net.minecraft.world.level.block.state.BlockState;
 import com.maxenonyme.createsubmarine.submarine.client.renderer.AllPartialModels;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
+import net.createmod.catnip.math.AngleHelper;
 import net.createmod.catnip.render.CachedBuffers;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.MultiBufferSource;
@@ -33,8 +38,24 @@ public class ElectrolyzerBlockEntityRenderer implements BlockEntityRenderer<Elec
             }
         }
 
+        BlockState state = be.getBlockState();
+        if (state.getValue(ElectrolyzerBlock.ALTERNATOR)) {
+            ms.pushPose();
+            ms.translate(0.5, 0.5, 0.5);
+            Direction.Axis axis = state.getValue(ElectrolyzerBlock.FACING).getAxis();
+            if (axis == Direction.Axis.X)
+                ms.scale(18 / 16f, 1f, 1f);
+            else
+                ms.scale(1f, 1f, 18 / 16f);
+            ms.translate(-0.5, -0.5, -0.5);
+            KineticBlockEntityRenderer.renderRotatingKineticBlock(be, KineticBlockEntityRenderer.shaft(axis), ms,
+                    buffer.getBuffer(RenderType.solid()), light);
+            ms.popPose();
+        }
+
         if (AllPartialModels.ELECTROLYZER_GLASS.get() != null) {
             CachedBuffers.partial(AllPartialModels.ELECTROLYZER_GLASS, be.getBlockState())
+                    .rotateCentered(AngleHelper.rad(-state.getValue(ElectrolyzerBlock.FACING).toYRot() + 180), Direction.UP)
                     .light(light)
                     .renderInto(ms, buffer.getBuffer(RenderType.entityTranslucentCull(InventoryMenu.BLOCK_ATLAS)));
         }

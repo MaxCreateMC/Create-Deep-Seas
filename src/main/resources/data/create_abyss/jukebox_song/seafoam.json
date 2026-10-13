@@ -1,0 +1,16 @@
+{
+  "neoforge:conditions": [
+    {
+      "type": "create_submarine:config_enabled",
+      "config_key": "enableAbyssDimension"
+    }
+  ],
+  "comparator_output": 10,
+  "description": {
+    "translate": "jukebox_song.create_abyss.seafoam"
+  },
+  "length_in_seconds": 150.86,
+  "sound_event": {
+    "sound_id": "create_abyss:music_disc.seafoam"
+  }
+}

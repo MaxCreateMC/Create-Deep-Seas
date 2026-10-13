@@ -323,7 +323,8 @@ public class IsopodEntity extends WaterAnimal {
         @Override
         public void tick() {
             LivingEntity target = IsopodEntity.this.getTarget();
-            if (target == null) return;
+            if (target == null)
+                return;
 
             if (retreatTimer > 0) {
                 retreatTimer--;

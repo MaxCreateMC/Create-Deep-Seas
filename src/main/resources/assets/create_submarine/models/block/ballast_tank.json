@@ -1,8 +1,0 @@
-{
-  "parent": "minecraft:block/cube_bottom_top",
-  "textures": {
-    "top": "create_submarine:block/ballast_top",
-    "side": "create_submarine:block/ballast_side",
-    "bottom": "create_submarine:block/ballast_top"
-  }
-}
