@@ -192,3 +192,28 @@ tasks.register("copyToModrinth", Copy) {
 tasks.named("build") {
     finalizedBy "copyToModrinth"
 }
+
+// solver contract tests
+task runBatchSolver(type: JavaExec) {
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'com.maxenonyme.createsubmarine.submarine.stress.BatchSolverRunner'
+    systemProperty 'neoforge.enableModLoading', 'false'
+}
+
+task runStressTest(type: JavaExec) {
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'com.maxenonyme.createsubmarine.submarine.stress.StandaloneStressTest'
+    systemProperty 'neoforge.enableModLoading', 'false'
+}
+
+task runCalibration(type: JavaExec) {
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'com.maxenonyme.createsubmarine.submarine.stress.CalibrationRunner'
+    systemProperty 'neoforge.enableModLoading', 'false'
+}
+
+task runWorldgenPreview(type: JavaExec) {
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'com.maxenonyme.createsubmarine.worldgen.WorldgenPreview'
+    systemProperty 'neoforge.enableModLoading', 'false'
+}
