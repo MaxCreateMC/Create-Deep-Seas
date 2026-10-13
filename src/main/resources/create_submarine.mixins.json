@@ -6,7 +6,6 @@
   "plugin": "com.maxenonyme.createsubmarine.submarine.CompatMixinPlugin",
   "mixins": [
     "EntityGetBoundingBoxMixin",
-    "LevelMixin",
     "LevelChunkMixin",
     "LightEngineAccessor",
     "BlockLightEngineMixin",
