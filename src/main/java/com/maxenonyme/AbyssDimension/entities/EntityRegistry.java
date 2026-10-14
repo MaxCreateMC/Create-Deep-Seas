@@ -145,33 +145,5 @@ public class EntityRegistry {
                 PelicanEelEntity::checkSpawnRules,
                 RegisterSpawnPlacementsEvent.Operation.OR
         );
-        event.register(
-                MAGMATIC_SNAIL.get(),
-                net.minecraft.world.entity.SpawnPlacementTypes.IN_WATER,
-                net.minecraft.world.level.levelgen.Heightmap.Types.WORLD_SURFACE,
-                MagmaticSnailEntity::checkSpawnRules,
-                net.neoforged.neoforge.event.entity.RegisterSpawnPlacementsEvent.Operation.OR
-        );
-        event.register(
-                ISOPOD.get(),
-                net.minecraft.world.entity.SpawnPlacementTypes.IN_WATER,
-                net.minecraft.world.level.levelgen.Heightmap.Types.WORLD_SURFACE,
-                IsopodEntity::checkSpawnRules,
-                net.neoforged.neoforge.event.entity.RegisterSpawnPlacementsEvent.Operation.OR
-        );
-        event.register(
-                ABYSSAL_CUTTLEFISH.get(),
-                net.minecraft.world.entity.SpawnPlacementTypes.IN_WATER,
-                net.minecraft.world.level.levelgen.Heightmap.Types.WORLD_SURFACE,
-                AbyssalCuttlefishEntity::checkSpawnRules,
-                net.neoforged.neoforge.event.entity.RegisterSpawnPlacementsEvent.Operation.OR
-        );
-        event.register(
-                PELICAN_EEL.get(),
-                net.minecraft.world.entity.SpawnPlacementTypes.IN_WATER,
-                net.minecraft.world.level.levelgen.Heightmap.Types.WORLD_SURFACE,
-                PelicanEelEntity::checkSpawnRules,
-                net.neoforged.neoforge.event.entity.RegisterSpawnPlacementsEvent.Operation.OR
-        );
     }
 }
