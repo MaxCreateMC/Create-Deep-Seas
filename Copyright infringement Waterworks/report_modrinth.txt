@@ -8,15 +8,18 @@ Timeline (Modrinth publication dates):
 - Waterworks 1.0.9 (wfIKhnVL, 2026-06-08): all 21 files appear at once.
 - Waterworks 1.2.0-Preview_4 (n5Zo3odn, 2026-10-05, the current version): still contains 9 of them.
 
-Original textures I created for Create Deep Seas, found in Waterworks:
+Original assets I created for Create Deep Seas, found in Waterworks:
 - textures/gui/electrolysator_gui.png (Waterworks 1.0.9 to 1.2.0-Preview_4, current)
 - textures/gui/on.png, on_over.png, off.png, off_over.png (Waterworks 1.0.9 to 1.2.0-Preview_4, current)
+- textures/mob_effect/suffocation.png (Waterworks 1.0.9 to 1.2.0-Preview_4, current)
+- textures/gui/sprites/banner.png (Waterworks 1.0.9 to 1.2.0-Preview_4, current)
 - textures/block/watertruster.png (Waterworks 1.0.9 and 1.1.1)
 - textures/block/oxygene_diffuser.png (Waterworks 1.0.9 and 1.1.1)
+- models/block/oxygen_diffuser_backup.json (Waterworks 1.0.9 to 1.1.2)
 
-Other files copied from Create Deep Seas:
-- textures/mob_effect/suffocation.png, textures/gui/sprites/banner.png (current version)
-- ballast tank block models (block_fire, block_powered, block_soulful, fire, item, redstone_indicator), oxygen_diffuser_backup.json, textures/block/ballast_side.png, ballast_top.png, texture.png (versions 1.0.9 to 1.1.2)
+Commissioned artwork, made for Create Deep Seas by [ARTIST NAME]. The artist licensed these assets to me and still owns the copyright. Neither the artist nor I authorized Waterworks to use them:
+- ballast tank block models: block_fire, block_powered, block_soulful, fire, item, redstone_indicator (Waterworks 1.0.9 to 1.1.2)
+- textures/block/ballast_side.png, ballast_top.png, texture.png (Waterworks 1.0.9 and 1.1.1)
 
 Files that are not my own artwork but show the copy came from my mod:
 - textures/gui/check.png: my resized edit of a Create texture. I don't claim the Create artwork, but this edited file only exists in my mod.
