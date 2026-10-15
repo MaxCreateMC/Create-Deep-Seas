@@ -1,0 +1,29 @@
+Waterworks ships files copied from my project Create Deep Seas (https://modrinth.com/mod/create-deep-seas) without permission, including original textures I made. Create Deep Seas is licensed All Rights Reserved and I never gave the Waterworks authors permission to use or redistribute any of its files. Waterworks is distributed under the MIT license, so these files are being redistributed under a license I never granted.
+
+Every file below is byte-for-byte identical (same SHA-256) to a file in Create Deep Seas.
+
+Timeline (Modrinth publication dates):
+- Create Deep Seas 1.1.1 (version uYqwnn9X), 2026-05-09: already contains all 21 files.
+- Waterworks 1.0.0 (Ixys9F5Z, 2026-05-04) and 1.0.3 (B39QSBhs, 2026-05-05): contain none of them.
+- Waterworks 1.0.9 (wfIKhnVL, 2026-06-08): all 21 files appear at once.
+- Waterworks 1.2.0-Preview_4 (n5Zo3odn, 2026-10-05, the current version): still contains 9 of them.
+
+Original textures I created for Create Deep Seas, found in Waterworks:
+- textures/gui/electrolysator_gui.png (Waterworks 1.0.9 to 1.2.0-Preview_4, current)
+- textures/gui/on.png, on_over.png, off.png, off_over.png (Waterworks 1.0.9 to 1.2.0-Preview_4, current)
+- textures/block/watertruster.png (Waterworks 1.0.9 and 1.1.1)
+- textures/block/oxygene_diffuser.png (Waterworks 1.0.9 and 1.1.1)
+
+Other files copied from Create Deep Seas:
+- textures/mob_effect/suffocation.png, textures/gui/sprites/banner.png (current version)
+- ballast tank block models (block_fire, block_powered, block_soulful, fire, item, redstone_indicator), oxygen_diffuser_backup.json, textures/block/ballast_side.png, ballast_top.png, texture.png (versions 1.0.9 to 1.1.2)
+
+Files that are not my own artwork but show the copy came from my mod:
+- textures/gui/check.png: my resized edit of a Create texture. I don't claim the Create artwork, but this edited file only exists in my mod.
+- sounds/implosion.ogg: a downloaded sound I converted myself. I don't claim the sound, but the Waterworks file is my exact encode: same random Ogg stream serial (0x421e3c56) and same FFmpeg encoder tags, which only happens when the encoded file itself is copied.
+
+The file names make the origin obvious. "electrolysator", "oxygene_diffuser" and "watertruster" are my own spellings, and Waterworks keeps them even though its own block is called "Electrolyzer". Several of these files are not referenced anywhere in the Waterworks code (no screen uses electrolysator_gui.png or the on/off buttons, and no suffocation effect is registered), so the asset folder appears to have been copied wholesale. The banner.png in Waterworks is the old Create Deep Seas banner, shipped in my versions 1.1.1 to 2.2.4 and replaced in my 3.0.0 (2026-10-02), but still in the current Waterworks version.
+
+Attached: a side-by-side comparison of the textures and the full SHA-256 list, with the version IDs and jar SHA-1 values so you can check against the Modrinth CDN files.
+
+I am asking for the copied files to be removed from all affected versions of Waterworks.

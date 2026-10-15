@@ -1,0 +1,10 @@
+{
+	"credit": "Made with Blockbench",
+	"parent": "aeronautics:block/adjustable_burner/block_fire",
+	"texture_size": [64, 64],
+	"render_type": "minecraft:cutout_mipped",
+	"textures": {
+		"2": "aeronautics:block/adjustable_burner/adjustable_burner_soulful",
+		"particle": "create:block/dark_metal_block"
+	}
+}
