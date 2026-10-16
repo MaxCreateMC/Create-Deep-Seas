@@ -564,8 +564,8 @@ public class CreateSubmarine {
                 }
         }
 
-        private void registerPayloads(final RegisterPayloadHandlersEvent event) {
-                final PayloadRegistrar registrar = event.registrar(MOD_ID);
+        private void registerPayloads(RegisterPayloadHandlersEvent event) {
+                PayloadRegistrar registrar = event.registrar(MOD_ID);
                 registrar.playToClient(
                                 SubLevelBoundsPayload.TYPE,
                                 SubLevelBoundsPayload.CODEC,
@@ -639,6 +639,7 @@ public class CreateSubmarine {
         private void moveDivingGear(BuildCreativeModeTabContentsEvent event) {
                 if (event.getTabKey() != AllCreativeModeTabs.BASE_CREATIVE_TAB.getKey())
                         return;
+
                 for (String name : List.of("copper_diving_helmet", "copper_diving_boots"))
                         event.remove(new ItemStack(createItem(name)),
                                         CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS);
@@ -661,6 +662,7 @@ public class CreateSubmarine {
                                         (be, side) -> CableElectrificationSystem
                                                         .getOrCreateStorage(be));
                 }
+
                 @SuppressWarnings("unchecked")
                 BlockEntityType<RopeConnectorBlockEntity> ropeConnectorType = (BlockEntityType<RopeConnectorBlockEntity>) BuiltInRegistries.BLOCK_ENTITY_TYPE
                                 .get(
@@ -673,6 +675,7 @@ public class CreateSubmarine {
                                         (be, side) -> CableElectrificationSystem
                                                         .getOrCreateStorage(be));
                 }
+
                 event.registerBlockEntity(
                                 Capabilities.FluidHandler.BLOCK,
                                 BALLAST_TANK_BE.get(),
@@ -702,6 +705,7 @@ public class CreateSubmarine {
                                                         .getOpposite()) {
                                                 return be.waterTank;
                                         }
+
                                         return null;
                                 });
                 event.registerBlockEntity(
@@ -710,6 +714,7 @@ public class CreateSubmarine {
                                 (be, side) -> {
                                         if (side != null && side != Direction.UP && side != Direction.DOWN)
                                                 return be.energyStorage;
+
                                         return null;
                                 });
                 event.registerItem(
@@ -721,6 +726,7 @@ public class CreateSubmarine {
         private void onConfigLoaded(ModConfigEvent event) {
                 if (event instanceof ModConfigEvent.Unloading)
                         return;
+
                 if (event.getConfig().getSpec() == SubmarineConfig.COMMON_SPEC) {
                         OceanDepthOffset.refreshConfig();
                 } else if (event.getConfig().getSpec() == SubmarineConfig.SERVER_SPEC) {
@@ -790,8 +796,6 @@ public class CreateSubmarine {
                         itemToSection.put(ResourceLocation.fromNamespaceAndPath(MOD_ID, "iron_pressurizer"), subSection);
                         tabItems.add(COPPER_PRESSURIZER_ITEM::get);
                         itemToSection.put(ResourceLocation.fromNamespaceAndPath(MOD_ID, "copper_pressurizer"), subSection);
-                        tabItems.add(FLOATER_ITEM::get);
-                        itemToSection.put(ResourceLocation.fromNamespaceAndPath(MOD_ID, "floater"), subSection);
                         tabItems.add(STEEL_CABLE::get);
                         itemToSection.put(ResourceLocation.fromNamespaceAndPath(MOD_ID, "steel_cable"), subSection);
                         tabItems.add(PULLEY_ITEM::get);

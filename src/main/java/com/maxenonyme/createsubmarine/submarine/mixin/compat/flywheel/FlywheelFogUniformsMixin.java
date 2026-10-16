@@ -1,4 +1,4 @@
-package com.maxenonyme.createsubmarine.submarine.mixin.compat;
+package com.maxenonyme.createsubmarine.submarine.mixin.compat.flywheel;
 
 import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
 import dev.ryanhcode.sable.Sable;
@@ -35,13 +35,16 @@ public class FlywheelFogUniformsMixin {
         Minecraft mc = Minecraft.getInstance();
         if (mc.level == null)
             return -1.0f;
+
         WaterOcclusionContainer<?> container = WaterOcclusionContainer.getContainer(mc.level);
         if (container == null)
             return -1.0f;
+
         Vec3 cameraPos = mc.gameRenderer.getMainCamera().getPosition();
         WaterOcclusionRegion region = container.getOccludingRegion(cameraPos);
         if (region == null)
             return -1.0f;
+
         BoundedBitVolume3i volume = region.getVolume();
         SubLevel subLevel = Sable.HELPER.getContaining(mc.level, volume.getMinBlockPos());
         Vec3 local = subLevel != null ? subLevel.logicalPose().transformPositionInverse(cameraPos) : cameraPos;

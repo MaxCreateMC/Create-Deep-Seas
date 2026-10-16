@@ -12,10 +12,10 @@
     "ContraptionSailBakeMixin",
     "ContraptionVisualSailBakeMixin",
     "HumanoidModelPoseMixin",
-    "IrisSailPhaseMixin",
+    "compat.iris.IrisSailPhaseMixin",
     "PonderSailBakeMixin",
     "SailRenderLayerMixin",
-    "SailSodiumMaterialMixin",
+    "compat.sodium.SailSodiumMaterialMixin",
     "SailSubLevelRenderMixin",
     "RopeDataSubLevelMixin"
   ],

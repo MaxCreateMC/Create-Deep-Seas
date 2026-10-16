@@ -1,6 +1,6 @@
-package com.maxenonyme.createsubmarine.submarine.mixin.compat;
+package com.maxenonyme.createsubmarine.submarine.mixin.compat.sodium;
 
-import com.maxenonyme.createsubmarine.submarine.client.renderer.SodiumWaterOcclusionBridge;
+import com.maxenonyme.createsubmarine.submarine.compat.sodium.SodiumWaterOcclusionBridge;
 import com.maxenonyme.createsubmarine.submarine.compartment.CompartmentTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
@@ -22,6 +22,7 @@ public abstract class SodiumFluidRendererMixin {
             BlockPos blockPos, BlockPos offset, @Coerce Object collector, @Coerce Object buffers, CallbackInfo ci) {
         if (SodiumWaterOcclusionBridge.PIXEL_PERFECT_ACTIVE)
             return;
+
         Minecraft mc = Minecraft.getInstance();
         if (mc.level != null && CompartmentTracker.isOccluded(mc.level, blockPos)) {
             SodiumWaterOcclusionBridge.FALLBACK_HOLES.add(SectionPos.asLong(blockPos));

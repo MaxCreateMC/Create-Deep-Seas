@@ -1,4 +1,4 @@
-package com.maxenonyme.createsubmarine.submarine.mixin.compat;
+package com.maxenonyme.createsubmarine.submarine.mixin.compat.distanthorizons;
 
 import com.llamalad7.mixinextras.injector.ModifyReturnValue;
 import com.maxenonyme.createsubmarine.submarine.client.SubmarineFogHandler;

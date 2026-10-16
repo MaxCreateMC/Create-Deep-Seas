@@ -1,6 +1,6 @@
-package com.maxenonyme.highseas.mixin;
+package com.maxenonyme.highseas.mixin.compat.iris;
 
-import com.maxenonyme.highseas.client.IrisCompat;
+import com.maxenonyme.highseas.compat.iris.IrisCompat;
 import com.maxenonyme.highseas.client.SailRenderTypes;
 import net.minecraft.client.renderer.RenderType;
 import org.spongepowered.asm.mixin.Mixin;

@@ -79,6 +79,7 @@ public class SubmarinePressureSystem {
     public static Map<UUID, Map<BlockPos, Integer>> cracks() {
         return CRACK_LEVELS;
     }
+
     private static final Map<UUID, Double> CACHED_DENSITY = new ConcurrentHashMap<>();
     private static final int MAX_FIRES_PER_TICK = 8;
     private static final double STRAIN_REACH = 24.0;
@@ -136,6 +137,7 @@ public class SubmarinePressureSystem {
             if (crush > 0)
                 return Math.max(1, (int) Math.min(1_000_000L, Math.round(crush * realisticMultiplier() / getCachedDensity(id))));
         }
+
         return Math.max(1, (int) Math.round(maxWaterDepth * HullShapeAnalyzer.factor(id, plotPos)
                 * GirderSupport.factor(supports(id), plotPos) / getCachedDensity(id)));
     }
@@ -145,6 +147,7 @@ public class SubmarinePressureSystem {
         SubLevelRegistry.PlotBounds plot = SubLevelRegistry.getBounds(id);
         if (level == null || plot == null)
             return GirderSupport.NONE;
+
         return GirderSupport.layout(level, id, 0L, plot.minX(), plot.minY(), plot.minZ(), plot.maxX(), plot.maxY(), plot.maxZ());
     }
 
@@ -168,6 +171,7 @@ public class SubmarinePressureSystem {
                 }
             }
         }
+
         int restored = 0;
         Map<BlockPos, BlockState> broken = BROKEN.remove(id);
         if (broken != null) {
@@ -179,6 +183,7 @@ public class SubmarinePressureSystem {
                 }
             }
         }
+
         int cracks = 0;
         Map<BlockPos, Integer> cracked = CRACK_LEVELS.remove(id);
         if (cracked != null) {
@@ -187,6 +192,7 @@ public class SubmarinePressureSystem {
                 cracks++;
             }
         }
+
         BREACHED_PLOT.remove(id);
         WEAK_CACHE.remove(id);
         MATERIALS.remove(id);
@@ -203,9 +209,11 @@ public class SubmarinePressureSystem {
         Level plotLevel = SubLevelRegistry.getLevel(id);
         if (plotLevel == null)
             return;
+
         BlockState state = plotLevel.getBlockState(plotPos);
         if (state.isAir() || state.getFluidState().isSource())
             return;
+
         Map<BlockPos, Integer> cracks = CRACK_LEVELS.computeIfAbsent(id, k -> new ConcurrentHashMap<>());
         int crackLevel = Math.min(3, cracks.getOrDefault(plotPos, 0) + 2);
         cracks.put(plotPos, crackLevel);
@@ -265,6 +273,7 @@ public class SubmarinePressureSystem {
         if (subLevel != null) {
             subLevel.logicalPose().transformPosition(worldVec);
         }
+
         BlockPos worldPos = BlockPos.containing(worldVec.x, worldVec.y, worldVec.z);
         oceanLevel.playSound(null, worldPos, SoundEvents.IRON_GOLEM_REPAIR,
                 SoundSource.BLOCKS, 0.6f, 1.0f + RAND.nextFloat() * 0.3f);
@@ -274,6 +283,7 @@ public class SubmarinePressureSystem {
     public static void onServerTick(ServerTickEvent.Post event) {
         if (++tickCounter % TICK_INTERVAL != 0)
             return;
+
         if (SubmarineConfig.DISABLE_IMPLOSION.get()) {
             DOOMED.clear();
             return;
@@ -345,6 +355,7 @@ public class SubmarinePressureSystem {
             Optional<HullStrengthConfig.HullProperty> propOpt = HullStrengthConfig.getFor(actualState);
             if (propOpt.isEmpty())
                 continue;
+
             HullStrengthConfig.HullProperty prop = propOpt.get();
 
             applyPressure(id, plotLevel, oceanLevel, subLevel, plotPos, state, prop, surfaceY, creakPlayed);
@@ -366,6 +377,7 @@ public class SubmarinePressureSystem {
         HullMaterials cached = MATERIALS.get(id);
         if (cached != null && cached.source() == exterior && now - cached.tick() < MATERIAL_REFRESH)
             return cached;
+
         int cap = exterior.size();
         long[] cells = new long[cap];
         float[] limits = new float[cap];
@@ -374,21 +386,25 @@ public class SubmarinePressureSystem {
         boolean realistic = SubmarineConfig.realisticPressure();
         GirderSupport.Layout supports = supports(id);
         BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
+
         for (Long2FloatMap.Entry e : exterior.long2FloatEntrySet()) {
             cursor.set(e.getLongKey());
             BlockState state = plotLevel.getBlockState(cursor);
             if (state.isAir() || state.getFluidState().isSource())
                 continue;
+
             Optional<HullStrengthConfig.HullProperty> prop = HullStrengthConfig
                     .getFor(getActualBlockState(plotLevel, cursor, state));
             if (prop.isEmpty())
                 continue;
+
             cells[n] = e.getLongKey();
             limits[n] = realistic ? (float) Math.max(1.0, e.getFloatValue() * realisticMultiplier())
                     : (float) (prop.get().maxWaterDepth() * e.getFloatValue() * GirderSupport.factor(supports, cursor));
             props[n] = prop.get();
             n++;
         }
+
         HullMaterials built = new HullMaterials(exterior, now, Arrays.copyOf(cells, n), Arrays.copyOf(limits, n),
                 Arrays.copyOf(props, n));
         MATERIALS.put(id, built);
@@ -401,6 +417,7 @@ public class SubmarinePressureSystem {
         HullMaterials hull = materials(id, plotLevel, exterior);
         PriorityQueue<Pick> best = new PriorityQueue<>(Comparator.comparingDouble(Pick::key));
         Vector3d worldVec = new Vector3d();
+
         for (int i = 0; i < hull.cells().length; i++) {
             long cell = hull.cells()[i];
             worldVec.set(BlockPos.getX(cell) + 0.5, BlockPos.getY(cell) + 0.5, BlockPos.getZ(cell) + 0.5);
@@ -409,20 +426,25 @@ public class SubmarinePressureSystem {
             double overload = depth * density / hull.limits()[i];
             if (overload <= 1.0)
                 continue;
+
             double weight = (overload - 1.0) * (overload - 1.0);
             double key = Math.log(1.0 - RAND.nextDouble()) / weight;
             if (best.size() >= picks && key <= best.peek().key())
                 continue;
+
             BlockPos plotPos = BlockPos.of(cell);
             if (breached != null && breached.contains(plotPos))
                 continue;
+
             BlockState state = plotLevel.getBlockState(plotPos);
             if (state.isAir() || state.getFluidState().isSource())
                 continue;
+
             if (best.size() >= picks)
                 best.poll();
             best.add(new Pick(plotPos, state, hull.props()[i], key));
         }
+
         for (Pick p : best)
             applyPressure(id, plotLevel, oceanLevel, subLevel, p.pos(), p.state(), p.prop(), surfaceY, creakPlayed);
     }
@@ -431,23 +453,27 @@ public class SubmarinePressureSystem {
             SubLevelRegistry.PlotBounds bounds) {
         if (!(oceanLevel instanceof ServerLevel server))
             return;
+
         int depth = getCachedDepth(id);
         double floor = FloodSystem.crushDepth();
         if (depth <= floor - 5) {
             DOOMED.remove(id);
             return;
         }
+
         Integer weakest = WEAKEST_HULL.get(id);
         if (weakest == null || tickCounter % (TICK_INTERVAL * 5) == 0) {
             weakest = getWeakestHullDepth(id, plotLevel);
             WEAKEST_HULL.put(id, weakest);
         }
+
         int beyond = depth - weakest - DOOM_MARGIN;
         boolean doomed = weakest > 0 && (DOOMED.contains(id) ? beyond > -5 : beyond >= 0 && depth >= floor);
         if (!doomed) {
             DOOMED.remove(id);
             return;
         }
+
         DOOMED.add(id);
 
         beyond = Math.max(0, beyond);
@@ -455,9 +481,11 @@ public class SubmarinePressureSystem {
         int span = Math.max(bounds.maxX() - bounds.minX(), Math.max(bounds.maxY() - bounds.minY(), bounds.maxZ() - bounds.minZ()));
         double reach = Math.max(STRAIN_REACH, span);
         Vec3 origin = new Vec3(center.x(), center.y(), center.z());
+
         for (ServerPlayer player : server.players()) {
             if (player.distanceToSqr(origin) > reach * reach)
                 continue;
+
             PacketDistributor.sendToPlayer(player,
                     new ImplosionFxPayload(ImplosionFxPayload.STRAIN, felt, TICK_INTERVAL + 10));
             PacketDistributor.sendToPlayer(player,
@@ -490,9 +518,11 @@ public class SubmarinePressureSystem {
         cursor.set(x, startY, z);
         if (CompartmentTracker.realFluidState(chunk, cursor).isEmpty())
             return DRY;
+
         int surfaceY = Integer.MIN_VALUE;
         double sum = 0;
         int count = 0;
+
         for (int y = startY; y < top; y++) {
             cursor.set(x, y, z);
             FluidState fluid = CompartmentTracker.realFluidState(chunk, cursor);
@@ -512,27 +542,34 @@ public class SubmarinePressureSystem {
         Long2FloatOpenHashMap exterior = HullShapeAnalyzer.exterior(id);
         if (exterior == null)
             return;
+
         int fires = 0;
         BlockPos.MutableBlockPos plotPos = new BlockPos.MutableBlockPos();
         Vector3d vec = new Vector3d();
+
         for (long cell : exterior.keySet()) {
             plotPos.set(cell);
             BlockState state = plotLevel.getBlockState(plotPos);
             if (state.isAir())
                 continue;
+
             for (Direction dir : Direction.values()) {
                 BlockPos out = plotPos.relative(dir);
                 if (CompartmentTracker.isWithinShip(id, out) || !plotLevel.getBlockState(out).isAir())
                     continue;
+
                 int flammability = state.getFlammability(plotLevel, plotPos, dir);
                 if (flammability <= 0 || RAND.nextInt(300) >= flammability)
                     continue;
+
                 subLevel.logicalPose().transformPosition(vec.set(out.getX() + 0.5, out.getY() + 0.5, out.getZ() + 0.5));
                 if (!CompartmentTracker.realFluidState(oceanLevel, BlockPos.containing(vec.x, vec.y, vec.z)).is(FluidTags.LAVA))
                     continue;
+
                 plotLevel.setBlockAndUpdate(out, BaseFireBlock.getState(plotLevel, out));
                 if (++fires >= MAX_FIRES_PER_TICK)
                     return;
+
                 break;
             }
         }
@@ -542,9 +579,11 @@ public class SubmarinePressureSystem {
         int idx = chunk.getSectionIndex(pos.getY());
         if (idx < 0 || idx >= chunk.getSections().length)
             return true;
+
         LevelChunkSection section = chunk.getSection(idx);
         if (section == null || section.hasOnlyAir())
             return true;
+
         return section.getBlockState(pos.getX() & 15, pos.getY() & 15, pos.getZ() & 15).isAir();
     }
 
@@ -555,6 +594,7 @@ public class SubmarinePressureSystem {
             return;
 
         boolean facesExterior = false;
+
         for (Direction dir : Direction.values()) {
             BlockPos neighbor = plotPos.relative(dir);
             if (!CompartmentTracker.isWithinShip(id, neighbor)) {
@@ -562,6 +602,7 @@ public class SubmarinePressureSystem {
                 break;
             }
         }
+
         if (!facesExterior)
             return;
 
@@ -575,6 +616,7 @@ public class SubmarinePressureSystem {
 
         if (GirderFailure.protects(id, plotPos))
             return;
+
         GirderSupport.Support carrier = GirderSupport.carrier(supports(id), plotPos);
         if (carrier != null && oceanLevel instanceof ServerLevel loaded) {
             GirderFailure.load(loaded, id, subLevel, plotLevel, carrier);
@@ -584,6 +626,7 @@ public class SubmarinePressureSystem {
         float depthMultiplier = Math.min(OVERPRESSURE_CAP, (depth - limit) / OVERPRESSURE_RAMP);
         if (RAND.nextFloat() >= prop.implosionChance() * depthMultiplier)
             return;
+
         BlockPos worldPos = BlockPos.containing(worldVec.x, worldVec.y, worldVec.z);
 
         if (!creakPlayed[0]) {
@@ -601,9 +644,11 @@ public class SubmarinePressureSystem {
 
         if (crackLevel >= 4 && depth - limit < IMPLODE_MARGIN)
             return;
+
         if (crackLevel >= 4) {
             if (!(oceanLevel instanceof ServerLevel serverOcean) || ImplosionSequence.isBuilding(id))
                 return;
+
             Vec3 origin = new Vec3(worldVec.x, worldVec.y, worldVec.z);
             boolean crush = depth >= FloodSystem.crushDepth() && comp.hull().contains(plotPos);
             cracks.put(plotPos, 4);
@@ -617,20 +662,26 @@ public class SubmarinePressureSystem {
                     return;
                 if (plotLevel.getBlockState(plotPos).isAir() || SubmarineSinkingSystem.isCrashing(id))
                     return;
-                SoundType soundType = SoundType.STONE;
+
+                SoundType soundType;
+
                 try {
                     soundType = state.getBlock().getSoundType(state, plotLevel, plotPos, null);
                 } catch (RuntimeException e) {
+                    soundType = SoundType.STONE;
                 }
+
                 oceanLevel.playSound(null, worldPos, soundType.getBreakSound(), SoundSource.BLOCKS, 1.6f,
                         0.65f + RAND.nextFloat() * 0.3f);
                 recordBroken(id, plotPos, state);
                 plotLevel.destroyBlock(plotPos, true);
                 BREACHED_PLOT.computeIfAbsent(id, k -> ConcurrentHashMap.newKeySet()).add(plotPos);
+
                 if (!crush) {
                     ImplosionSequence.rupture(serverOcean, origin);
                     return;
                 }
+
                 SubLevelRegistry.PlotBounds plot = SubLevelRegistry.getBounds(id);
                 if (plot != null)
                     SubmarineSinkingSystem.onCrashed(id, subLevel, plotLevel, plot);
@@ -638,6 +689,7 @@ public class SubmarinePressureSystem {
         } else {
             cracks.put(plotPos, crackLevel);
             sendCrackPacket(oceanLevel, id, plotPos, crackLevel, blockId);
+
             if (oceanLevel instanceof ServerLevel serverLevel) {
                 HullStressFx.popAt(serverLevel, id, subLevel, plotLevel, plotPos, crackLevel / 3f);
                 LightFailure.onHullDamage(serverLevel, id, plotLevel, crackLevel / 3f);
@@ -651,12 +703,15 @@ public class SubmarinePressureSystem {
     public static void onPlotBlockReplaced(Level plotLevel, BlockPos plotPos) {
         if (CRACK_LEVELS.isEmpty())
             return;
+
         UUID id = SubLevelRegistry.findUUID(plotLevel, plotPos);
         if (id == null)
             return;
+
         Map<BlockPos, Integer> cracks = CRACK_LEVELS.get(id);
         if (cracks == null || cracks.remove(plotPos) == null)
             return;
+
         SubLevelAccess subLevel = SubLevelRegistry.getAll().get(id);
         Level oceanLevel = subLevel instanceof SubLevel sl ? sl.getLevel() : plotLevel;
         sendCrackPacket(oceanLevel, id, plotPos, -1, 0);
@@ -665,7 +720,9 @@ public class SubmarinePressureSystem {
     private static void sendCrackPacket(Level oceanLevel, UUID id, BlockPos plotPos, int crackLevel, int blockId) {
         if (!(oceanLevel instanceof ServerLevel sl))
             return;
+
         SubCrackPayload payload = new SubCrackPayload(id, plotPos, crackLevel, blockId);
+
         for (ServerPlayer player : sl.players()) {
             PacketDistributor.sendToPlayer(player, payload);
         }
@@ -680,6 +737,7 @@ public class SubmarinePressureSystem {
             if (compartment.sealed() && !CompartmentTracker.isCompromised(id, compartment.anchor()))
                 return true;
         }
+
         return false;
     }
 
@@ -689,7 +747,7 @@ public class SubmarinePressureSystem {
         return LOOKUPS.computeIfAbsent(type.getName() + "#" + name, key -> {
             try {
                 return Optional.of(type.getMethod(name));
-            } catch (NoSuchMethodException e) {
+            } catch (NoSuchMethodException | LinkageError e) {
                 return Optional.empty();
             }
         });
@@ -699,9 +757,10 @@ public class SubmarinePressureSystem {
         Optional<Method> method = lookup(target.getClass(), name);
         if (method.isEmpty())
             return null;
+
         try {
             return method.get().invoke(target);
-        } catch (ReflectiveOperationException | RuntimeException e) {
+        } catch (ReflectiveOperationException | RuntimeException | LinkageError e) {
             return null;
         }
     }
@@ -711,9 +770,11 @@ public class SubmarinePressureSystem {
         if (storage != null && call(storage, "getAllMaterials") instanceof Collection<?> materials) {
             BlockState weakest = null;
             int weakestDepth = Integer.MAX_VALUE;
+
             for (Object entry : materials) {
                 if (!(entry instanceof BlockState state) || state.isAir() || isCopycatBase(state))
                     continue;
+
                 int depth = HullStrengthConfig.getFor(state).map(HullStrengthConfig.HullProperty::maxWaterDepth)
                         .orElse(Integer.MAX_VALUE);
                 if (weakest == null || depth < weakestDepth) {
@@ -721,9 +782,11 @@ public class SubmarinePressureSystem {
                     weakestDepth = depth;
                 }
             }
+
             if (weakest != null)
                 return weakest;
         }
+
         return call(be, "getMaterial") instanceof BlockState state && !state.isAir() ? state : null;
     }
 
@@ -733,6 +796,7 @@ public class SubmarinePressureSystem {
             BlockState copied = copiedMaterial(be);
             if (copied != null && !isCopycatBase(copied))
                 return copied;
+
             ResourceLocation id = BuiltInRegistries.BLOCK_ENTITY_TYPE.getKey(be.getType());
             if (id != null && id.getPath().contains("copycat")) {
                 CompoundTag nbt = be.saveWithFullMetadata(level.registryAccess());
@@ -741,8 +805,10 @@ public class SubmarinePressureSystem {
                     if (mat != null && !mat.isAir())
                         return mat;
                 }
+
                 if (nbt.contains("material_data")) {
                     CompoundTag data = nbt.getCompound("material_data");
+
                     for (String key : data.getAllKeys()) {
                         CompoundTag itemTag = data.getCompound(key);
                         if (itemTag.contains("material")) {
@@ -754,6 +820,7 @@ public class SubmarinePressureSystem {
                 }
             }
         }
+
         return originalState;
     }
 
@@ -765,15 +832,18 @@ public class SubmarinePressureSystem {
     public static boolean holdsAirPocket(Level level, CompartmentDetector.Component comp) {
         int room = 0;
         int air = 0;
+
         for (BlockPos p : comp.internal()) {
             BlockState state = level.getBlockState(p);
             boolean water = state.getFluidState().is(FluidTags.WATER);
             if (!state.isAir() && !water)
                 continue;
+
             room++;
             if (!water)
                 air++;
         }
+
         return air * 10 > room;
     }
 
@@ -796,6 +866,7 @@ public class SubmarinePressureSystem {
         CachedWeak cached = WEAK_CACHE.get(subId);
         if (cached != null && now - cached.tick() >= 0 && now - cached.tick() < WEAK_CACHE_TICKS)
             return cached.point();
+
         WeakPoint point = scanWeakest(subId, plotLevel);
         WEAK_CACHE.put(subId, new CachedWeak(now, point));
         return point;
@@ -803,31 +874,39 @@ public class SubmarinePressureSystem {
 
     private static WeakPoint scanWeakest(UUID subId, Level plotLevel) {
         WeakPoint weakest = null;
+
         for (Map.Entry<BlockPos, CompartmentDetector.Component> entry : envelope(subId).entrySet()) {
             if (CompartmentTracker.isCompromised(subId, entry.getValue().anchor()))
                 continue;
+
             BlockPos bp = entry.getKey();
             boolean facesExterior = false;
+
             for (Direction dir : Direction.values()) {
                 if (!CompartmentTracker.isWithinShip(subId, bp.relative(dir))) {
                     facesExterior = true;
                     break;
                 }
             }
+
             if (!facesExterior)
                 continue;
+
             BlockState state = plotLevel.getBlockState(bp);
             if (state.isAir())
                 continue;
+
             BlockState strengthState = getActualBlockState(plotLevel, bp, state);
             Optional<HullStrengthConfig.HullProperty> prop = HullStrengthConfig.getFor(strengthState);
             if (prop.isEmpty())
                 continue;
+
             int limit = effectiveDepth(subId, bp, prop.get().maxWaterDepth());
             if (weakest == null || limit < weakest.depth()) {
                 weakest = new WeakPoint(limit, strengthState, bp.immutable());
             }
         }
+
         return weakest;
     }
 
@@ -842,16 +921,22 @@ public class SubmarinePressureSystem {
         Envelope cached = ENVELOPES.get(id);
         if (cached != null && cached.source() == comps)
             return cached.shell();
+
         Set<BlockPos> solid = CompartmentTracker.solidBlocks(id);
         Map<BlockPos, CompartmentDetector.Component> shell = new HashMap<>();
+
         for (CompartmentDetector.Component compartment : comps) {
             if (!compartment.sealed())
                 continue;
+
             List<BlockPos> frontier = new ArrayList<>(compartment.hull());
+
             for (BlockPos p : frontier)
                 shell.putIfAbsent(p, compartment);
+
             for (int layer = 1; layer < SHELL_LAYERS && !frontier.isEmpty(); layer++) {
                 List<BlockPos> next = new ArrayList<>();
+
                 for (BlockPos p : frontier) {
                     for (Direction dir : Direction.values()) {
                         BlockPos n = p.relative(dir);
@@ -861,9 +946,11 @@ public class SubmarinePressureSystem {
                         }
                     }
                 }
+
                 frontier = next;
             }
         }
+
         ENVELOPES.put(id, new Envelope(comps, shell));
         return shell;
     }
@@ -872,9 +959,11 @@ public class SubmarinePressureSystem {
         int depth = getCachedDepth(id);
         if (depth <= 0)
             return false;
+
         int weakest = getWeakestHullDepth(id, plotLevel);
         if (weakest == -1)
             return false;
+
         return depth >= weakest * 0.80;
     }
 
@@ -897,12 +986,14 @@ public class SubmarinePressureSystem {
             return;
 
         boolean facesExterior = false;
+
         for (Direction dir : Direction.values()) {
             if (!CompartmentTracker.isWithinShip(id, event.getPos().relative(dir))) {
                 facesExterior = true;
                 break;
             }
         }
+
         if (!facesExterior || !holdsAirPocket(level, comp))
             return;
 
@@ -910,6 +1001,7 @@ public class SubmarinePressureSystem {
         SubLevelRegistry.PlotBounds bounds = SubLevelRegistry.getBounds(id);
         if (subLevel == null || bounds == null)
             return;
+
         SubmarineSinkingSystem.onCrashed(id, subLevel, level, bounds);
     }
 }

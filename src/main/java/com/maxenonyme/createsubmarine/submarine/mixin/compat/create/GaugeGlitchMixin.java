@@ -1,4 +1,4 @@
-package com.maxenonyme.createsubmarine.submarine.mixin.compat;
+package com.maxenonyme.createsubmarine.submarine.mixin.compat.create;
 
 import com.maxenonyme.createsubmarine.submarine.client.DeviceGlitch;
 import com.simibubi.create.content.kinetics.gauge.GaugeBlockEntity;
@@ -18,6 +18,7 @@ public abstract class GaugeGlitchMixin {
         float glitch = DeviceGlitch.at(self.getLevel(), self.getBlockPos());
         if (glitch <= 0f)
             return;
+
         GaugeBlockEntity gauge = (GaugeBlockEntity) (Object) this;
         float wild = 0.55f + 0.6f * DeviceGlitch.noise(self.getBlockPos(), DeviceGlitch.time(self.getLevel(), 0f) * 0.6f);
         gauge.dialState = Mth.lerp(glitch, gauge.dialState, Mth.clamp(wild, 0f, 1.12f));

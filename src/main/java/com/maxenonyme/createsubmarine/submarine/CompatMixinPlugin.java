@@ -11,9 +11,9 @@ import java.util.Set;
 
 public class CompatMixinPlugin implements IMixinConfigPlugin {
     private static final Map<String, String> OPTIONAL_MODS = Map.of(
-            "Sodium", "sodium",
-            "Iris", "iris",
-            "DistantHorizons", "distanthorizons",
+            ".sodium.", "sodium",
+            ".iris.", "iris",
+            ".distanthorizons.", "distanthorizons",
             ".copycat.", "copycats");
 
     @Override
@@ -29,9 +29,11 @@ public class CompatMixinPlugin implements IMixinConfigPlugin {
     public boolean shouldApplyMixin(String targetClassName, String mixinClassName) {
         if (mixinClassName.contains(".vanilla."))
             return LoadingModList.get().getModFileById("sodium") == null;
+
         for (Map.Entry<String, String> entry : OPTIONAL_MODS.entrySet())
             if (mixinClassName.contains(entry.getKey()))
                 return LoadingModList.get().getModFileById(entry.getValue()) != null;
+
         return true;
     }
 

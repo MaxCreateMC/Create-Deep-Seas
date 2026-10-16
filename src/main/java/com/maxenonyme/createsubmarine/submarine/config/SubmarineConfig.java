@@ -61,6 +61,7 @@ public class SubmarineConfig {
                                         .withStyle(color);
                 }
         }
+
         public static ModConfigSpec.ConfigValue<String> IGNORED_UPDATE_VERSION;
 
         static {
@@ -125,7 +126,7 @@ public class SubmarineConfig {
                                                 "small panels, thick walls, ribs and rounded hulls hold more.",
                                                 "REALISTIC: a structural solver computes how much every block of the hull really bends under the water,",
                                                 "from its material (stiffness, strength, wood grain) and the shape of the whole ship.")
-                                .defineEnum("pressureModel", PressureModel.REALISTIC);
+                                .defineEnum("pressureModel", PressureModel.HYBRID);
                 SHAPE_REFERENCE_SPAN = server
                                 .comment("HYBRID only: free width, in blocks, of a single-thickness wall that keeps exactly its block's maxWaterDepth.",
                                                 "Wider panels hold less, narrower or thicker ones hold more.")
@@ -243,6 +244,7 @@ public class SubmarineConfig {
                 } else {
                         IGNORED_UPDATE_VERSION = null;
                 }
+
                 client.pop();
 
                 CLIENT_SPEC = client.build();

@@ -1,4 +1,4 @@
-package com.maxenonyme.createsubmarine.submarine.mixin.compat;
+package com.maxenonyme.createsubmarine.submarine.mixin.compat.aeronautics;
 
 import com.mojang.logging.LogUtils;
 import foundry.veil.api.event.VeilRegisterBlockLayersEvent;
@@ -22,10 +22,7 @@ public class AeronauticsVeilCrashFixMixin {
         try {
             instance.onVeilRegisterBlockLayers(event);
         } catch (IllegalArgumentException e) {
-            if (!createsubmarine$warned) {
-                LOGGER.warn("Suppressed Aeronautics Veil event re-registration: {}", e.getMessage());
-                createsubmarine$warned = true;
-            }
+            createsubmarine$suppress(e);
         }
     }
 
@@ -35,6 +32,7 @@ public class AeronauticsVeilCrashFixMixin {
         try {
             instance.onVeilRenderLevelStage(event);
         } catch (IllegalArgumentException e) {
+            createsubmarine$suppress(e);
         }
     }
 
@@ -44,6 +42,15 @@ public class AeronauticsVeilCrashFixMixin {
         try {
             instance.onVeilRegisterFixedBuffers(event);
         } catch (IllegalArgumentException e) {
+            createsubmarine$suppress(e);
         }
+    }
+
+    private static void createsubmarine$suppress(IllegalArgumentException e) {
+        if (createsubmarine$warned)
+            return;
+
+        LOGGER.warn("Suppressed Aeronautics Veil event re-registration: {}", e.getMessage());
+        createsubmarine$warned = true;
     }
 }

@@ -1,4 +1,4 @@
-package com.maxenonyme.highseas.mixin;
+package com.maxenonyme.highseas.mixin.compat.sodium;
 
 import com.maxenonyme.highseas.client.SailRenderTypes;
 import net.caffeinemc.mods.sodium.client.render.chunk.terrain.material.DefaultMaterials;

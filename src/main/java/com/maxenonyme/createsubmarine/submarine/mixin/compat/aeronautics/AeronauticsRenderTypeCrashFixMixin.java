@@ -1,4 +1,4 @@
-package com.maxenonyme.createsubmarine.submarine.mixin.compat;
+package com.maxenonyme.createsubmarine.submarine.mixin.compat.aeronautics;
 
 import net.minecraft.client.renderer.RenderType;
 import net.neoforged.neoforge.client.ChunkRenderTypeSet;

@@ -75,6 +75,7 @@ public class SonarView {
         SonarScan scan = DETAILS.get(be);
         if (scan == null || scan.unitsPerPixel <= 0)
             return;
+
         double right = -dx * scan.unitsPerPixel;
         double ahead = dy * scan.unitsPerPixel / Math.sin(Math.toRadians(PITCH));
         double cos = Math.cos(scan.yaw);
@@ -100,6 +101,7 @@ public class SonarView {
     public static Component floorLabel(float floor) {
         if (Float.isNaN(floor))
             return Component.translatable("create_submarine.command_sub.seabed_none", FLOOR_REACH);
+
         return Component.translatable("create_submarine.command_sub.seabed", String.format(Locale.ROOT, "%.1f", floor));
     }
 
@@ -110,6 +112,7 @@ public class SonarView {
     public static void onFrameEnd(RenderFrameEvent.Post event) {
         if (PREVIEWS.isEmpty() && DETAILS.isEmpty())
             return;
+
         Minecraft mc = Minecraft.getInstance();
         long now = System.nanoTime();
         float partialTicks = event.getPartialTick().getGameTimeDeltaPartialTick(true);
@@ -123,6 +126,7 @@ public class SonarView {
             float partialTicks) {
         boolean drew = false;
         Iterator<Map.Entry<CommandSubBlockEntity, SonarScan>> it = scans.entrySet().iterator();
+
         while (it.hasNext()) {
             Map.Entry<CommandSubBlockEntity, SonarScan> entry = it.next();
             CommandSubBlockEntity be = entry.getKey();
@@ -132,6 +136,7 @@ public class SonarView {
                 it.remove();
                 continue;
             }
+
             if (now - scan.lastDraw < (detail ? DETAIL_NANOS : PREVIEW_NANOS))
                 continue;
 
@@ -141,6 +146,7 @@ public class SonarView {
                 continue;
 
             scan.lastDraw = now;
+
             if (detail) {
                 scan.resize(scan.wantWidth, scan.wantHeight);
                 draw(mc, subLevel, sonar.getBlockPos(), scan, partialTicks, now,
@@ -151,8 +157,10 @@ public class SonarView {
                         Math.round((area[3] - area[1]) * PIXELS_PER_UNIT));
                 draw(mc, subLevel, sonar.getBlockPos(), scan, partialTicks, now, PREVIEW_ZOOM, 0, 0, 0);
             }
+
             drew = true;
         }
+
         return drew;
     }
 
@@ -169,14 +177,27 @@ public class SonarView {
                 new Vector3d(sonarPos.getX() + 0.5, sonarPos.getY() + 0.5, sonarPos.getZ() + 0.5));
         Vector3d center = new Vector3d(sonar.x + panX, sonar.y, sonar.z + panZ);
 
-        if (now - scan.lastPing >= PING_NANOS || scan.origin == null) {
-            BlockPos sonarBlock = BlockPos.containing(sonar.x, sonar.y, sonar.z);
-            scan.lastPing = now;
-            if (!sonarBlock.equals(scan.origin) || ++scan.idlePings >= REBAKE_PINGS) {
-                scan.idlePings = 0;
-                scan.replace(SonarTerrain.ping(mc, sub.getLevel(), sonarBlock), sonarBlock);
+        if (scan.baking != null && scan.baking.isDone()) {
+            SonarTerrain.Bake bake = scan.baking.join();
+            scan.baking = null;
+
+            if (bake != null) {
+                scan.replace(SonarTerrain.upload(bake), scan.bakingOrigin);
+                scan.lastPing = now;
             }
         }
+
+        if (scan.baking == null && (now - scan.lastPing >= PING_NANOS || scan.origin == null)) {
+            BlockPos sonarBlock = BlockPos.containing(sonar.x, sonar.y, sonar.z);
+            if (!sonarBlock.equals(scan.origin) || ++scan.idlePings >= REBAKE_PINGS) {
+                scan.idlePings = 0;
+                scan.baking = SonarTerrain.ping(mc, sub.getLevel(), sonarBlock);
+                scan.bakingOrigin = sonarBlock;
+            } else {
+                scan.lastPing = now;
+            }
+        }
+
         float front = scan.front(now);
 
         Camera camera = camera(sub, pose, scan, zoom, orbit);
@@ -186,6 +207,7 @@ public class SonarView {
         float fogStart = RenderSystem.getShaderFogStart();
         float fogEnd = RenderSystem.getShaderFogEnd();
         RenderSystem.setShaderFogStart(Float.MAX_VALUE);
+
         try {
             scan.fbo.bind(true);
             scan.fbo.clear();
@@ -217,6 +239,7 @@ public class SonarView {
         float halfHeight = 0;
         float depth = 0;
         Vector3f corner = new Vector3f();
+
         for (int i = 0; i < 8; i++) {
             corner.set(
                     (i & 1) == 0 ? -RANGE : RANGE,

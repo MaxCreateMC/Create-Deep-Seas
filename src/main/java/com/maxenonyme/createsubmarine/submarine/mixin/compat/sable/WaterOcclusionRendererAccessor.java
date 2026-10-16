@@ -1,4 +1,4 @@
-package com.maxenonyme.createsubmarine.submarine.mixin.compat;
+package com.maxenonyme.createsubmarine.submarine.mixin.compat.sable;
 
 import dev.ryanhcode.sable.render.water_occlusion.WaterOcclusionRenderer;
 import foundry.veil.api.client.render.framebuffer.AdvancedFbo;

@@ -21,12 +21,15 @@ public class HullControllerBlockEntity extends BlockEntity {
 
     private UUID currentSubLevelId = null;
     private boolean subLevelRegistered = false;
+
     public HullControllerBlockEntity(BlockPos pos, BlockState state) {
         super(CreateSubmarine.CREATIVE_OXYGENATOR_BE.get(), pos, state);
     }
+
     public void tick() {
         if (level == null)
             return;
+
         SubLevelAccess subAccess = SableCompanion.INSTANCE.getContaining(level, worldPosition);
         if (subAccess instanceof SubLevel subLevel) {
             currentSubLevelId = subLevel.getUniqueId();
@@ -34,6 +37,7 @@ public class HullControllerBlockEntity extends BlockEntity {
             if (!SubmarineDriverRegistry.claim(currentSubLevelId, worldPosition, SubmarineDriverRegistry.HULL_CONTROLLER, gameTick)) {
                 return;
             }
+
             CompartmentTracker.claimSubmarine(currentSubLevelId, gameTick);
             long lastUpdate = CompartmentTracker.lastUpdateTick(currentSubLevelId);
             long sinceUpdate = gameTick - lastUpdate;
@@ -44,13 +48,15 @@ public class HullControllerBlockEntity extends BlockEntity {
                     && scanDue && sinceUpdate >= getDynamicScanDelay()) {
                 CompartmentTracker.beginScanIfIdle(currentSubLevelId, subLevel);
             }
+
             if (CompartmentTracker.isScanActive(currentSubLevelId)) {
-                boolean done = CompartmentTracker.stepScan(currentSubLevelId, subLevel, getDynamicScanBudget(), gameTick);
+                boolean done = CompartmentTracker.stepScan(currentSubLevelId, subLevel, gameTick);
                 if (done && !level.isClientSide) {
                     SubmarinePressureSystem.setSealedCompartments(
                         currentSubLevelId, CompartmentTracker.getCompartments(currentSubLevelId));
                 }
             }
+
             LevelPlot plot = subLevel.getPlot();
             if (plot != null) {
                 BoundingBox3ic bounds = plot.getBoundingBox();
@@ -61,6 +67,7 @@ public class HullControllerBlockEntity extends BlockEntity {
                     CompartmentTracker.updateAABB(currentSubLevelId, pose.position(), dimensions);
                     CompartmentTracker.recordPose(currentSubLevelId, pose);
                 }
+
                 if (!level.isClientSide && !subLevelRegistered) {
                     SubLevelRegistry.register(
                         currentSubLevelId, subLevel, level,
@@ -79,33 +86,36 @@ public class HullControllerBlockEntity extends BlockEntity {
     private int getDynamicScanDelay() {
         if (level == null)
             return 20;
+
         if (level.isClientSide) {
             return 2;
         }
+
         MinecraftServer server = level.getServer();
         if (server != null) {
             int players = server.getPlayerCount();
             if (players <= 1)
                 return 1;
+
             return Math.min(40, players * 5);
         }
-        return 20;
-    }
 
-    private int getDynamicScanBudget() {
-        return 1500;
+        return 20;
     }
 
     private void releaseDriver() {
         if (currentSubLevelId == null)
             return;
+
         long tick = level != null ? level.getGameTime() : 0L;
         if (SubmarineDriverRegistry.release(currentSubLevelId, worldPosition, tick)) {
             SubmarineHullManager.removeHull(currentSubLevelId);
+
             if (level != null && !level.isClientSide) {
                 SubLevelRegistry.unregister(currentSubLevelId);
                 SubmarinePressureSystem.clearSubmarine(currentSubLevelId);
             }
+
             CompartmentTracker.remove(currentSubLevelId);
         }
     }
@@ -113,6 +123,7 @@ public class HullControllerBlockEntity extends BlockEntity {
     @Override
     public void setRemoved() {
         super.setRemoved();
+
         if (currentSubLevelId != null) {
             releaseDriver();
             currentSubLevelId = null;

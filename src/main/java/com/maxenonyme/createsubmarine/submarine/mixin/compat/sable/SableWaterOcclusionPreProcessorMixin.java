@@ -2,7 +2,7 @@ package com.maxenonyme.createsubmarine.submarine.mixin.compat.sable;
 
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
-import com.maxenonyme.createsubmarine.submarine.util.CompatUtil;
+import com.maxenonyme.createsubmarine.submarine.compat.CompatUtil;
 import dev.ryanhcode.sable.render.water_occlusion.SableWaterOcclusionPreProcessor;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Pseudo;

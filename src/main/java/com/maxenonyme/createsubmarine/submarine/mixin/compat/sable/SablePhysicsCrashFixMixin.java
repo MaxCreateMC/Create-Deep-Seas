@@ -1,4 +1,4 @@
-package com.maxenonyme.createsubmarine.submarine.mixin.compat;
+package com.maxenonyme.createsubmarine.submarine.mixin.compat.sable;
 
 import com.simibubi.create.content.contraptions.AbstractContraptionEntity;
 import org.spongepowered.asm.mixin.Mixin;

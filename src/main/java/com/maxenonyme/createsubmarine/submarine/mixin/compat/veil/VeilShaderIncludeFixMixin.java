@@ -1,4 +1,4 @@
-package com.maxenonyme.createsubmarine.submarine.mixin.compat;
+package com.maxenonyme.createsubmarine.submarine.mixin.compat.veil;
 
 import net.minecraft.client.renderer.ShaderInstance;
 import org.spongepowered.asm.mixin.Mixin;
@@ -14,7 +14,9 @@ public abstract class VeilShaderIncludeFixMixin {
     private String createsubmarine$stripBadIncludes(String source) {
         if (source == null || !source.contains("#include"))
             return source;
+
         StringBuilder out = new StringBuilder(source.length());
+
         for (String line : source.split("\n", -1)) {
             String trimmed = line.trim();
             if (trimmed.startsWith("#include")) {
@@ -24,11 +26,14 @@ public abstract class VeilShaderIncludeFixMixin {
                     continue;
                 }
             }
+
             out.append(line).append('\n');
         }
+
         if (out.length() > 0 && source.charAt(source.length() - 1) != '\n') {
             out.setLength(out.length() - 1);
         }
+
         return out.toString();
     }
 }

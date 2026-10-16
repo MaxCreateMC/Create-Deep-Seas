@@ -1,6 +1,6 @@
-package com.maxenonyme.createsubmarine.submarine.mixin.compat;
+package com.maxenonyme.createsubmarine.submarine.mixin.compat.sodium;
 
-import com.maxenonyme.createsubmarine.submarine.client.renderer.SodiumWaterOcclusionBridge;
+import com.maxenonyme.createsubmarine.submarine.compat.sodium.SodiumWaterOcclusionBridge;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Pseudo;
 import org.spongepowered.asm.mixin.injection.At;
@@ -21,6 +21,7 @@ public abstract class SodiumChunkRendererMixin {
     private void createsubmarine$applyOcclusionUniforms(@Coerce Object pass, CallbackInfo ci) {
         if (createsubmarine$lookupFailed)
             return;
+
         try {
             Field field = createsubmarine$activeProgramField;
             if (field == null) {
@@ -29,12 +30,15 @@ public abstract class SodiumChunkRendererMixin {
                     createsubmarine$lookupFailed = true;
                     return;
                 }
+
                 field.setAccessible(true);
                 createsubmarine$activeProgramField = field;
             }
+
             Object program = field.get(this);
             if (program == null)
                 return;
+
             int handle = (int) program.getClass().getMethod("handle").invoke(program);
             boolean translucent = (boolean) pass.getClass().getMethod("isTranslucent").invoke(pass);
             SodiumWaterOcclusionBridge.applyToProgram(handle, translucent);
@@ -49,6 +53,7 @@ public abstract class SodiumChunkRendererMixin {
                 return c.getDeclaredField("activeProgram");
             } catch (NoSuchFieldException ignored) {}
         }
+
         return null;
     }
 }

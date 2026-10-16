@@ -1,4 +1,4 @@
-package com.maxenonyme.highseas.client;
+package com.maxenonyme.highseas.compat.iris;
 
 import java.lang.reflect.Method;
 
@@ -14,18 +14,21 @@ public class IrisCompat {
     public static Object nonePhase() {
         if (!noneResolved) {
             noneResolved = true;
+
             try {
                 nonePhase = Class.forName("net.irisshaders.iris.pipeline.WorldRenderingPhase")
                         .getField("NONE").get(null);
             } catch (ReflectiveOperationException ignored) {
             }
         }
+
         return nonePhase;
     }
 
     public static boolean isShaderPackActive() {
         if (!apiResolved) {
             apiResolved = true;
+
             try {
                 Class<?> api = Class.forName("net.irisshaders.iris.api.v0.IrisApi");
                 irisApi = api.getMethod("getInstance").invoke(null);
@@ -33,9 +36,11 @@ public class IrisCompat {
             } catch (ReflectiveOperationException ignored) {
             }
         }
+
         if (irisApi == null || shaderPackInUse == null) {
             return false;
         }
+
         try {
             return (boolean) shaderPackInUse.invoke(irisApi);
         } catch (ReflectiveOperationException e) {

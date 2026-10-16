@@ -1,6 +1,6 @@
-package com.maxenonyme.createsubmarine.submarine.mixin.compat;
+package com.maxenonyme.createsubmarine.submarine.mixin.compat.sodium;
 
-import com.maxenonyme.createsubmarine.submarine.client.renderer.SodiumWaterOcclusionBridge;
+import com.maxenonyme.createsubmarine.submarine.compat.sodium.SodiumWaterOcclusionBridge;
 import com.maxenonyme.createsubmarine.submarine.compartment.CompartmentTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.resources.model.BakedModel;
@@ -19,6 +19,7 @@ public abstract class SodiumBlockRendererMixin {
     private void createsubmarine$skipOccludedBlocks(BakedModel model, BlockState state, BlockPos pos, BlockPos origin, CallbackInfo ci) {
         if (SodiumWaterOcclusionBridge.PIXEL_PERFECT_ACTIVE)
             return;
+
         Minecraft mc = Minecraft.getInstance();
         if (mc.level != null && CompartmentTracker.isOccluded(mc.level, pos)) {
             ci.cancel();

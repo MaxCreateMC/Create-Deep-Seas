@@ -66,6 +66,7 @@ public class PressureModelScreen extends Screen {
             return;
         if (SubmarineConfig.DISABLE_STARTUP_SCREENS.get())
             return;
+
         event.setNewScreen(new PressureModelScreen(menu));
     }
 
@@ -94,9 +95,12 @@ public class PressureModelScreen extends Screen {
 
     private Component name(SubmarineConfig.PressureModel model) {
         Component name = model.getTranslatedName();
-        return model == SubmarineConfig.PressureModel.REALISTIC
-                ? Component.translatable("create_submarine.pressure_choice.recommended", name)
-                : name;
+        if (model == SubmarineConfig.PressureModel.HYBRID)
+            return Component.translatable("create_submarine.pressure_choice.recommended", name);
+        if (model == SubmarineConfig.PressureModel.REALISTIC)
+            return Component.translatable("create_submarine.pressure_choice.experimental", name);
+
+        return name;
     }
 
     private void layoutInfo() {
@@ -131,6 +135,7 @@ public class PressureModelScreen extends Screen {
     private int rowAt(double mx, double my) {
         if (!open || mx < listX || mx >= listX + LIST_W)
             return -1;
+
         int first = headerY + ROW_H + 4;
         int row = (int) Math.floor((my - first) / ROW_H);
         return my >= first && row >= 0 && row < models.length ? row : -1;
@@ -150,12 +155,14 @@ public class PressureModelScreen extends Screen {
         g.drawString(this.font, open ? "\u25B2" : "\u25BC", listX + LIST_W - 11, textY, lit ? 0xFFFFFFFF : LABEL_COLOR);
         if (!open)
             return;
+
         int first = headerY + ROW_H + 4;
         int hovered = rowAt(mouseX, mouseY);
         g.pose().pushPose();
         g.pose().translate(0, 0, 400);
         g.fill(listX, first, listX + LIST_W, first + models.length * ROW_H, INFO_BG);
         g.renderOutline(listX, first, LIST_W, models.length * ROW_H, HOVER_BORDER);
+
         for (int i = 0; i < models.length; i++) {
             SubmarineConfig.PressureModel model = models[i];
             int y = first + i * ROW_H;
@@ -166,6 +173,7 @@ public class PressureModelScreen extends Screen {
             g.drawString(this.font, name(model), listX + 7, y + (ROW_H - this.font.lineHeight) / 2 + 1,
                     model == picked || i == hovered ? color(model) : SUMMARY_COLOR);
         }
+
         g.pose().popPose();
     }
 
@@ -175,15 +183,18 @@ public class PressureModelScreen extends Screen {
             open = !open;
             return true;
         }
+
         if (open) {
             int row = rowAt(mx, my);
             open = false;
+
             if (row >= 0) {
                 picked = models[row];
                 layoutInfo();
                 return true;
             }
         }
+
         return super.mouseClicked(mx, my, button);
     }
 
@@ -203,9 +214,11 @@ public class PressureModelScreen extends Screen {
         g.drawString(this.font, picked.getTranslatedName(), infoX + 8, infoY + 7, 0xFFFFFFFF);
         int y = infoY + 7 + this.font.lineHeight + 6;
         int bottom = infoY + infoH - this.font.lineHeight - 4;
+
         for (Line line : info) {
             if (y > bottom)
                 break;
+
             g.drawString(this.font, line.text(), infoX + 8, y, line.color());
             y += line.text() == FormattedCharSequence.EMPTY ? 4 : this.font.lineHeight + 1;
         }
@@ -221,15 +234,18 @@ public class PressureModelScreen extends Screen {
     private static SubmarineConfig.PressureModel current() {
         if (SubmarineConfig.SERVER_SPEC.isLoaded())
             return SubmarineConfig.PRESSURE_MODEL.get();
+
         try {
             if (Files.exists(SERVER_CONFIG)) {
                 Matcher matcher = MODEL_LINE.matcher(Files.readString(SERVER_CONFIG, StandardCharsets.UTF_8));
                 if (matcher.find())
                     return SubmarineConfig.PressureModel.valueOf(matcher.group(2));
             }
-        } catch (IOException | IllegalArgumentException ignored) {
+        } catch (IOException | IllegalArgumentException e) {
+            CreateSubmarine.LOGGER.warn("Couldn't read the pressure model from {}", SERVER_CONFIG, e);
         }
-        return SubmarineConfig.PressureModel.REALISTIC;
+
+        return SubmarineConfig.PressureModel.HYBRID;
     }
 
     private static void apply(SubmarineConfig.PressureModel model) {
@@ -238,6 +254,7 @@ public class PressureModelScreen extends Screen {
             SubmarineConfig.PRESSURE_MODEL.save();
             return;
         }
+
         String entry = "[hullStrength]" + System.lineSeparator() + "\tpressureModel = \"" + model.name() + "\""
                 + System.lineSeparator();
         try {
@@ -245,6 +262,7 @@ public class PressureModelScreen extends Screen {
                 Files.writeString(SERVER_CONFIG, entry, StandardCharsets.UTF_8);
                 return;
             }
+
             String text = Files.readString(SERVER_CONFIG, StandardCharsets.UTF_8);
             Matcher matcher = MODEL_LINE.matcher(text);
             Files.writeString(SERVER_CONFIG, matcher.find() ? matcher.replaceFirst("$1" + model.name() + "$3")

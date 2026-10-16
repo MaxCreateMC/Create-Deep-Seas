@@ -59,7 +59,6 @@ import com.maxenonyme.createsubmarine.submarine.client.PressureModelScreen;
 import com.maxenonyme.createsubmarine.submarine.client.PressureVision;
 import com.maxenonyme.createsubmarine.submarine.client.SubmarineStaffClientHandler;
 import com.maxenonyme.createsubmarine.submarine.client.VeilLights;
-import com.maxenonyme.createsubmarine.submarine.client.VeilUploadGuard;
 import com.maxenonyme.createsubmarine.submarine.config.HullStrengthConfig;
 import com.maxenonyme.createsubmarine.submarine.config.SubmarineClientState;
 import com.maxenonyme.createsubmarine.submarine.item.SubmarineStaffItemRenderer;
@@ -152,8 +151,6 @@ public class CreateSubmarineClient {
         NeoForge.EVENT_BUS
                 .addListener(CommandSubClientHandler::onRenderStage);
         NeoForge.EVENT_BUS
-                .addListener(VeilUploadGuard::onRenderStage);
-        NeoForge.EVENT_BUS
                 .addListener(VeilLights::onClientTick);
         NeoForge.EVENT_BUS
                 .addListener(PressureVision::onClientTick);
@@ -227,6 +224,7 @@ public class CreateSubmarineClient {
         }, CreateSubmarine.BAROMETER_ITEM.get());
         if (!CreateSubmarine.SUBMARINE_STAFF_ENABLED)
             return;
+
         event.registerItem(new IClientItemExtensions() {
             @Override
             public BlockEntityWithoutLevelRenderer getCustomRenderer() {
@@ -266,6 +264,7 @@ public class CreateSubmarineClient {
         ModelResourceLocation key = ModelResourceLocation.inventory(
                 ResourceLocation.fromNamespaceAndPath(CreateSubmarine.MOD_ID, "pressure_goggles"));
         event.getModels().computeIfPresent(key, (k, model) -> new PressureGogglesModel(model));
+
         for (var state : CreateSubmarine.SUBMARINE_PROPELLER.get().getStateDefinition().getPossibleStates()) {
             ModelResourceLocation location = BlockModelShaper.stateToModelLocation(state);
             event.getModels().computeIfPresent(location,

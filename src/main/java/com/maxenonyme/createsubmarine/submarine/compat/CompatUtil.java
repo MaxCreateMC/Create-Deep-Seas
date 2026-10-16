@@ -1,4 +1,4 @@
-package com.maxenonyme.createsubmarine.submarine.util;
+package com.maxenonyme.createsubmarine.submarine.compat;
 
 import net.neoforged.fml.ModList;
 
@@ -10,6 +10,7 @@ public class CompatUtil {
         if (sodiumLoaded == null) {
             sodiumLoaded = ModList.get().isLoaded("sodium");
         }
+
         return sodiumLoaded;
     }
 
@@ -17,6 +18,7 @@ public class CompatUtil {
         if (veilLoaded == null) {
             veilLoaded = ModList.get().isLoaded("veil");
         }
+
         return veilLoaded;
     }
 }
