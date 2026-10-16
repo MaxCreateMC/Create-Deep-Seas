@@ -798,9 +798,7 @@ public class CompartmentTracker {
         int y = pos.getY();
         if (y < level.getMinBuildHeight() || y >= level.getMaxBuildHeight())
             return Fluids.EMPTY.defaultFluidState();
-        ChunkAccess chunk = level.getChunk(
-                pos.getX() >> 4, pos.getZ() >> 4,
-                ChunkStatus.FULL, false);
+        ChunkAccess chunk = level.getChunkSource().getChunkNow(pos.getX() >> 4, pos.getZ() >> 4);
         if (chunk == null)
             return Fluids.EMPTY.defaultFluidState();
         return realFluidState(chunk, pos);
