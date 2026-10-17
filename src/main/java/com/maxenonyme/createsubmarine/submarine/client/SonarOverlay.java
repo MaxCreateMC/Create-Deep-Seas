@@ -144,27 +144,29 @@ class SonarOverlay {
         stack.pushMatrix();
         stack.identity();
         RenderSystem.applyModelViewMatrix();
-        if (onTop) {
-            RenderSystem.disableDepthTest();
-            RenderSystem.enableBlend();
-            RenderSystem.defaultBlendFunc();
-        } else {
-            RenderSystem.enableDepthTest();
-            RenderSystem.depthMask(true);
-        }
-        RenderSystem.disableCull();
-        RenderSystem.setShader(GameRenderer::getPositionColorShader);
+        try {
+            if (onTop) {
+                RenderSystem.disableDepthTest();
+                RenderSystem.enableBlend();
+                RenderSystem.defaultBlendFunc();
+            } else {
+                RenderSystem.enableDepthTest();
+                RenderSystem.depthMask(true);
+            }
+            RenderSystem.disableCull();
+            RenderSystem.setShader(GameRenderer::getPositionColorShader);
 
-        BufferUploader.drawWithShader(mesh);
-
-        RenderSystem.enableCull();
-        if (onTop) {
-            RenderSystem.disableBlend();
-            RenderSystem.enableDepthTest();
+            BufferUploader.drawWithShader(mesh);
+        } finally {
+            RenderSystem.enableCull();
+            if (onTop) {
+                RenderSystem.disableBlend();
+                RenderSystem.enableDepthTest();
+            }
+            stack.popMatrix();
+            RenderSystem.applyModelViewMatrix();
+            RenderSystem.restoreProjectionMatrix();
         }
-        stack.popMatrix();
-        RenderSystem.applyModelViewMatrix();
-        RenderSystem.restoreProjectionMatrix();
     }
 
     static void outline(SonarScan scan) {

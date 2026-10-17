@@ -124,8 +124,8 @@ Surface naval content for Create Deep Seas. Coming soon.
 
 [[dependencies.${mod_id}]]
     modId="sodium"
-    type="required"
-    versionRange="*"
+    type="optional"
+    versionRange="[0.8.0,)"
     ordering="NONE"
     side="CLIENT"
 

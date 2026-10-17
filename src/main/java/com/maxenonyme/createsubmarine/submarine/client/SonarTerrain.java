@@ -44,88 +44,122 @@ class SonarTerrain {
 
     private static final int SKIN = 4;
     private static final int SPAN = RANGE * 2 + 1;
+    private static final int COLUMNS = SPAN * SPAN;
     private static final RandomSource RANDOM = RandomSource.create();
     private static ByteBufferBuilder bytes;
 
-    static VertexBuffer[] ping(Minecraft mc, Level level, BlockPos origin) {
-        BlockState[] states = new BlockState[SPAN * SPAN * (DOWN + UP + 1)];
-        IntArrayList[] shells = sortIntoShells(level, origin, states);
-        return bake(mc, level, origin, states, shells);
-    }
+    static class Rebake {
+        private final Level level;
+        private final BlockPos origin;
+        private final BlockState[] states = new BlockState[SPAN * SPAN * (DOWN + UP + 1)];
+        private final IntArrayList[] buckets = new IntArrayList[SHELLS];
+        private final VertexBuffer[] buffers = new VertexBuffer[SHELLS];
+        private final BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
+        private final PoseStack pose = new PoseStack();
+        private int scanCursor;
+        private int nextShell;
+        private boolean scanning = true;
+        boolean done;
 
-    private static IntArrayList[] sortIntoShells(Level level, BlockPos origin, BlockState[] states) {
-        IntArrayList[] shells = new IntArrayList[SHELLS];
-        int y0 = Math.max(level.getMinBuildHeight(), origin.getY() - DOWN);
-        int y1 = Math.min(level.getMaxBuildHeight() - 1, origin.getY() + UP);
-        for (int dx = -RANGE; dx <= RANGE; dx++) {
-            for (int dz = -RANGE; dz <= RANGE; dz++) {
-                if (dx * dx + dz * dz <= RANGE * RANGE)
-                    scanColumn(level, origin, dx, dz, y0, y1, states, shells);
+        Rebake(Level level, BlockPos origin) {
+            this.level = level;
+            this.origin = origin;
+        }
+
+        BlockPos origin() {
+            return origin;
+        }
+
+        VertexBuffer[] buffers() {
+            return buffers;
+        }
+
+        void step(Minecraft mc, long deadline) {
+            while (!done && System.nanoTime() < deadline) {
+                if (scanning) {
+                    if (scanCursor >= COLUMNS) {
+                        scanning = false;
+                        continue;
+                    }
+                    int col = scanCursor++;
+                    int dx = col / SPAN - RANGE;
+                    int dz = col % SPAN - RANGE;
+                    if (dx * dx + dz * dz <= RANGE * RANGE)
+                        scanColumn(dx, dz);
+                    continue;
+                }
+                if (nextShell >= SHELLS) {
+                    done = true;
+                    break;
+                }
+                bakeShell(mc, nextShell++);
             }
         }
-        return shells;
-    }
 
-    private static void scanColumn(Level level, BlockPos origin, int dx, int dz, int y0, int y1, BlockState[] states,
-            IntArrayList[] shells) {
-        int x = origin.getX() + dx;
-        int z = origin.getZ() + dz;
-        ChunkAccess chunk = level.getChunk(x >> 4, z >> 4, ChunkStatus.FULL, false);
-        if (chunk == null)
-            return;
-
-        BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
-        int buried = 0;
-        for (int y = y1; y >= y0; y--) {
-            BlockState state = CompartmentTracker.realBlockState(chunk, cursor.set(x, y, z));
-            if (state.isAir() || state.getRenderShape() != RenderShape.MODEL) {
-                buried = 0;
-                continue;
-            }
-            if (!state.isSolidRender(level, cursor))
-                buried = 0;
-            else if (++buried > SKIN)
-                continue;
-
-            int dy = y - origin.getY();
-            int cell = index(dx, dy, dz);
-            states[cell] = state;
-            int shell = Math.min(SHELLS - 1, (int) Math.sqrt(dx * dx + dy * dy + dz * dz));
-            if (shells[shell] == null)
-                shells[shell] = new IntArrayList();
-            shells[shell].add(cell);
+        int columnsLeft() {
+            return scanning ? COLUMNS - scanCursor : 0;
         }
-    }
 
-    private static VertexBuffer[] bake(Minecraft mc, Level level, BlockPos origin, BlockState[] states,
-            IntArrayList[] cellsByShell) {
-        if (bytes == null)
-            bytes = new ByteBufferBuilder(RenderType.cutout().bufferSize());
-        Region region = new Region(level, origin, states);
-        BlockRenderDispatcher dispatcher = mc.getBlockRenderer();
-        BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
-        PoseStack ms = new PoseStack();
+        private void scanColumn(int dx, int dz) {
+            int x = origin.getX() + dx;
+            int z = origin.getZ() + dz;
+            ChunkAccess chunk = level.getChunk(x >> 4, z >> 4, ChunkStatus.FULL, false);
+            if (chunk == null)
+                return;
 
-        VertexBuffer[] shells = new VertexBuffer[SHELLS];
-        for (int shell = 0; shell < SHELLS; shell++) {
-            IntArrayList cells = cellsByShell[shell];
+            int y0 = Math.max(level.getMinBuildHeight(), origin.getY() - DOWN);
+            int y1 = Math.min(level.getMaxBuildHeight() - 1, origin.getY() + UP);
+            int buried = 0;
+            for (int y = y1; y >= y0; y--) {
+                BlockState state = CompartmentTracker.realBlockState(chunk, cursor.set(x, y, z));
+                if (state.isAir() || state.getRenderShape() != RenderShape.MODEL) {
+                    buried = 0;
+                    continue;
+                }
+                if (!state.isSolidRender(level, cursor))
+                    buried = 0;
+                else if (++buried > SKIN)
+                    continue;
+
+                int dy = y - origin.getY();
+                int cell = index(dx, dy, dz);
+                states[cell] = state;
+                int shell = Math.min(SHELLS - 1, (int) Math.sqrt(dx * dx + dy * dy + dz * dz));
+                if (buckets[shell] == null)
+                    buckets[shell] = new IntArrayList();
+                buckets[shell].add(cell);
+            }
+        }
+
+        private void bakeShell(Minecraft mc, int shell) {
+            IntArrayList cells = buckets[shell];
             if (cells == null)
-                continue;
+                return;
+            if (bytes == null)
+                bytes = new ByteBufferBuilder(RenderType.cutout().bufferSize());
+            Region region = new Region(level, origin, states);
+            BlockRenderDispatcher dispatcher = mc.getBlockRenderer();
             BufferBuilder builder = new BufferBuilder(bytes, VertexFormat.Mode.QUADS, DefaultVertexFormat.BLOCK);
             for (int k = 0; k < cells.size(); k++) {
                 int cell = cells.getInt(k);
                 int dx = cell % SPAN - RANGE;
                 int dz = (cell / SPAN) % SPAN - RANGE;
                 int dy = cell / (SPAN * SPAN) - DOWN;
-                cursor.set(origin.getX() + dx, origin.getY() + dy, origin.getZ() + dz);
-                ms.pushPose();
-                ms.translate(dx, dy, dz);
-                dispatcher.renderBatched(states[cell], cursor, region, ms, builder, true, RANDOM);
-                ms.popPose();
+                BlockPos at = cursor.set(origin.getX() + dx, origin.getY() + dy, origin.getZ() + dz);
+                pose.pushPose();
+                pose.translate(dx, dy, dz);
+                dispatcher.renderBatched(states[cell], at, region, pose, builder, true, RANDOM);
+                pose.popPose();
             }
-            shells[shell] = upload(builder.build());
+            buffers[shell] = upload(builder.build());
         }
-        return shells;
+
+        void abort() {
+            for (VertexBuffer buffer : buffers) {
+                if (buffer != null)
+                    buffer.close();
+            }
+        }
     }
 
     private static VertexBuffer upload(MeshData mesh) {
@@ -148,14 +182,17 @@ class SonarTerrain {
             return;
         LightTexture light = mc.gameRenderer.lightTexture();
         RenderType type = RenderType.cutout();
+        boolean setup = false;
         ((LightTextureExtension) light).simulated$makeDiagramLightTexture(0.65f);
         try {
             type.setupRenderState();
+            setup = true;
             ShaderInstance shader = GameRenderer.getRendertypeCutoutShader();
             if (shader != null)
                 drawShells(scan, shader, projection, view, center, front);
-            type.clearRenderState();
         } finally {
+            if (setup)
+                type.clearRenderState();
             light.updateLightTexture(partialTicks);
         }
     }

@@ -39,10 +39,10 @@ public class SonarView {
     static final long SWEEP_NANOS = 1_200_000_000L;
 
     private static final long PING_NANOS = 2_000_000_000L;
-    private static final int REBAKE_PINGS = 5;
     private static final long PREVIEW_NANOS = 50_000_000L;
     private static final long DETAIL_NANOS = 30_000_000L;
     private static final long FORGET_NANOS = 3_000_000_000L;
+    private static final long REBAKE_BUDGET_NANOS = 4_000_000L;
     private static final int PIXELS_PER_UNIT = 4;
     private static final float PITCH = 32f;
     private static final float PREVIEW_ZOOM = 1.8f;
@@ -52,6 +52,7 @@ public class SonarView {
 
     private static final Map<CommandSubBlockEntity, SonarScan> PREVIEWS = new HashMap<>();
     private static final Map<CommandSubBlockEntity, SonarScan> DETAILS = new HashMap<>();
+    private static final Map<SonarScan, SonarTerrain.Rebake> REBAKES = new HashMap<>();
 
     public static SonarScan preview(CommandSubBlockEntity be) {
         SonarScan scan = PREVIEWS.computeIfAbsent(be, k -> new SonarScan());
@@ -127,11 +128,12 @@ public class SonarView {
             Map.Entry<CommandSubBlockEntity, SonarScan> entry = it.next();
             CommandSubBlockEntity be = entry.getKey();
             SonarScan scan = entry.getValue();
-            if (forgotten(mc, be, scan, now)) {
-                scan.free();
-                it.remove();
-                continue;
-            }
+        if (forgotten(mc, be, scan, now)) {
+            abortRebake(scan);
+            scan.free();
+            it.remove();
+            continue;
+        }
             if (now - scan.lastDraw < (detail ? DETAIL_NANOS : PREVIEW_NANOS))
                 continue;
 
@@ -156,6 +158,12 @@ public class SonarView {
         return drew;
     }
 
+    private static void abortRebake(SonarScan scan) {
+        SonarTerrain.Rebake task = REBAKES.remove(scan);
+        if (task != null && !task.done)
+            task.abort();
+    }
+
     private static boolean forgotten(Minecraft mc, CommandSubBlockEntity be, SonarScan scan, long now) {
         return mc.level == null || be.isRemoved() || be.getLevel() != mc.level || now - scan.lastSeen > FORGET_NANOS;
     }
@@ -170,11 +178,16 @@ public class SonarView {
         Vector3d center = new Vector3d(sonar.x + panX, sonar.y, sonar.z + panZ);
 
         if (now - scan.lastPing >= PING_NANOS || scan.origin == null) {
-            BlockPos sonarBlock = BlockPos.containing(sonar.x, sonar.y, sonar.z);
             scan.lastPing = now;
-            if (!sonarBlock.equals(scan.origin) || ++scan.idlePings >= REBAKE_PINGS) {
-                scan.idlePings = 0;
-                scan.replace(SonarTerrain.ping(mc, sub.getLevel(), sonarBlock), sonarBlock);
+            abortRebake(scan);
+            REBAKES.put(scan, new SonarTerrain.Rebake(sub.getLevel(), BlockPos.containing(sonar.x, sonar.y, sonar.z)));
+        }
+        SonarTerrain.Rebake rebake = REBAKES.get(scan);
+        if (rebake != null) {
+            rebake.step(mc, System.nanoTime() + REBAKE_BUDGET_NANOS);
+            if (rebake.done) {
+                scan.replace(rebake.buffers(), rebake.origin());
+                REBAKES.remove(scan);
             }
         }
         float front = scan.front(now);
