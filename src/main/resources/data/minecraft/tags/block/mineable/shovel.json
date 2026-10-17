@@ -1,6 +1,9 @@
 {
   "replace": false,
   "values": [
-    "create_abyss:burning_sand"
+    {
+      "id": "create_abyss:burning_sand",
+      "required": false
+    }
   ]
 }

@@ -46,6 +46,7 @@ stress_details*
 
 discord-dump-*
 worldgen_preview
+worldgen_preview_experimental/
 stress-test
 classpath.txt
 

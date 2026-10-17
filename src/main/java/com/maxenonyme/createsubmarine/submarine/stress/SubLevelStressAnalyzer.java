@@ -2,6 +2,7 @@ package com.maxenonyme.createsubmarine.submarine.stress;
 
 import com.maxenonyme.createsubmarine.submarine.compartment.CompartmentTracker;
 import com.maxenonyme.createsubmarine.submarine.config.SubmarineConfig;
+import com.maxenonyme.createsubmarine.submarine.system.LiquidDensity;
 import dev.ryanhcode.sable.api.sublevel.ServerSubLevelContainer;
 import dev.ryanhcode.sable.api.sublevel.SubLevelContainer;
 import dev.ryanhcode.sable.api.sublevel.SubLevelObserver;
@@ -12,14 +13,10 @@ import dev.ryanhcode.sable.sublevel.SubLevel;
 import dev.ryanhcode.sable.sublevel.storage.SubLevelRemovalReason;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import net.minecraft.core.BlockPos;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.FluidTags;
 import net.minecraft.world.level.Level;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.tags.BlockTags;
-import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.material.FluidState;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import org.joml.Vector3dc;
@@ -35,7 +32,6 @@ public class SubLevelStressAnalyzer implements SubLevelObserver {
     private static final Map<UUID, Double> cachedWaterSurfaceY = new ConcurrentHashMap<>();
     private static final Map<UUID, Long> lastWaterScanTick = new ConcurrentHashMap<>();
     private static final Map<UUID, Double> cachedFluidDensityMultiplier = new ConcurrentHashMap<>();
-    private static final double LAVA_DENSITY_MULTIPLIER = 3.1;
 
     private final ServerLevel level;
     private final Map<UUID, LatticeStressSolver> solvers = new ConcurrentHashMap<>();
@@ -46,7 +42,6 @@ public class SubLevelStressAnalyzer implements SubLevelObserver {
     private final Map<UUID, double[]> previousU = new ConcurrentHashMap<>();
 
     public long totalSolveTimeNanos = 0;
-    public long totalCheckTimeNanos = 0;
     public int solveCount = 0;
 
     private SubLevelStressAnalyzer(final ServerLevel level) {
@@ -204,17 +199,6 @@ public class SubLevelStressAnalyzer implements SubLevelObserver {
             }
         }
 
-        if (container instanceof ServerSubLevelContainer sslcProf && this.tickCounter.values().stream().anyMatch(c -> c > 0 && c % 200 == 0)) {
-            for (final ServerSubLevel sslProf : sslcProf.getAllSubLevels()) {
-                final UUID pid = sslProf.getUniqueId();
-                final LatticeStressSolver s = this.solvers.get(pid);
-                if (s == null) continue;
-                final boolean inWater = this.wasInWater.getOrDefault(pid, false);
-                final double[] cd = this.cachedCrushDepths.get(pid);
-                final String stressRange = cd != null ? String.format("%.1f-%.1f", cd[0], cd[s.blockCount()]) : "N/A";
-                }
-        }
-
         if (container instanceof ServerSubLevelContainer) {
             this.tickCounter.keySet().removeIf(id -> container.getSubLevel(id) == null);
             this.solvers.keySet().removeIf(id -> container.getSubLevel(id) == null);
@@ -275,9 +259,10 @@ public class SubLevelStressAnalyzer implements SubLevelObserver {
         for (int y = startY + 1; y < level.getMaxBuildHeight(); y++) {
             final FluidState fluid = level.getFluidState(new BlockPos(x, y, z));
             if (fluid.is(FluidTags.WATER) || fluid.is(FluidTags.LAVA)) {
-                final boolean lava = fluid.is(FluidTags.LAVA);
+                // water-relative density from the liquidDensities config (default
+                // #minecraft:lava=3.0), same mapping the classic hull path uses
                 surfaceY = y + 1.0;
-                densityMultiplier = lava ? LAVA_DENSITY_MULTIPLIER : 1.0;
+                densityMultiplier = LiquidDensity.of(fluid.getType());
                 inFluid = true;
             } else if (inFluid) {
                 // exited the fluid column -> this is the surface
@@ -434,79 +419,11 @@ public class SubLevelStressAnalyzer implements SubLevelObserver {
         return sb.toString();
     }
 
-    public boolean checkAndBreak(final ServerSubLevel subLevel, final int waterDepth, final Level plotLevel) {
-        final long t0 = System.nanoTime();
-        final UUID id = subLevel.getUniqueId();
-        final LatticeStressSolver solver = getOrCreateSolver(subLevel);
-        if (solver == null || solver.blockCount() <= 1) {
-            this.totalCheckTimeNanos += System.nanoTime() - t0;
-            return false;
-        }
-
-        final double[] crushDepths = getCrushDepths(subLevel);
-        if (crushDepths == null) {
-            this.totalCheckTimeNanos += System.nanoTime() - t0;
-            return false;
-        }
-
-        boolean brokeAny = false;
-        for (int i = 0; i < solver.blockCount(); i++) {
-            final double depth = crushDepths[i];
-            if (Double.isInfinite(depth)) continue;
-            final double blockDepth = solver.getBlockWaterDepth(i);
-            if (blockDepth < depth * 0.5) continue;
-
-            final BlockPos pos = solver.getPosition(i);
-            final BlockState state = plotLevel.getBlockState(pos);
-            if (state.isAir()) continue;
-
-            if (isFragile(state) || blockDepth >= depth * 0.8) {
-                brokeAny |= breakBlock(plotLevel, pos, id, solver);
-            }
-        }
-
-        this.totalCheckTimeNanos += System.nanoTime() - t0;
-        return brokeAny;
-    }
-
-    private boolean breakBlock(final Level plotLevel, final BlockPos pos, final UUID id, final LatticeStressSolver solver) {
-        final BlockState state = plotLevel.getBlockState(pos);
-        if (state.isAir()) return false;
-
-        final ResourceLocation rl = net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(state.getBlock());
-        if (rl.equals(ResourceLocation.withDefaultNamespace("iron_block"))) {
-            plotLevel.setBlock(pos, Blocks.RAW_IRON_BLOCK.defaultBlockState(), 3);
-        } else if (rl.equals(ResourceLocation.withDefaultNamespace("gold_block"))) {
-            plotLevel.setBlock(pos, Blocks.RAW_GOLD_BLOCK.defaultBlockState(), 3);
-        } else {
-            plotLevel.setBlock(pos, Blocks.AIR.defaultBlockState(), 3);
-        }
-
-        this.needsRecompute.put(id, true);
-        return true;
-    }
-
-    private boolean isFragile(final BlockState state) {
-        return state.is(BlockTags.DIRT) ||
-               state.is(BlockTags.SAND) ||
-               state.is(BlockTags.WOOL) ||
-               state.is(net.minecraft.world.level.block.Blocks.GRAVEL) ||
-               state.is(BlockTags.LEAVES) ||
-               state.is(net.minecraft.world.level.block.Blocks.GLASS) ||
-               state.is(net.minecraft.world.level.block.Blocks.TINTED_GLASS) ||
-               state.is(BlockTags.ICE) ||
-               state.is(net.minecraft.world.level.block.Blocks.SPONGE) ||
-               state.is(net.minecraft.world.level.block.Blocks.WET_SPONGE) ||
-               state.is(BlockTags.FLOWERS) ||
-               state.is(BlockTags.CROPS);
-    }
-
     public String getProfilerResult() {
-        return String.format("Profiler: %d solves, avg solve=%.2fms, total solve=%.2fms, total check=%.2fms",
+        return String.format("Profiler: %d solves, avg solve=%.2fms, total solve=%.2fms",
             solveCount,
             solveCount > 0 ? totalSolveTimeNanos / 1e6 / solveCount : 0,
-            totalSolveTimeNanos / 1e6,
-            totalCheckTimeNanos / 1e6);
+            totalSolveTimeNanos / 1e6);
     }
 
     public static void clearForLevel(final ServerLevel level) {

@@ -7,7 +7,7 @@
   ],
   "sea_level": 0,
   "disable_mob_generation": false,
-  "aquifers_enabled": false,
+  "aquifers_enabled": true,
   "ore_veins_enabled": false,
   "legacy_random_source": false,
   "default_block": {
@@ -29,7 +29,13 @@
     "barrier": 0.0,
     "fluid_level_floodedness": 1.0,
     "fluid_level_spread": 1.0,
-    "lava": 0.0,
+    "lava": {
+      "type": "minecraft:y_clamped_gradient",
+      "from_y": -1024,
+      "to_y": -900,
+      "from_value": 1.0,
+      "to_value": -1.0
+    },
     "vein_toggle": 0.0,
     "vein_ridged": 0.0,
     "vein_gap": 0.0,

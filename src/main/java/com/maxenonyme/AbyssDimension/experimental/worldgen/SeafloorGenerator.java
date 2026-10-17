@@ -20,9 +20,9 @@ public class SeafloorGenerator {
     static final int TILE_SIZE = 256;
     private static final int SEA_LEVEL = 0;
 
-    private static final int SHALLOW_HEIGHT = -50;
-    private static final int PLAINS_HEIGHT = -200;
-    private static final int MIN_FLOOR_HEIGHT = -52;
+    private static final int SHALLOW_HEIGHT = -60;
+    private static final int PLAINS_HEIGHT = -800;
+    private static final int MIN_FLOOR_HEIGHT = -1024;
     private static final double PLAINS_NOISE_AMP = 8.0;
     private static final double SHELF_NOISE_AMP = 15.0;
     private static final double SHALLOWS_NOISE_AMP = 4.0;
@@ -415,8 +415,8 @@ public class SeafloorGenerator {
         if (presence < -0.2)
             return 0;
 
-        double warpX = wx * 0.01 + cn.noise(wx * 0.02, wz * 0.02) * 20;
-        double warpZ = wz * 0.01 + cn.noise(wx * 0.02 + 500, wz * 0.02 + 500) * 20;
+        double warpX = (wx + cn.noise(wx * 0.02, wz * 0.02) * 20) * 0.01;
+        double warpZ = (wz + cn.noise(wx * 0.02 + 500, wz * 0.02 + 500) * 20) * 0.01;
         double canyonVal = cn.noise(warpX, warpZ);
 
         double canyonShape = Math.max(0, Math.abs(canyonVal) - 0.25) / 0.75;
@@ -426,7 +426,7 @@ public class SeafloorGenerator {
     private static double computeVentHeight(int wx, int wz, PairData bd) {
         if (bd == null || bd.convergence >= -0.1)
             return 0;
-        if (bd.dist > 300)
+        if (Math.abs(signedBoundaryDist(wx, wz, bd.a(), bd.b(), bd.nx(), bd.nz())) > 40)
             return 0;
 
         int cellX = (int) Math.floor(wx / VENT_CELL_SIZE);
@@ -568,10 +568,10 @@ public class SeafloorGenerator {
 
                 double warpOffsetX = terrain.noise(wx * 0.003, wz * 0.003) * 40.0;
                 double warpOffsetZ = terrain.noise(wx * 0.003 + 1000, wz * 0.003 + 1000) * 40.0;
-                double warpX = wx * NOISE_SCALE + warpOffsetX;
-                double warpZ = wz * NOISE_SCALE + warpOffsetZ;
-                double c = terrain.fbm(warpX, warpZ);
-                c = Math.max(-1.0, Math.min(1.0, c));
+        double warpX = (wx + warpOffsetX) * NOISE_SCALE;
+        double warpZ = (wz + warpOffsetZ) * NOISE_SCALE;
+        double c = terrain.fbm(warpX, warpZ);
+        c = Math.max(-1.0, Math.min(1.0, c));
 
                 double height;
                 double absC = Math.abs(c);

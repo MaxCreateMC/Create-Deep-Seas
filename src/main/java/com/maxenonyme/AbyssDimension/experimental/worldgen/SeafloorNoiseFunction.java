@@ -12,7 +12,7 @@ public class SeafloorNoiseFunction implements DensityFunction {
 
     @Override
     public double compute(FunctionContext ctx) {
-        return -Math.abs(SeafloorGenerator.getNoiseAt(ctx.blockX(), ctx.blockZ()));
+        return Math.abs(SeafloorGenerator.getNoiseAt(ctx.blockX(), ctx.blockZ()));
     }
 
     @Override
@@ -27,12 +27,12 @@ public class SeafloorNoiseFunction implements DensityFunction {
 
     @Override
     public double minValue() {
-        return -1.0;
+        return 0.0;
     }
 
     @Override
     public double maxValue() {
-        return 0.0;
+        return 1.0;
     }
 
     @Override

@@ -42,6 +42,7 @@ import com.maxenonyme.createsubmarine.submarine.item.DivingSuitItem;
 import com.maxenonyme.createsubmarine.submarine.item.OxygenBucketItem;
 import com.maxenonyme.createsubmarine.submarine.item.PressureGogglesItem;
 import com.maxenonyme.createsubmarine.submarine.item.SubmarineStaffItem;
+import com.maxenonyme.createsubmarine.submarine.network.AbyssFogPayload;
 import com.maxenonyme.createsubmarine.submarine.network.AlarmConfigurePayload;
 import com.maxenonyme.createsubmarine.submarine.network.AlarmOpenPayload;
 import com.maxenonyme.createsubmarine.submarine.network.AlarmSoundChunkPayload;
@@ -596,6 +597,10 @@ public class CreateSubmarine {
                                 CableElectrificationSystem::onServerTick);
                 NeoForge.EVENT_BUS.addListener(
                                 SubmarineInfoCommand::register);
+                NeoForge.EVENT_BUS.addListener(
+                                SubmarineAbyssCommand::register);
+                NeoForge.EVENT_BUS.addListener(
+                                SubmarineAbyssCommand::onPlayerLoggedIn);
                 NeoForge.EVENT_BUS.addListener(EventPriority.HIGH,
                                 WrenchRepairHandler::onRightClickBlock);
                 NeoForge.EVENT_BUS.addListener(EventPriority.HIGH,
@@ -649,6 +654,10 @@ public class CreateSubmarine {
                                 LightFailurePayload.TYPE,
                                 LightFailurePayload.CODEC,
                                 LightFailurePayload::handle);
+                registrar.playToClient(
+                                AbyssFogPayload.TYPE,
+                                AbyssFogPayload.CODEC,
+                                AbyssFogPayload::handle);
                 registrar.playToClient(
                                 SubCrackPayload.TYPE,
                                 SubCrackPayload.CODEC,

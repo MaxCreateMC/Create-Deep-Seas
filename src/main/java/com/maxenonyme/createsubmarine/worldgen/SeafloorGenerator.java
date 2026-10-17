@@ -548,8 +548,8 @@ public class SeafloorGenerator {
         if (presence < -0.2) return 0;
 
         // Domain-warped noise for branching dendritic pattern
-        double warpX = wx * 0.01 + cn.noise(wx * 0.02, wz * 0.02) * 20;
-        double warpZ = wz * 0.01 + cn.noise(wx * 0.02 + 500, wz * 0.02 + 500) * 20;
+        double warpX = (wx + cn.noise(wx * 0.02, wz * 0.02) * 20) * 0.01;
+        double warpZ = (wz + cn.noise(wx * 0.02 + 500, wz * 0.02 + 500) * 20) * 0.01;
         double canyonVal = cn.noise(warpX, warpZ);
 
         // Absolute value creates V-shaped cross-section
@@ -767,8 +767,8 @@ public class SeafloorGenerator {
                 // --- Pass 1: Base terrain with domain warping for organic shapes ---
                 double warpOffsetX = terrain.noise(wx * 0.003, wz * 0.003) * 40.0;
                 double warpOffsetZ = terrain.noise(wx * 0.003 + 1000, wz * 0.003 + 1000) * 40.0;
-                double warpX = wx * NOISE_SCALE + warpOffsetX;
-                double warpZ = wz * NOISE_SCALE + warpOffsetZ;
+                double warpX = (wx + warpOffsetX) * NOISE_SCALE;
+                double warpZ = (wz + warpOffsetZ) * NOISE_SCALE;
                 double c = terrain.fbm(warpX, warpZ);
                 c = Math.max(-1.0, Math.min(1.0, c));
 

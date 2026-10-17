@@ -14,6 +14,9 @@ import net.neoforged.neoforge.client.event.ViewportEvent;
 public class AbyssDimensionClient {
     private static final ResourceLocation ABYSS_DIM = ResourceLocation.fromNamespaceAndPath("create_abyss", "abyss");
 
+    /** Set by /submarine abyss fog off (synced from the server). Skips the dense abyss fog. */
+    public static volatile boolean fogDisabled = false;
+
     @SubscribeEvent
     public static void onRegisterDimensionEffects(RegisterDimensionSpecialEffectsEvent event) {
         event.register(
@@ -29,6 +32,17 @@ public class AbyssDimensionClient {
         public static void onRenderFog(ViewportEvent.RenderFog event) {
             Minecraft mc = Minecraft.getInstance();
             if (mc.level != null && mc.level.dimension().location().equals(ABYSS_DIM)) {
+                if (fogDisabled) {
+                    if (event.getCamera().getFluidInCamera() == FogType.WATER) {
+                        event.setNearPlaneDistance(-4.0F);
+                        event.setFarPlaneDistance(256.0F);
+                    } else {
+                        event.setNearPlaneDistance(0.0F);
+                        event.setFarPlaneDistance(1024.0F);
+                    }
+                    event.setCanceled(true);
+                    return;
+                }
                 if (event.getCamera().getFluidInCamera() == FogType.WATER) {
                     event.setNearPlaneDistance(-4.0F);
                     event.setFarPlaneDistance(32.0F);

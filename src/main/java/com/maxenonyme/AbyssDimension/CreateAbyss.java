@@ -58,6 +58,9 @@ public class CreateAbyss {
                         output.accept(EntityRegistry.COOKIECUTTER_SHARK_SPAWN_EGG.get());
                         output.accept(EntityRegistry.MAGMATIC_SNAIL_SPAWN_EGG.get());
                         output.accept(EntityRegistry.ISOPOD_SPAWN_EGG.get());
+                        output.accept(EntityRegistry.SIZE_2_ISOPOD_SPAWN_EGG.get());
+                        output.accept(EntityRegistry.SIZE_3_ISOPOD_SPAWN_EGG.get());
+                        output.accept(EntityRegistry.SIZE_4_ISOPOD_SPAWN_EGG.get());
                         output.accept(EntityRegistry.ABYSSAL_CUTTLEFISH_SPAWN_EGG.get());
                         output.accept(EntityRegistry.PELICAN_EEL_SPAWN_EGG.get());
                         output.accept(GeothermalRegistry.GEOTHERMAL_VENT_ITEM.get());

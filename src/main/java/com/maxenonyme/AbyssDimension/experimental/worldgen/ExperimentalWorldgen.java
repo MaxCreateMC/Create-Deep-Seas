@@ -1,6 +1,7 @@
 package com.maxenonyme.AbyssDimension.experimental.worldgen;
 
 import com.maxenonyme.AbyssDimension.CreateAbyss;
+import com.maxenonyme.createsubmarine.abyss.AbyssDepthMultiplier;
 import com.maxenonyme.createsubmarine.submarine.config.SubmarineConfig;
 import com.mojang.serialization.MapCodec;
 import net.minecraft.core.registries.Registries;
@@ -24,6 +25,7 @@ public class ExperimentalWorldgen {
     static {
         DENSITY_FUNCTIONS.register("seafloor_height", () -> SeafloorHeightFunction.CODEC);
         DENSITY_FUNCTIONS.register("seafloor_noise", () -> SeafloorNoiseFunction.CODEC);
+        DENSITY_FUNCTIONS.register("abyss_depth_multiplier", () -> AbyssDepthMultiplier.CODEC);
     }
 
     public static boolean enabled() {

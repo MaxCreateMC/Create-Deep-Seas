@@ -22,9 +22,12 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.Level;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
 
-import com.maxenonyme.createsubmarine.worldgen.PlateTectonicsConfig;
-import com.maxenonyme.createsubmarine.worldgen.SeafloorGenerator;
-import com.maxenonyme.createsubmarine.worldgen.TectonicPlate;
+import com.maxenonyme.createsubmarine.submarine.network.AbyssFogPayload;
+import com.maxenonyme.AbyssDimension.experimental.worldgen.PlateTectonicsConfig;
+import com.maxenonyme.AbyssDimension.experimental.worldgen.SeafloorGenerator;
+import com.maxenonyme.AbyssDimension.experimental.worldgen.TectonicPlate;
+import net.neoforged.neoforge.event.entity.player.PlayerEvent;
+import net.neoforged.neoforge.network.PacketDistributor;
 
 public final class SubmarineAbyssCommand {
     private SubmarineAbyssCommand() {}
@@ -35,6 +38,8 @@ public final class SubmarineAbyssCommand {
 
     private static final SuggestionProvider<CommandSourceStack> PLATE_SUGGESTER =
         (ctx, builder) -> suggestPlateNames(builder);
+
+    private static final String FOG_NBT_KEY = "create_submarine:abyss_fog_disabled";
 
     public static void register(RegisterCommandsEvent event) {
         var dispatcher = event.getDispatcher();
@@ -63,10 +68,17 @@ public final class SubmarineAbyssCommand {
                 .then(infoCmd)
                 .then(boundaryCmd);
 
+        var fogCmd = Commands.literal("fog")
+                .then(Commands.literal("on")
+                        .executes(ctx -> setFog(ctx, false)))
+                .then(Commands.literal("off")
+                        .executes(ctx -> setFog(ctx, true)));
+
         var abyssCmd = Commands.literal("abyss")
                 .executes(SubmarineAbyssCommand::run)
                 .then(Commands.literal("regenerate")
-                        .executes(SubmarineAbyssCommand::regenerate));
+                        .executes(SubmarineAbyssCommand::regenerate))
+                .then(fogCmd);
 
         dispatcher.register(
             Commands.literal("submarine")
@@ -136,7 +148,7 @@ public final class SubmarineAbyssCommand {
         // Delete region, poi, and entity files on disk
         try {
             Path worldDir = server.getWorldPath(net.minecraft.world.level.storage.LevelResource.ROOT);
-            Path dimPath = worldDir.resolve("dimensions").resolve("create_submarine").resolve("abyss");
+            Path dimPath = worldDir.resolve("dimensions").resolve("create_abyss").resolve("abyss");
             deleteMcaFiles(dimPath.resolve("region"));
             deleteMcaFiles(dimPath.resolve("poi"));
             deleteMcaFiles(dimPath.resolve("entity"));
@@ -285,8 +297,27 @@ public final class SubmarineAbyssCommand {
         }
     }
 
-    private static int plateList(CommandContext<CommandSourceStack> ctx) {
+    private static int setFog(CommandContext<CommandSourceStack> ctx, boolean disabled) {
         CommandSourceStack source = ctx.getSource();
+        ServerPlayer player = source.getPlayer();
+        if (player == null) {
+            source.sendFailure(Component.literal("Player only."));
+            return 0;
+        }
+        player.getPersistentData().putBoolean(FOG_NBT_KEY, disabled);
+        PacketDistributor.sendToPlayer(player, new AbyssFogPayload(disabled));
+        source.sendSuccess(() -> Component.literal(
+                disabled ? "Abyss water fog disabled." : "Abyss water fog enabled."), true);
+        return 1;
+    }
+
+    public static void onPlayerLoggedIn(PlayerEvent.PlayerLoggedInEvent event) {
+        if (!(event.getEntity() instanceof ServerPlayer player)) return;
+        boolean disabled = player.getPersistentData().getBoolean(FOG_NBT_KEY);
+        PacketDistributor.sendToPlayer(player, new AbyssFogPayload(disabled));
+    }
+
+    private static int plateList(CommandContext<CommandSourceStack> ctx) {        CommandSourceStack source = ctx.getSource();
         String[] names = SeafloorGenerator.getAllPlateNames();
         var list = Component.literal("Tectonic plates (" + names.length + "):");
         for (String n : names) {

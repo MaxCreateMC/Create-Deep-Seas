@@ -217,3 +217,9 @@ task runWorldgenPreview(type: JavaExec) {
     mainClass = 'com.maxenonyme.createsubmarine.worldgen.WorldgenPreview'
     systemProperty 'neoforge.enableModLoading', 'false'
 }
+
+task runExpWorldgenPreview(type: JavaExec) {
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'com.maxenonyme.AbyssDimension.experimental.worldgen.WorldgenPreview'
+    systemProperty 'neoforge.enableModLoading', 'false'
+}

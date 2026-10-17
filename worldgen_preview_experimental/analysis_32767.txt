@@ -1,0 +1,43 @@
+=== Worldgen Analysis (LARGE) ===
+Mode: RANDOM
+Region: 32767x32767 blocks
+Origin: (0, 0)
+
+--- Height Statistics ---
+  Blocks sampled: 1073676289
+  Min: -623  Max: -103  Range: 520
+  Mean: -337.61  StdDev: 74.66
+
+--- Height Histogram (32 bins, 64-block width) ---
+  y=[ -640, -576): 13553947 (1.26%)
+  y=[ -576, -512): 37039587 (3.45%)
+  y=[ -512, -448): 62383203 (5.81%)
+  y=[ -448, -384): 101779563 (9.48%)
+  y=[ -384, -320): 177409044 (16.52%)
+  y=[ -320, -256): 638769846 (59.49%)
+  y=[ -256, -192): 35995892 (3.35%)
+  y=[ -192, -128): 6485855 (0.60%)
+  y=[ -128,  -64):  259352 (0.02%)
+
+--- Biome Distribution ---
+  Shallows (absC<0.10): 449029679 (41.8%)
+  Shelf (0.10<=absC<0.50): 620750531 (57.8%)
+  Plains (absC>=0.50): 3896079 (0.4%)
+
+--- Plate Distribution ---
+  Plate hash -9539: 221409352 blocks (20.6%)
+  Plate hash 20266: 207909589 blocks (19.4%)
+  Plate hash 10648: 176214298 blocks (16.4%)
+  Plate hash 15240: 163242548 blocks (15.2%)
+  Plate hash 5137: 102081874 blocks (9.5%)
+  Plate hash 27061: 99141594 blocks (9.2%)
+  Plate hash -29368: 47187362 blocks (4.4%)
+  Plate hash 7108: 36899710 blocks (3.4%)
+  Plate hash 32138: 8869688 blocks (0.8%)
+  Plate hash 4811: 6289289 blocks (0.6%)
+  Plate hash 4729: 4430985 blocks (0.4%)
+
+--- Worldgen Assessment ---
+  Height range: ADEQUATE (520 blocks)
+  Biome diversity: GOOD (shallows=449029679, shelf=620750531, plains=3896079)
+  Distinct tectonic plates: 11

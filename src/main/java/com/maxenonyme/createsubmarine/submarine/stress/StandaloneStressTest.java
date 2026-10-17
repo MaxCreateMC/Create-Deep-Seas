@@ -51,8 +51,36 @@ public class StandaloneStressTest {
         long structureHash
     ) {}
 
-    // â”€â”€ main â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    /**
+     * Closed-form regression checks for {@link SolverCore#maxPrincipalStress}; every
+     * case has an exact answer, so any drift in the deviator invariant or amplitude
+     * normalisation fails loudly. (The old amplitude built on a von-Mises-like
+     * off-diagonal coefficient of 3 returned 3.0 for the pure-shear case instead of 1.0,
+     * making brittle blocks fail at ~3.4x their tensile limit.)
+     */
+    private static void assertSelfTest() {
+        selfTestCase(new double[]{ 2, -1, -1, 0, 0, 0 }, 2.0); // deviatoric diagonal
+        selfTestCase(new double[]{ 0,  0,  0, 1, 0, 0 }, 1.0); // pure shear
+        selfTestCase(new double[]{ 1,  0,  0, 0, 0, 0 }, 1.0); // uniaxial tension
+        selfTestCase(new double[]{ 5,  5,  5, 0, 0, 0 }, 5.0); // hydrostatic
+        selfTestCase(new double[]{ 2,  2,  3, 4, 0, 0 }, 6.0); // shear on a biaxial state
+        selfTestCase(new double[]{10,  4,  0, 0, 0, 0 },10.0); // already diagonal
+        System.out.println("principal-stress self-test: OK (6 closed-form cases)");
+    }
+
+    private static void selfTestCase(final double[] s, final double expected) {
+        final double got = SolverCore.maxPrincipalStress(s);
+        final double tol = 1e-9 * Math.max(1.0, Math.abs(expected));
+        if (Math.abs(got - expected) > tol) {
+            throw new AssertionError(String.format(
+                "maxPrincipalStress regression FAILED: tensor %s expected %.12f, got %.12f",
+                java.util.Arrays.toString(s), expected, got));
+        }
+    }
+
     public static void main(String[] args) throws Exception {
+        assertSelfTest();
+
         if (args.length == 0) {
             System.out.println("Usage: java " + StandaloneStressTest.class.getName() + " <schem-file> [--water-y <y>] [--csv] [--json] [--quiet]");
             System.out.println();

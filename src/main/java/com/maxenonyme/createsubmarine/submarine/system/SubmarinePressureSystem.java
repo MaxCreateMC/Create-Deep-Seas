@@ -10,14 +10,11 @@ import dev.ryanhcode.sable.companion.SubLevelAccess;
 import dev.ryanhcode.sable.sublevel.ServerSubLevel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import org.joml.Vector3d;
@@ -33,7 +30,6 @@ import java.util.concurrent.ConcurrentHashMap;
 public class SubmarinePressureSystem {
     private static final int TICK_INTERVAL = 20;
     private static final int MAX_WATER_SCAN = 400;
-    private static final ResourceLocation SOUND_METAL_STRESS = ResourceLocation.withDefaultNamespace("entity.iron_golem.repair");
     private static int tickCounter = 0;
     private static final Random RAND = new Random();
 
@@ -167,75 +163,6 @@ public class SubmarinePressureSystem {
         return surfaceY;
     }
 
-    private static void applyPressure(UUID id, Level plotLevel, Level oceanLevel, SubLevelAccess sub, BlockPos plotPos, BlockState state, HullStrengthConfig.HullProperty prop, int surfaceY, boolean[] creakPlayed, int[] breakBudget) {
-        CompartmentDetector.Component comp = CompartmentTracker.findCompartmentAdjacent(id, plotPos);
-        if (comp == null) return;
-        if (CompartmentTracker.isCompromised(id, comp.anchor())) return;
-
-        if (!comp.hull().contains(plotPos)) return;
-
-        boolean facesExterior = false;
-        for (Direction dir : Direction.values()) {
-            BlockPos neighbor = plotPos.relative(dir);
-            if (!comp.hull().contains(neighbor) && !comp.internal().contains(neighbor)) {
-                facesExterior = true;
-                break;
-            }
-        }
-        if (!facesExterior) return;
-
-        Vector3d worldVec = new Vector3d(plotPos.getX() + 0.5, plotPos.getY() + 0.5, plotPos.getZ() + 0.5);
-        sub.logicalPose().transformPosition(worldVec);
-
-        int depth = surfaceY - (int) Math.floor(worldVec.y);
-        if (depth <= prop.maxWaterDepth()) return;
-
-        if (RAND.nextFloat() >= prop.implosionChance()) return;
-        BlockPos worldPos = BlockPos.containing(worldVec.x, worldVec.y, worldVec.z);
-
-        if (!creakPlayed[0]) {
-            SoundEvent creak = BuiltInRegistries.SOUND_EVENT.get(SOUND_METAL_STRESS);
-            if (creak != null) {
-                float pitch = 0.15f + RAND.nextFloat() * 0.15f;
-                oceanLevel.playSound(null, worldPos, creak, SoundSource.BLOCKS, 0.45f, pitch);
-                creakPlayed[0] = true;
-            }
-        }
-
-        Map<BlockPos, Integer> cracks = CRACK_LEVELS.computeIfAbsent(id, k -> new ConcurrentHashMap<>());
-        int crackLevel = cracks.getOrDefault(plotPos, 0) + 1;
-        int blockId = BuiltInRegistries.BLOCK.getId(state.getBlock());
-
-        if (crackLevel >= 3) {
-            cracks.remove(plotPos);
-            sendCrackPacket(oceanLevel, id, plotPos, -1, 0);
-
-            if (breakBudget[0] > 0) {
-                breakBudget[0]--;
-                SoundType soundType = SoundType.STONE;
-                try { soundType = state.getBlock().getSoundType(state, plotLevel, plotPos, null); } catch (Exception ignored) {}
-                oceanLevel.playSound(null, worldPos, soundType.getBreakSound(), SoundSource.BLOCKS, 1.6f, 0.65f + RAND.nextFloat() * 0.3f);
-            }
-            if (oceanLevel instanceof ServerLevel serverLevel) {
-                serverLevel.sendParticles(ParticleTypes.SPLASH, worldVec.x, worldVec.y + 0.5, worldVec.z, 25, 0.4, 0.1, 0.4, 0.2);
-            }
-
-            plotLevel.destroyBlock(plotPos, false);
-            BREACHED_PLOT.computeIfAbsent(id, k -> ConcurrentHashMap.newKeySet()).add(plotPos);
-            SubLevelRegistry.PlotBounds b = SubLevelRegistry.getBounds(id);
-            if (b != null) {
-                SubmarineSinkingSystem.onCrashed(id, sub, plotLevel, b);
-            }
-        } else {
-            cracks.put(plotPos, crackLevel);
-            sendCrackPacket(oceanLevel, id, plotPos, crackLevel, blockId);
-            if (oceanLevel instanceof ServerLevel serverLevel) {
-                int count = crackLevel == 1 ? 5 : 12;
-                serverLevel.sendParticles(ParticleTypes.DRIPPING_WATER, worldVec.x, worldVec.y, worldVec.z, count, 0.3, 0.3, 0.3, 0.05);
-            }
-        }
-    }
-
     private static void sendCrackPacket(Level oceanLevel, UUID id, BlockPos plotPos, int crackLevel, int blockId) {
         if (!(oceanLevel instanceof ServerLevel sl)) return;
         SubCrackPayload payload = new SubCrackPayload(id, plotPos, crackLevel, blockId);
@@ -358,10 +285,6 @@ public class SubmarinePressureSystem {
     // CLASSIC is the cogfly lattice path. HYBRID and REALISTIC currently
     // delegate to it (identical depth) until shape/girder tuning lands.
     // (See SubmarineConfig.PressureModel.)
-
-    public static int effectiveDepth(UUID id, BlockPos plotPos, int classicDepth) {
-        return Math.max(1, classicDepth);
-    }
 
     public static double getCachedDensity(UUID id) {
         return 1.0;

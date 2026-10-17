@@ -1,6 +1,9 @@
 package com.maxenonyme.createsubmarine.submarine.stress;
 
 import com.maxenonyme.createsubmarine.CreateSubmarine;
+import com.maxenonyme.createsubmarine.submarine.compartment.CompartmentTracker;
+import com.maxenonyme.createsubmarine.submarine.system.GirderFailure;
+import com.maxenonyme.createsubmarine.submarine.system.GirderSupport;
 import dev.ryanhcode.sable.api.physics.force.ForceGroup;
 import dev.ryanhcode.sable.api.physics.force.ForceGroups;
 import dev.ryanhcode.sable.api.physics.force.QueuedForceGroup;
@@ -175,22 +178,45 @@ public class StressForceFeedSystem {
         }
         if (offenderCount == 0) return;
 
-        // worst first
-        final int[] top = java.util.Arrays.copyOf(offenders, offenderCount);
-        java.util.Arrays.sort(top);
+        // worst first, trace a descending order by ratio. (A plain Arrays.sort on the
+        // index array then walking it backwards processed the highest block indices
+        // first, which is not the same as the highest stress first.)
+        final Integer[] top = new Integer[offenderCount];
+        for (int s = 0; s < offenderCount; s++) top[s] = offenders[s];
+        java.util.Arrays.sort(top, (a, b) -> Double.compare(ratios[b], ratios[a]));
+        final UUID subId = ssl.getUniqueId();
+        BlockPos worstPos = null;
         int brokeCount = 0;
-        for (int s = top.length - 1; s >= 0; s--) {
-            final int i = top[s];
+        for (final int i : top) {
             if (ratios[i] < 1.0) continue;
             final BlockPos pos = solver.getPosition(i);
             final BlockState state = plotLevel.getBlockState(pos);
             if (state.isAir()) continue;
+            // blocks carrying a live girder-support charge fail the structure later; the
+            // girder failure sequence handles their detachment
+            if (GirderFailure.protects(subId, pos)) continue;
+            if (worstPos == null) worstPos = pos;
             plotLevel.setBlock(pos, Blocks.AIR.defaultBlockState(), 3);
             brokeCount++;
         }
 
         if (brokeCount > 0) {
             analyzer.markDirty(ssl);
+            // the hull just lost its worst block; if a girder support was carrying that
+            // column, start its cinematic collapse now (deduplicates on the sub-level)
+            if (worstPos != null && plotLevel instanceof net.minecraft.server.level.ServerLevel plotServer) {
+                final BoundingBox3ic bounds = ssl.getPlot().getBoundingBox();
+                if (bounds != null) {
+                    final GirderSupport.Layout layout = GirderSupport.layout(plotServer, subId,
+                        CompartmentTracker.structureVersion(subId),
+                        bounds.minX(), bounds.minY(), bounds.minZ(),
+                        bounds.maxX(), bounds.maxY(), bounds.maxZ());
+                    final GirderSupport.Support carrier = GirderSupport.carrier(layout, worstPos);
+                    if (carrier != null) {
+                        GirderFailure.load(plotServer, subId, ssl, plotServer, carrier);
+                    }
+                }
+            }
         }
     }
 

@@ -238,6 +238,15 @@ public class SolverCore {
     public double[] faceArea;
     // ---- per-face: wetted by internal fluid / moon pool (flat 6n, null = none) ----
     public boolean[] faceInternal;
+    // ---- per-face area-weighted centre, block-local {x,y,z} (flat 18n, null = full-cube
+    //      face centres). Supplied for partial blocks (slabs/stairs/posts); for full cubes
+    //      the default coincides with the true centre, so nothing is lost. ----
+    public double[] faceCenter;
+    // ---- per-block volume-weighted centroid, block-local {x,y,z} (flat 3n, null =
+    //      block centre). The moment arm is faceCenter - blockCentroid; for full cubes
+    //      both lie on the face normal through the centre, so the torques are zero and
+    //      the omitted arm was exact. ----
+    public double[] blockCentroid;
 
     // ---- warm-start tracking ----
     private double previousBNorm = -1;
@@ -316,6 +325,10 @@ public class SolverCore {
             final double blockDepth = blockWaterDepths[i];
             if (blockDepth <= 0) continue;
             anyUnderwater = true;
+            // block-local volume centroid (default: full-cube centre)
+            final double cx = (blockCentroid != null) ? blockCentroid[3 * i]     : 0.5;
+            final double cy = (blockCentroid != null) ? blockCentroid[3 * i + 1] : 0.5;
+            final double cz = (blockCentroid != null) ? blockCentroid[3 * i + 2] : 0.5;
             for (int dir = 0; dir < 6; dir++) {
                 if (neighbors[i][dir] >= 0) continue;
                 if (waterFace != null && !waterFace[6 * i + dir]) continue;
@@ -327,7 +340,26 @@ public class SolverCore {
                     p *= MOON_POOL_FACTOR;
                 }
                 // inward pressure: +x face (dir 0) pushes -x, hence the sign on even dirs
-                b[6 * i + dir / 2] += (dir % 2 == 0 ? -1.0 : 1.0) * p;
+                final double sign = (dir % 2 == 0 ? -1.0 : 1.0);
+                b[6 * i + dir / 2] += sign * p;
+
+                // moment of the face load about the block centroid: torque = r x F with
+                // F = sign*p along the face axis. Partial blocks (slabs/stairs) have
+                // face centres off the centroid line, so they need real torques; for a
+                // full cube r is parallel to F and the torques are zero, matching the
+                // previous omission exactly.
+                final int axis = dir / 2;
+                final int f3 = 3 * (6 * i + dir);
+                final double fx = (faceCenter != null) ? faceCenter[f3]     : (axis == 0 ? (sign < 0 ? 1.0 : 0.0) : 0.5);
+                final double fy = (faceCenter != null) ? faceCenter[f3 + 1] : (axis == 1 ? (sign < 0 ? 1.0 : 0.0) : 0.5);
+                final double fz = (faceCenter != null) ? faceCenter[f3 + 2] : (axis == 2 ? (sign < 0 ? 1.0 : 0.0) : 0.5);
+                final double rx = fx - cx, ry = fy - cy, rz = fz - cz;
+                final double sp = sign * p;
+                switch (axis) {
+                    case 0: b[6 * i + 4] +=  sp * rz; b[6 * i + 5] += -sp * ry; break; // r x F, F=(sp,0,0)
+                    case 1: b[6 * i + 3] += -sp * rz; b[6 * i + 5] +=  sp * rx; break; // r x F, F=(0,sp,0)
+                    default: b[6 * i + 3] += sp * ry; b[6 * i + 4] += -sp * rx;       // F=(0,0,sp)
+                }
             }
         }
         if (!anyUnderwater) {
@@ -507,10 +539,13 @@ public class SolverCore {
      * condition number by orders of magnitude and is what makes the solve affordable at
      * 20 Hz.</p>
      *
-     * <p>The projection used is the mass-weighted least-squares rigid fit, i.e. the same
-     * estimate {@link #removeRigidBodyMode} applies to the solution; it is an orthogonal
-     * projection for a diagonal inertia tensor, which is exact here because every block
-     * carries the same mass model.</p>
+     * <p>The projection is the decoupled mass-weighted mean estimate: the mean
+     * translation plus the mean spin are subtracted independently ({@code mean(v)} and
+     * {@code mean(w)}). This is NOT the coupled least-squares rigid fit that
+     * {@link #removeRigidBodyMode} applies to the solution; the two only agree for an
+     * exact rigid field. For a residual projection that difference is acceptable: the
+     * residual of a self-equilibrated load is dominated by the mean components, and the
+     * cheaper estimate keeps the projection off the per-iteration critical path.</p>
      */
     public void projectRigidModes(final double[] v) {
         if (n == 0) return;
@@ -616,7 +651,11 @@ public class SolverCore {
         double rz = dot(r, z);
 
         final int maxIter = maxIterOverride > 0 ? maxIterOverride : Math.max(300, N6);
-        final double tol = cgTolerance * bNorm;
+        // ||r||^2 < cgTolerance^2 * ||b||^2  <=>  ||r||/||b|| < cgTolerance, i.e. the
+        // documented relative residual target. (bNorm is the SQUARED norm; comparing
+        // ||r||^2 against a first-power threshold silently loosened the target to
+        // ~1e-5 and could stop CG several orders of magnitude early.)
+        final double tol = cgTolerance * cgTolerance * bNorm;
         final long deadline = System.nanoTime() + this.maxSolveNanos;
 
         int iter = 0;
@@ -868,20 +907,26 @@ public class SolverCore {
      * Maximum principal stress of a symmetric stress tensor, via the closed-form
      * solution of the characteristic cubic (Cardano). This is the failure measure for
      * brittle materials, which fail in tension rather than in shear.
+     *
+     * <p>The eigen-amplitude must be built on the second deviator invariant
+     * {@code J2 = 1/2*sum(d^2) + sum(off^2)} with amplitude {@code rho = sqrt(J2/3)};
+     * a von-Mises-magnitude amplitude (off-term coefficient 3) or an unnormalised
+     * amplitude overestimates the principal stress by up to ~3.4x and makes brittle
+     * hulls (glass, obsidian, terracotta) fail far too early.</p>
      */
     public static double maxPrincipalStress(final double[] s) {
         final double m = (s[0] + s[1] + s[2]) / 3.0;
         final double d0 = s[0] - m, d1 = s[1] - m, d2 = s[2] - m;
-        final double r2 = 0.5 * (d0 * d0 + d1 * d1 + d2 * d2)
-                        + 3.0 * (s[3] * s[3] + s[4] * s[4] + s[5] * s[5]);
-        if (r2 <= 1e-30) return m;
+        final double j2 = 0.5 * (d0 * d0 + d1 * d1 + d2 * d2)
+                        + (s[3] * s[3] + s[4] * s[4] + s[5] * s[5]);
+        if (j2 <= 3e-30) return m;
         final double det = d0 * d1 * d2 + 2.0 * s[3] * s[4] * s[5]
                          - d0 * s[4] * s[4] - d1 * s[5] * s[5] - d2 * s[3] * s[3];
-        final double r = Math.sqrt(r2);
-        final double c = Math.max(-1.0, Math.min(1.0, det / (2.0 * r * r * r)));
+        final double rho = Math.sqrt(j2 / 3.0);
+        final double c = Math.max(-1.0, Math.min(1.0, det / (2.0 * rho * rho * rho)));
         final double theta = Math.acos(c) / 3.0;
         // with theta in [0, pi/3], cos(theta) is the largest of the three eigenvalues
-        return m + 2.0 * r * Math.cos(theta);
+        return m + 2.0 * rho * Math.cos(theta);
     }
 
     /** Equivalent stress: von Mises for ductile materials, maximum principal for brittle ones. */

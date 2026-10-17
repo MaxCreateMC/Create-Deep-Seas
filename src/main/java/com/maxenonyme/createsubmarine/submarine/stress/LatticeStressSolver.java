@@ -99,7 +99,8 @@ public class LatticeStressSolver {
 
     private final double[] volFraction;
     /** collision-shape extent per axis; a partial block (slab/stairs) has a smaller extent */
-    private final double[] shapeX, shapeY, shapeZ;
+    private final double[] faceCenters;    // block-local, area-weighted face centre, 18n {x,y,z} per face
+    private final double[] blockCentroids; // block-local volume-weighted centre, 3n {x,y,z}
     private final Map<BlockPos, Vector3d> smoothedNormals;
     private final Map<BlockPos, Integer> effectiveFaceCounts;
     private final double coherence;
@@ -172,17 +173,14 @@ public class LatticeStressSolver {
         this.waterSurfaceWorldY = Double.POSITIVE_INFINITY;
                 this.volFraction = new double[n];
         java.util.Arrays.fill(this.volFraction, 1.0);
-        this.shapeX = new double[n];
-        this.shapeY = new double[n];
-        this.shapeZ = new double[n];
         this.wetFlags = new boolean[6 * n];
         this.internalFlags = new boolean[6 * n];
         this.faceDepths = new double[6 * n];
         this.faceAreas = new double[6 * n];
         java.util.Arrays.fill(this.faceAreas, 1.0);
-        java.util.Arrays.fill(this.shapeX, 1.0);
-        java.util.Arrays.fill(this.shapeY, 1.0);
-        java.util.Arrays.fill(this.shapeZ, 1.0);
+        this.faceCenters = new double[18 * n];
+        this.blockCentroids = new double[3 * n];
+        initShapeDefaults();
         this.smoothedNormals = Map.of();
         this.effectiveFaceCounts = Map.of();
         this.coherence = 1.0;
@@ -199,6 +197,8 @@ public class LatticeStressSolver {
         this.solverCore = new SolverCore(n, sx, sy, sz,
             E, yieldStress, neighbors, springK,            exposedFaceCount, isHullBlock, hullBlockCount, volFraction,
             u, blockWaterDepths);
+        this.solverCore.faceCenter = this.faceCenters;
+        this.solverCore.blockCentroid = this.blockCentroids;
 
         final long t0 = System.nanoTime();
         solve(null);
@@ -266,18 +266,14 @@ public class LatticeStressSolver {
         this.exposedFaceCount = new int[this.n];
         this.isHullBlock = new boolean[this.n];
         this.hullBlockCount = 0;
-        this.shapeX = new double[this.n];
-        this.shapeY = new double[this.n];
-        this.shapeZ = new double[this.n];
         this.wetFlags = new boolean[6 * this.n];
         this.internalFlags = new boolean[6 * this.n];
         this.faceDepths = new double[6 * this.n];
         this.faceAreas = new double[6 * this.n];
-        for (int fdir = 0; fdir < 6; fdir++) {
-            for (int fi = 0; fi < this.n; fi++) {
-                this.faceAreas[6 * fi + fdir] = faceAreaFor(fi, fdir);
-            }
-        }
+        java.util.Arrays.fill(this.faceAreas, 1.0);
+        this.faceCenters = new double[18 * this.n];
+        this.blockCentroids = new double[3 * this.n];
+        initShapeDefaults();
 
         for (int i = 0; i < this.n; i++) {
             final BlockPos pos = this.positions[i];
@@ -296,15 +292,54 @@ public class LatticeStressSolver {
             VoxelShape shape = state.getCollisionShape(level, pos);
             if (shape.isEmpty()) {
                 this.volFraction[i] = 1.0;
-                this.shapeX[i] = 1.0;
-                this.shapeY[i] = 1.0;
-                this.shapeZ[i] = 1.0;
             } else {
-                double vol = shape.bounds().getXsize() * shape.bounds().getYsize() * shape.bounds().getZsize();
-                this.volFraction[i] = Math.min(1.0, Math.max(0.01, vol));
-                this.shapeX[i] = Math.max(0.01, Math.min(1.0, shape.bounds().getXsize()));
-                this.shapeY[i] = Math.max(0.01, Math.min(1.0, shape.bounds().getYsize()));
-                this.shapeZ[i] = Math.max(0.01, Math.min(1.0, shape.bounds().getZsize()));
+                // Exact shape data from the box cover that forAllBoxes yields (a disjoint
+                // partition of the shape): true block volume for volFraction and kVol,
+                // volume-weighted centroid for moment arms, and per-face area plus
+                // area-weighted centre including the face's true plane position. The old
+                // bounding-box products measured the wrong thing (a stair's face is a
+                // stair-shaped region, not its enclosing cube) and were computed before
+                // the shape sizes were known, so every face loaded at a clamped 0.01
+                // instead of its real area.
+                final var bb = shape.bounds();
+                final double minX = bb.minX, minY = bb.minY, minZ = bb.minZ;
+                final double maxX = bb.maxX, maxY = bb.maxY, maxZ = bb.maxZ;
+                final int b6 = 6 * i;
+                final int c6 = 18 * i;
+                final double[] area = new double[6];
+                final double[] acc = new double[18];
+                final double[] vol = new double[1];
+                final double[] cen = new double[3];
+                final double eps = 1e-7;
+                shape.forAllBoxes((x1, y1, z1, x2, y2, z2) -> {
+                    final double bv = (x2 - x1) * (y2 - y1) * (z2 - z1);
+                    vol[0] += bv;
+                    cen[0] += bv * (x1 + x2) / 2;
+                    cen[1] += bv * (y1 + y2) / 2;
+                    cen[2] += bv * (z1 + z2) / 2;
+                    if (Math.abs(x2 - maxX) < eps) { final double a = (y2 - y1) * (z2 - z1); area[0] += a; acc[0]  += a * (x1 + x2) / 2; acc[1]  += a * (y1 + y2) / 2; acc[2]  += a * (z1 + z2) / 2; }
+                    if (Math.abs(x1 - minX) < eps) { final double a = (y2 - y1) * (z2 - z1); area[1] += a; acc[3]  += a * (x1 + x2) / 2; acc[4]  += a * (y1 + y2) / 2; acc[5]  += a * (z1 + z2) / 2; }
+                    if (Math.abs(y2 - maxY) < eps) { final double a = (x2 - x1) * (z2 - z1); area[2] += a; acc[6]  += a * (x1 + x2) / 2; acc[7]  += a * (y1 + y2) / 2; acc[8]  += a * (z1 + z2) / 2; }
+                    if (Math.abs(y1 - minY) < eps) { final double a = (x2 - x1) * (z2 - z1); area[3] += a; acc[9]  += a * (x1 + x2) / 2; acc[10] += a * (y1 + y2) / 2; acc[11] += a * (z1 + z2) / 2; }
+                    if (Math.abs(z2 - maxZ) < eps) { final double a = (x2 - x1) * (y2 - y1); area[4] += a; acc[12] += a * (x1 + x2) / 2; acc[13] += a * (y1 + y2) / 2; acc[14] += a * (z1 + z2) / 2; }
+                    if (Math.abs(z1 - minZ) < eps) { final double a = (x2 - x1) * (y2 - y1); area[5] += a; acc[15] += a * (x1 + x2) / 2; acc[16] += a * (y1 + y2) / 2; acc[17] += a * (z1 + z2) / 2; }
+                });
+                this.volFraction[i] = Math.min(1.0, Math.max(0.01, vol[0]));
+                if (vol[0] > 1e-9) {
+                    this.blockCentroids[3 * i]     = cen[0] / vol[0];
+                    this.blockCentroids[3 * i + 1] = cen[1] / vol[0];
+                    this.blockCentroids[3 * i + 2] = cen[2] / vol[0];
+                }
+                for (int dir = 0; dir < 6; dir++) {
+                    if (area[dir] > 1e-9) {
+                        this.faceAreas[b6 + dir] = Math.min(1.0, area[dir]);
+                        for (int k = 0; k < 3; k++) {
+                            this.faceCenters[c6 + 3 * dir + k] = acc[3 * dir + k] / area[dir];
+                        }
+                    }
+                    // every bounding-box extreme face of a non-empty shape is touched by at
+                    // least one cover box, so area[dir] > 0 always holds here
+                }
             }
         }
 
@@ -394,6 +429,8 @@ public class LatticeStressSolver {
         this.solverCore = new SolverCore(n, sx, sy, sz,
             E, yieldStress, neighbors, springK,            exposedFaceCount, isHullBlock, hullBlockCount, volFraction,
             u, blockWaterDepths);
+        this.solverCore.faceCenter = this.faceCenters;
+        this.solverCore.blockCentroid = this.blockCentroids;
 
         // Wire smoothed normals for curvature-aware panel bending
         if (!this.smoothedNormals.isEmpty()) {
@@ -478,13 +515,19 @@ public class LatticeStressSolver {
         VoxelShape aShape = aState.getCollisionShape(aLevel, aPos);
         VoxelShape bShape = bState.getCollisionShape(bLevel, bPos);
         if (aShape.isEmpty() || bShape.isEmpty()) return true;
+        // Both shapes live in their own block-local [0,1] frame; a sits at the shared
+        // cell boundary with b on the face axis. Contact requires a's far surface to
+        // reach the boundary and b's near surface to reach it too:
+        //   aMax (a-local) >= 1 + bMin (b-local, shifted into a's frame).
+        // Comparing aMax against bMin directly mixes the two frames and lets a half slab
+        // "bond" to the facing half slab across a whole block of open space.
         double aMax, bMin;
         switch (face.getAxis()) {
             case X: aMax = aShape.bounds().maxX; bMin = bShape.bounds().minX; break;
             case Y: aMax = aShape.bounds().maxY; bMin = bShape.bounds().minY; break;
             default: aMax = aShape.bounds().maxZ; bMin = bShape.bounds().minZ; break;
         }
-        return aMax >= bMin;
+        return aMax + 1.0e-9 >= 1.0 + bMin;
     }
 
     /**
@@ -624,20 +667,38 @@ public class LatticeStressSolver {
         solverCore.buildRHS(b);
     }
 
+    /** Full-cube defaults for the face/centroid tables; exact values overwrite them in
+     *  the level constructor for every block with a non-empty collision shape. */
+    private void initShapeDefaults() {
+        for (int i = 0; i < this.n; i++) {
+            for (int dir = 0; dir < 6; dir++) {
+                final int planeAxis = dir / 2;
+                final double plane = (dir % 2 == 0) ? 1.0 : 0.0;
+                final int f3 = 18 * i + 3 * dir;
+                this.faceCenters[f3]     = (planeAxis == 0) ? plane : 0.5;
+                this.faceCenters[f3 + 1] = (planeAxis == 1) ? plane : 0.5;
+                this.faceCenters[f3 + 2] = (planeAxis == 2) ? plane : 0.5;
+            }
+            this.blockCentroids[3 * i]     = 0.5;
+            this.blockCentroids[3 * i + 1] = 0.5;
+            this.blockCentroids[3 * i + 2] = 0.5;
+        }
+    }
+
     /**
      * Hydrostatic depth of the centre of the given face, i.e. the head the pressure on
-     * that face should be integrated with. The face centre is on the face plane itself,
-     * so a 1-block head difference is used for the face's own axis rather than the block
-     * corner, which previously over-pressured the top and side faces of every block.
+     * that face should be integrated with. The centre comes from the exact per-face
+     * table (area-weighted, at the face's true plane) so a slab or stair is pressurised
+     * where its material actually is, not at the enclosing cube's plane. Full cubes
+     * resolve to exactly the pre-fix values.
      */
     private double faceDepthFor(final int i, final int dir) {
         final BlockPos p = this.positions[i];
-        final boolean positive = (dir % 2 == 0);
-        final int axis = dir / 2;
+        final int f3 = 18 * i + 3 * dir;
         final double lx, ly, lz;
-        lx = (axis == 0) ? p.getX() + (positive ? 1.0 : 0.0) : p.getX() + 0.5;
-        ly = (axis == 1) ? p.getY() + (positive ? 1.0 : 0.0) : p.getY() + 0.5;
-        lz = (axis == 2) ? p.getZ() + (positive ? 1.0 : 0.0) : p.getZ() + 0.5;
+        lx = p.getX() + this.faceCenters[f3];
+        ly = p.getY() + this.faceCenters[f3 + 1];
+        lz = p.getZ() + this.faceCenters[f3 + 2];
         if (this.subLevelPose == null && !this.orientationEnabled) {
             return this.waterSurfaceWorldY - ly;
         }
@@ -649,19 +710,6 @@ public class LatticeStressSolver {
             this.orientation.transform(world);
         }
         return this.waterSurfaceWorldY - world.y;
-    }
-
-    /**
-     * Wetted area of a face = the product of the collision-shape extents on the other two
-     * axes. The volume fraction used previously is a proxy that halves the load on every
-     * face of a slab or stair even though the face itself is still a full block face.
-     */
-    private double faceAreaFor(final int i, final int dir) {
-        final int axis = dir / 2;
-        final double a = (axis == 0) ? this.shapeY[i] * this.shapeZ[i]
-                       : (axis == 1) ? this.shapeX[i] * this.shapeZ[i]
-                       :                this.shapeX[i] * this.shapeY[i];
-        return Math.max(0.01, Math.min(1.0, a));
     }
 
     /**

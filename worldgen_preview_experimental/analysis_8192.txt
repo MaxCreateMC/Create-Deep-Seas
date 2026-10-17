@@ -1,0 +1,46 @@
+=== Worldgen Analysis ===
+Mode: RANDOM
+Region: 8192x8192 blocks
+Origin: (0, 0)
+
+--- Height Statistics ---
+  Min: -368  Max: 258  Range: 626
+  Mean: -62.95  Median: -53.00  StdDev: 48.92
+
+--- Height Histogram (32 bins, 64-block width) ---
+  y=[ -384, -320):     795 (0.00%)
+  y=[ -320, -256):    7440 (0.01%)
+  y=[ -256, -192):  708431 (1.06%)
+  y=[ -192, -128): 5738636 (8.55%)
+  y=[ -128,  -64): 16899273 (25.18%)
+  y=[  -64,   +0): 39972675 (59.56%)
+  y=[   +0,  +64): 2389957 (3.56%)
+  y=[  +64, +128): 1035050 (1.54%)
+  y=[ +128, +192):  326770 (0.49%)
+  y=[ +192, +256):   29691 (0.04%)
+  y=[ +256, +320):     146 (0.00%)
+
+--- Slope ---
+  Max slope (16-block sample): 17.26 blocks/block at world (7032, 5120)
+  Heights at ±8 from (7032,5120): x-8=257 x+8=247 z-8=-32 z+8=244 (center=248)
+
+--- Biome Distribution ---
+  Shallows (absC<0.10): 27287205 (40.7%)
+  Shelf (0.10<=absC<0.50): 39549610 (58.9%)
+  Plains (absC>=0.50): 272049 (0.4%)
+
+--- Plate Distribution ---
+  Plate hash 17903: 24254691 blocks (36.1%)
+  Plate hash -31332: 22196720 blocks (33.1%)
+  Plate hash 12007: 20657453 blocks (30.8%)
+
+--- Tectonic Boundary Survey ---
+  Survey (2000 samples): 1202 near-boundary points, mod range [-154.0, 252.0]
+--- 3D Density Scan (8 probe columns) ---
+  0/8 columns with air gaps (985 avg solid blocks below surface)
+  -> NO interior holes
+--- Worldgen Assessment ---
+  Height range: ADEQUATE (626 blocks)
+  Biome diversity: GOOD (shallows=27287205, shelf=39549610, plains=272049)
+  Distinct tectonic plates: 3
+

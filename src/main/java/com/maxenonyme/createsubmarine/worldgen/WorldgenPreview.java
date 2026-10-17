@@ -108,7 +108,7 @@ public class WorldgenPreview {
 
                 double c = Math.abs(SeafloorGenerator.getNoiseAt(wx, wz));
                 if (c < 0.10)      biomes[idx] = 0;
-                else if (c < 0.50) biomes[idx] = 1;
+                else if (c < 0.30) biomes[idx] = 1;
                 else               biomes[idx] = 2;
 
                 plateIds[idx] = (short) SeafloorGenerator.getPlateAt(wx, wz).hashCode();
@@ -322,7 +322,7 @@ public class WorldgenPreview {
                 mean += delta / count;
                 m2 += delta * (h - mean);
 
-                int biome = c < 0.10 ? 0 : c < 0.50 ? 1 : 2;
+                int biome = c < 0.10 ? 0 : c < 0.30 ? 1 : 2;
                 biomeCount[biome]++;
 
                 int bin = (h + 1024) / binSize;
@@ -719,8 +719,8 @@ public class WorldgenPreview {
 
             pw.println("--- Biome Distribution ---");
             pw.printf("  Shallows (absC<0.10): %d (%.1f%%)%n", biomeCount[0], 100.0 * biomeCount[0] / n);
-            pw.printf("  Shelf (0.10<=absC<0.50): %d (%.1f%%)%n", biomeCount[1], 100.0 * biomeCount[1] / n);
-            pw.printf("  Plains (absC>=0.50): %d (%.1f%%)%n", biomeCount[2], 100.0 * biomeCount[2] / n);
+            pw.printf("  Shelf (0.10<=absC<0.30): %d (%.1f%%)%n", biomeCount[1], 100.0 * biomeCount[1] / n);
+            pw.printf("  Plains (absC>=0.30): %d (%.1f%%)%n", biomeCount[2], 100.0 * biomeCount[2] / n);
 
             pw.println();
             pw.println("--- Plate Distribution ---");
@@ -832,8 +832,8 @@ public class WorldgenPreview {
 
             pw.println("--- Biome Distribution ---");
             pw.printf("  Shallows (absC<0.10): %d (%.1f%%)%n", biomeCount[0], 100.0 * biomeCount[0] / count);
-            pw.printf("  Shelf (0.10<=absC<0.50): %d (%.1f%%)%n", biomeCount[1], 100.0 * biomeCount[1] / count);
-            pw.printf("  Plains (absC>=0.50): %d (%.1f%%)%n", biomeCount[2], 100.0 * biomeCount[2] / count);
+            pw.printf("  Shelf (0.10<=absC<0.30): %d (%.1f%%)%n", biomeCount[1], 100.0 * biomeCount[1] / count);
+            pw.printf("  Plains (absC>=0.30): %d (%.1f%%)%n", biomeCount[2], 100.0 * biomeCount[2] / count);
             pw.println();
 
             pw.println("--- Plate Distribution ---");
@@ -898,7 +898,7 @@ public class WorldgenPreview {
                     if (cx >= regionSize || cy >= regionSize) break;
                     int h = SeafloorGenerator.getHeightAt(ox + cx, oz + cy);
                     double c = Math.abs(SeafloorGenerator.getNoiseAt(ox + cx, oz + cy));
-                    String biomeName = c < 0.10 ? "shallows" : c < 0.50 ? "shelf" : "plains";
+                    String biomeName = c < 0.10 ? "shallows" : c < 0.30 ? "shelf" : "plains";
                     pw.printf("    (%d, %d): height=%d, biome=%s%n", ox + cx, oz + cy, h, biomeName);
                 }
             }
@@ -994,7 +994,7 @@ public class WorldgenPreview {
                 plateauMap.setRGB(px, pz, heat(layers[4][idx] / 340.0));
 
                 double c = Math.abs(SeafloorGenerator.getContinentAt(wx, wz));
-                int biome = c < 0.10 ? 0 : c < 0.50 ? 1 : 2;
+                int biome = c < 0.10 ? 0 : c < 0.30 ? 1 : 2;
                 biomeMap.setRGB(px, pz, biome == 0 ? 0xFF2F6FB0 : biome == 1 ? 0xFFB09040 : 0xFF304060);
             }
             int pct = (pz + 1) * 100 / n;
@@ -1085,7 +1085,7 @@ public class WorldgenPreview {
             int wz = oz + sz + i * dz;
             int h = SeafloorGenerator.getHeightAt(wx, wz);
             double c = Math.abs(SeafloorGenerator.getContinentAt(wx, wz));
-            int biome = c < 0.10 ? 0 : c < 0.50 ? 1 : 2;
+            int biome = c < 0.10 ? 0 : c < 0.30 ? 1 : 2;
             int bType = SeafloorGenerator.getBoundaryTypeAt(wx, wz);
             double tectonic = SeafloorGenerator.getTectonicModifierAt(wx, wz);
             double canyon = SeafloorGenerator.getCanyonDepthAt(wx, wz);

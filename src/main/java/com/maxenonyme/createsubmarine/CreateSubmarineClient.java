@@ -1,6 +1,8 @@
 package com.maxenonyme.createsubmarine;
 
 import com.maxenonyme.AbyssDimension.client.CameraShake;
+import com.maxenonyme.AbyssDimension.AbyssDimensionClient;
+import com.maxenonyme.createsubmarine.submarine.network.AbyssFogPayload;
 import com.maxenonyme.createsubmarine.submarine.block.entity.CommandSubBlockEntity;
 import com.maxenonyme.createsubmarine.submarine.block.entity.renderer.ElectrolyzerBlockEntityRenderer;
 import com.maxenonyme.createsubmarine.submarine.client.SubLevelCrackRenderer;
@@ -125,6 +127,9 @@ public class CreateSubmarineClient {
                         payload.subId(), payload.plotPos(), payload.crackLevel(), payload.blockId());
             });
         };
+        AbyssFogPayload.handler = (payload, context) -> context.enqueueWork(() -> {
+            AbyssDimensionClient.fogDisabled = payload.fogDisabled();
+        });
 
         modEventBus.addListener(WatermarkOverlay::register);
 
