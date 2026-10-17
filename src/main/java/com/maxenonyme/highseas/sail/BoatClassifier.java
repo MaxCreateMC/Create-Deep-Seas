@@ -1,5 +1,6 @@
 package com.maxenonyme.highseas.sail;
 
+import com.maxenonyme.createsubmarine.submarine.compartment.CompartmentTracker;
 import dev.ryanhcode.sable.api.SubLevelHelper;
 import dev.ryanhcode.sable.companion.math.BoundingBox3ic;
 import dev.ryanhcode.sable.companion.math.Pose3dc;
@@ -81,7 +82,7 @@ public class BoatClassifier {
         Vector3d point = new Vector3d(localCenter.x, localCenter.y, localCenter.z);
         pose.transformPosition(point);
         BlockPos bp = BlockPos.containing(point.x, point.y, point.z);
-        return !parent.getFluidState(bp).is(FluidTags.WATER);
+        return !CompartmentTracker.realFluidState(parent, bp).is(FluidTags.WATER);
     }
 
     public static void clearAll() {

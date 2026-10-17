@@ -329,7 +329,8 @@ public class GirderFailure {
                 if (piece.isRemoved() || piece.getPlot() == null || held(piece) || !loose(level, piece))
                     continue;
                 Vector3dc at = piece.logicalPose().position();
-                if (!level.getFluidState(BlockPos.containing(at.x(), at.y(), at.z())).is(FluidTags.WATER) || !indoors(at))
+                BlockPos piecePos = BlockPos.containing(at.x(), at.y(), at.z());
+                if (!CompartmentTracker.realFluidState(level, piecePos).is(FluidTags.WATER) || !indoors(at))
                     continue;
                 Object handle = SablePhysicsHelper.getHandle(piece);
                 if (handle == null)

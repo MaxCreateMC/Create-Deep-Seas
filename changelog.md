@@ -1,5 +1,38 @@
 # Changelog
 
+## [3.4.1]
+
+### New Content
+- Added the Vortex Engine, a client renderer for coloured light, set up in the video settings or in `create_submarine-vortex.toml`; it turns itself off while an Iris shader pack is in use
+- Create Deep Seas, Create High Seas and the Vortex Engine now each have their own entry with their logo in the video settings, under Sodium's, holding every graphics option of the mod
+- Glowing blocks now cast coloured light in a colour taken from their texture, or set in `assets/<namespace>/vortex/glow/*.json`
+- The Sonar beams, the Industrial Alarm and the Submarine Staff now light their surroundings through the Vortex Engine
+- Added five light styles (volumes, flood, vanilla, hybrid, pixel), switched in game with `/vortex style light`
+- Added sun shafts and caustics under the water, glow fog around lights and lamp beams through the water
+- Added glowing plankton or marine snow in the water, and bioluminescent wakes behind swimming mobs
+- Added `/vortex mist` to place drifting mist lit by the coloured lights
+- Added `/vortex profiler` to write a render report to `vortex-profiles/`
+
+### Changes
+- Toned down the light of Sea Lanterns and Sea Pickles and raised the light of Magma Blocks in the Vortex Engine
+- Ballast Tanks, Oxygen Diffusers, Water Thrusters and Electrolyzers no longer send an update to nearby players on every tick while they run
+- Progressive flooding now sends one update per ship and per tick instead of one per broken block
+- An imploding compartment now sends at most 256 smoke particles instead of one per cell
+- The hull shape analysis now runs at low priority so it never competes with the game
+
+### Bug Fixes
+- Fixed leaves decaying on intact trees since 3.4.0 (#114, #118)
+- Fixed every block mining slower, and netherrack, blackstone and basalt dropping nothing, since 3.4.0 (#115, #117)
+- Fixed the `logs`, `logs_that_burn` and `mineable` tags failing to load because of Create Abyss blocks missing from the release (#116)
+- Fixed loot table errors for Create Abyss blocks in the log
+- Fixed ship checks loading or generating chunks, which could freeze a server and create chunks far outside the world (#108)
+- Fixed server lag with many boats or submarines with dry holds loaded; block lookups now only check the ships nearby (#112)
+- Fixed the hull shape analysis of large ships restarting over and over instead of finishing
+- Fixed block light updates staying slower after a ship's failed lights were replaced
+
+### Removed
+- Removed the Veil coloured lights and the `veilLights` client option, replaced by the Vortex Engine
+
 ## [3.4.0]
 
 ### New Content

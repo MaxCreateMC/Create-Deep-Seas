@@ -66,11 +66,10 @@ public class BallastTankBlockEntity extends BlockEntity
         @Override
         protected void onContentsChanged() {
             setChanged();
-            if (level != null && !level.isClientSide) {
-                level.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), 3);
-            }
+            syncPending = true;
         }
     };
+    private boolean syncPending;
     private static final int CLUSTER_REFRESH = 100;
     private static volatile int clusterEpoch;
 
@@ -336,6 +335,12 @@ public class BallastTankBlockEntity extends BlockEntity
             return;
         be.getCluster();
         be.shareFluidWithNeighbors();
+
+        if (be.syncPending && level.getGameTime() % 10 == 0) {
+            be.syncPending = false;
+            level.sendBlockUpdated(pos, be.getBlockState(), be.getBlockState(), 3);
+        }
+
         SubLevelAccess sub = SableCompanion.INSTANCE.getContaining(level, pos);
         if (sub == null)
             return;

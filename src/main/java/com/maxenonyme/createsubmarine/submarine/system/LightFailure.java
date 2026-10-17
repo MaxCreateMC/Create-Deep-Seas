@@ -76,7 +76,7 @@ public class LightFailure {
 
     public static boolean isDark(Level level, long pos) {
         Map<Long, Failure> map = (level.isClientSide ? CLIENT : SERVER).get(level.dimension());
-        if (map == null)
+        if (map == null || map.isEmpty())
             return false;
         Failure f = map.get(pos);
         if (f == null)

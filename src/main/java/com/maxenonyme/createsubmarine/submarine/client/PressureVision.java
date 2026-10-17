@@ -5,11 +5,7 @@ import com.maxenonyme.createsubmarine.CreateSubmarine;
 import com.maxenonyme.createsubmarine.submarine.config.SubmarineConfig;
 import com.mojang.blaze3d.pipeline.RenderTarget;
 import net.minecraft.client.Minecraft;
-import foundry.veil.api.client.render.VeilRenderSystem;
-import foundry.veil.api.client.render.framebuffer.AdvancedFbo;
-import foundry.veil.api.client.render.framebuffer.VeilFramebuffers;
 import net.minecraft.client.renderer.PostChain;
-import net.minecraft.client.renderer.PostPass;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundSource;
@@ -21,8 +17,6 @@ import net.neoforged.neoforge.client.event.RenderGuiEvent;
 import net.neoforged.neoforge.client.event.ViewportEvent;
 
 import java.io.IOException;
-import java.lang.reflect.Field;
-import java.util.List;
 
 public class PressureVision {
     private static final ResourceLocation CHAIN = ResourceLocation.fromNamespaceAndPath(CreateSubmarine.MOD_ID,
@@ -58,6 +52,7 @@ public class PressureVision {
         Minecraft mc = Minecraft.getInstance();
         if (mc.isPaused())
             return;
+
         float target = mc.player == null || mc.level == null || !enabled() ? 0f : ImplosionCinematics.dread();
         previous = danger;
         danger += (target - danger) * (target > danger ? 0.04f : 0.03f);
@@ -78,10 +73,12 @@ public class PressureVision {
             squeeze = 0f;
         previousGasp = gasp;
         gasp += Mth.TWO_PI * Mth.lerp(danger, 0.25f, 1.1f) / 20f;
+
         if (gasp > Mth.TWO_PI * 64f) {
             gasp -= Mth.TWO_PI * 64f;
             previousGasp -= Mth.TWO_PI * 64f;
         }
+
         heartbeat(mc);
         duck(mc);
         EarPressure.apply(mc, muffle);
@@ -92,6 +89,7 @@ public class PressureVision {
         Minecraft mc = Minecraft.getInstance();
         if (ImplosionCinematics.silent() || mc.player == null || mc.player.isDeadOrDying())
             return 0f;
+
         return fear() * fear();
     }
 
@@ -103,6 +101,7 @@ public class PressureVision {
     private static void hum(Minecraft mc) {
         if (droneVolume() <= 0.01f || (drone != null && !drone.isStopped()))
             return;
+
         drone = new PanicDrone();
         mc.getSoundManager().play(drone);
     }
@@ -130,6 +129,7 @@ public class PressureVision {
         muffle += (muffleTarget - muffle) * (silent ? 0.2f : 0.1f);
         if (Math.abs(duck - pushedDuck) < 0.01f && (duck < 1f || pushedDuck == 1f))
             return;
+
         pushedDuck = duck;
         mc.getSoundManager().updateSourceVolume(SoundSource.BLOCKS, mc.options.getSoundSourceVolume(SoundSource.BLOCKS));
     }
@@ -141,16 +141,20 @@ public class PressureVision {
             beatIn = 0f;
             return;
         }
+
         if (danger < HEART_THRESHOLD || ImplosionCinematics.silent()) {
             beatIn = 0f;
             return;
         }
+
         beatIn -= 1f;
         if (beatIn > 0f)
             return;
+
         beatIn += 1200f / Mth.lerp(danger, CALM_BPM, PANIC_BPM);
         float pitch = 0.95f + 0.15f * danger;
         float volume = Math.min(1f, 0.6f + 0.6f * danger);
+
         for (int layer = 0; layer < HEART_LAYERS; layer++)
             mc.getSoundManager().play(SimpleSoundInstance.forUI(CreateSubmarine.HEARTBEAT_SOUND.get(), pitch, volume));
     }
@@ -178,70 +182,44 @@ public class PressureVision {
         float strength = Math.max(Mth.lerp(partialTick, previous, danger), tunnel);
         if (strength < 0.01f)
             return;
+
         Minecraft mc = Minecraft.getInstance();
         PostChain effect = chain(mc);
         if (effect == null)
             return;
+
         float fade = Mth.lerp(partialTick, previousGrey, grey);
-        AdvancedFbo lights = fade > 0f ? veilLights() : null;
         effect.setUniform("Strength", strength);
         effect.setUniform("Grey", fade);
-        effect.setUniform("VeilLights", lights != null ? 1f : 0f);
         effect.setUniform("Tunnel", tunnel);
         effect.process(partialTick);
-        if (lights != null) {
-            lights.bind(false);
-            lights.clear();
-        }
         mc.getMainRenderTarget().bindWrite(false);
-    }
-
-    private static AdvancedFbo veilLights() {
-        if (!VeilLights.usable())
-            return null;
-        AdvancedFbo fbo = VeilRenderSystem.renderer().getFramebufferManager().getFramebuffer(VeilFramebuffers.LIGHT);
-        return fbo != null && fbo.isColorTextureAttachment(0) ? fbo : null;
-    }
-
-    private static int veilLightTexture() {
-        AdvancedFbo fbo = veilLights();
-        return fbo != null ? fbo.getColorTextureAttachment(0).getId() : 0;
-    }
-
-    @SuppressWarnings("unchecked")
-    private static void bindVeilLights(PostChain effect) {
-        try {
-            Field field = PostChain.class.getDeclaredField("passes");
-            field.setAccessible(true);
-            for (PostPass pass : (List<PostPass>) field.get(effect)) {
-                if (pass.getName().endsWith("pressure_vision"))
-                    pass.getEffect().setSampler("VeilLightSampler", PressureVision::veilLightTexture);
-            }
-        } catch (ReflectiveOperationException e) {
-            CreateSubmarine.LOGGER.warn("Pressure vision cannot read the Veil lights", e);
-        }
     }
 
     private static PostChain chain(Minecraft mc) {
         if (broken)
             return null;
+
         RenderTarget main = mc.getMainRenderTarget();
+
         if (chain == null) {
             try {
                 chain = new PostChain(mc.getTextureManager(), mc.getResourceManager(), main, CHAIN);
-                bindVeilLights(chain);
             } catch (IOException | JsonSyntaxException e) {
                 CreateSubmarine.LOGGER.warn("Could not load the pressure vision effect", e);
                 broken = true;
                 return null;
             }
+
             width = -1;
         }
+
         if (main.width != width || main.height != height) {
             width = main.width;
             height = main.height;
             chain.resize(width, height);
         }
+
         return chain;
     }
 

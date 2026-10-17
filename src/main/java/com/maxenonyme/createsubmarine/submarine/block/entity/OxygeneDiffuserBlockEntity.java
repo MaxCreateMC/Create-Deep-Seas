@@ -51,10 +51,10 @@ public class OxygeneDiffuserBlockEntity extends BlockEntity implements IHaveGogg
         @Override
         protected void onContentsChanged() {
             setChanged();
-            if (level != null && !level.isClientSide)
-                level.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), 2);
+            syncPending = true;
         }
     };
+    private boolean syncPending;
 
     private UUID currentSubLevelId = null;
     private boolean subLevelRegistered = false;
@@ -85,6 +85,11 @@ public class OxygeneDiffuserBlockEntity extends BlockEntity implements IHaveGogg
     public static void tick(Level level, BlockPos pos, BlockState state, OxygeneDiffuserBlockEntity be) {
         if (level == null || DiffuserZoneProtection.evict(level, pos))
             return;
+
+        if (!level.isClientSide && be.syncPending && level.getGameTime() % 10 == 0) {
+            be.syncPending = false;
+            level.sendBlockUpdated(pos, state, state, 2);
+        }
 
         boolean canRun = level.hasNeighborSignal(pos) && be.oxygenTank.getFluidAmount() > 0;
 

@@ -92,6 +92,7 @@ public class ElectrolyzerBlockEntity extends KineticBlockEntity {
 
     private boolean isEnabled = false;
     private int generated;
+    private int syncedWater = -1;
 
     public final ContainerData data = new ContainerData() {
         @Override
@@ -172,7 +173,12 @@ public class ElectrolyzerBlockEntity extends KineticBlockEntity {
             waterTank.drain(10, IFluidHandler.FluidAction.EXECUTE);
             oxygenTank.fill(new FluidStack(CreateSubmarine.OXYGEN.get(), 10), IFluidHandler.FluidAction.EXECUTE);
             setChanged();
-            sendData();
+
+            int water = waterTank.getFluidAmount() * 100 / waterTank.getCapacity();
+            if (water != syncedWater) {
+                syncedWater = water;
+                sendData();
+            }
 
             if (!state.getValue(ElectrolyzerBlock.POWERED))
                 level.setBlock(worldPosition, state.setValue(ElectrolyzerBlock.POWERED, true), 3);

@@ -28,6 +28,7 @@ public class HullShapeAnalyzer {
     private static final ExecutorService WORKER = Executors.newSingleThreadExecutor(r -> {
         Thread t = new Thread(r, "Deep Seas hull shape");
         t.setDaemon(true);
+        t.setPriority(Thread.MIN_PRIORITY);
         return t;
     });
 
@@ -48,7 +49,7 @@ public class HullShapeAnalyzer {
                 SubmarineConfig.SHAPE_FACTOR_MAX.get());
         int version = CompartmentTracker.structureVersion(id);
         Snapshot snap = DONE.get(id);
-        if (snap == null || stale(snap, solid, version, params))
+        if ((snap == null || stale(snap, solid, version, params)) && !CompartmentTracker.isRescanning(id))
             schedule(id, solid, version, params);
         return snap == null ? null : snap.factors();
     }
@@ -79,7 +80,7 @@ public class HullShapeAnalyzer {
         WORKER.execute(() -> {
             try {
                 Long2FloatOpenHashMap factors = analyse(id, solid, params);
-                if (CompartmentTracker.solidBlocks(id) == solid)
+                if (CompartmentTracker.structureVersion(id) == version)
                     DONE.put(id, new Snapshot(solid, version, params, factors));
             } catch (RuntimeException e) {
                 CreateSubmarine.LOGGER.warn("Hull shape analysis failed for {}", id, e);

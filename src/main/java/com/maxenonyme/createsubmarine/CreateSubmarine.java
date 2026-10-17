@@ -64,6 +64,7 @@ import com.maxenonyme.createsubmarine.submarine.system.ImplosionSequence;
 import com.maxenonyme.createsubmarine.submarine.system.LightFailure;
 import com.maxenonyme.createsubmarine.submarine.system.SubLevelFireSystem;
 import com.maxenonyme.createsubmarine.worldgen.OceanDepthOffset;
+import com.maxenonyme.vortexengine.VortexEngine;
 import com.mojang.serialization.MapCodec;
 import com.simibubi.create.AllCreativeModeTabs;
 import com.simibubi.create.content.equipment.armor.BacktankUtil;
@@ -496,6 +497,7 @@ public class CreateSubmarine {
                 modContainer.registerConfig(ModConfig.Type.COMMON, SubmarineConfig.COMMON_SPEC);
                 modContainer.registerConfig(ModConfig.Type.SERVER, SubmarineConfig.SERVER_SPEC);
                 modContainer.registerConfig(ModConfig.Type.CLIENT, SubmarineConfig.CLIENT_SPEC);
+                VortexEngine.init(modEventBus, modContainer);
                 BLOCKS.register(modEventBus);
                 FORCE_GROUP_REGISTER.register(modEventBus);
                 ITEMS.register(modEventBus);
@@ -553,6 +555,8 @@ public class CreateSubmarine {
                                 BreachLedger::onServerStarted);
                 NeoForge.EVENT_BUS.addListener(
                                 BreachLedger::onLogin);
+                NeoForge.EVENT_BUS.addListener(
+                                BreachLedger::onServerTick);
                 NeoForge.EVENT_BUS.addListener(
                                 SubLevelCableCleanup::onLevelLoad);
 

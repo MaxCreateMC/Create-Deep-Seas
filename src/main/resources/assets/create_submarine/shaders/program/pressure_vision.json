@@ -12,9 +12,6 @@
     "samplers": [
         {
             "name": "DiffuseSampler"
-        },
-        {
-            "name": "VeilLightSampler"
         }
     ],
     "uniforms": [
@@ -69,14 +66,6 @@
         },
         {
             "name": "Grey",
-            "type": "float",
-            "count": 1,
-            "values": [
-                0.0
-            ]
-        },
-        {
-            "name": "VeilLights",
             "type": "float",
             "count": 1,
             "values": [

@@ -45,7 +45,7 @@ public class RealisticHullAnalyzer {
         double thickness = SubmarineConfig.REALISTIC_WALL_THICKNESS.get();
         int version = CompartmentTracker.structureVersion(id);
         Snapshot snap = DONE.get(id);
-        if (snap == null || stale(snap, solid, version, thickness))
+        if ((snap == null || stale(snap, solid, version, thickness)) && !CompartmentTracker.isRescanning(id))
             schedule(id, solid, version, thickness);
         return snap == null ? null : snap.depths();
     }
@@ -106,7 +106,7 @@ public class RealisticHullAnalyzer {
                 for (int k = 0; k < n; k++)
                     if (exterior[k])
                         depths.put(BlockPos.asLong(x[k], y[k], z[k]), crush[k]);
-                if (CompartmentTracker.solidBlocks(id) == solid)
+                if (CompartmentTracker.structureVersion(id) == version)
                     DONE.put(id, new Snapshot(solid, version, thickness, depths));
             } catch (RuntimeException e) {
                 CreateSubmarine.LOGGER.warn("Realistic hull analysis failed for {}", id, e);

@@ -74,8 +74,8 @@ public class HighSeasConfig {
     private static final ModConfigSpec.DoubleValue ANCHOR_MASS;
     private static final ModConfigSpec.DoubleValue BOAT_SELF_RIGHTING;
 
-    private static final ModConfigSpec.IntValue SAIL_SUBDIVISIONS;
-    private static final ModConfigSpec.BooleanValue SEAGLIDE_SCREEN_EFFECTS;
+    public static final ModConfigSpec.IntValue SAIL_SUBDIVISIONS;
+    public static final ModConfigSpec.BooleanValue SEAGLIDE_SCREEN_EFFECTS;
 
     static {
         ModConfigSpec.Builder server = new ModConfigSpec.Builder();

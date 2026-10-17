@@ -58,7 +58,6 @@ import com.maxenonyme.createsubmarine.submarine.client.LithostitchedMissingScree
 import com.maxenonyme.createsubmarine.submarine.client.PressureModelScreen;
 import com.maxenonyme.createsubmarine.submarine.client.PressureVision;
 import com.maxenonyme.createsubmarine.submarine.client.SubmarineStaffClientHandler;
-import com.maxenonyme.createsubmarine.submarine.client.VeilLights;
 import com.maxenonyme.createsubmarine.submarine.config.HullStrengthConfig;
 import com.maxenonyme.createsubmarine.submarine.config.SubmarineClientState;
 import com.maxenonyme.createsubmarine.submarine.item.SubmarineStaffItemRenderer;
@@ -150,8 +149,6 @@ public class CreateSubmarineClient {
                 .addListener(CommandSubClientHandler::onFrameStart);
         NeoForge.EVENT_BUS
                 .addListener(CommandSubClientHandler::onRenderStage);
-        NeoForge.EVENT_BUS
-                .addListener(VeilLights::onClientTick);
         NeoForge.EVENT_BUS
                 .addListener(PressureVision::onClientTick);
         NeoForge.EVENT_BUS

@@ -1,0 +1,31 @@
+{
+    "vertex": "create_submarine:vortex_light",
+    "fragment": "create_submarine:vortex_light",
+    "samplers": [
+        { "name": "DepthSampler" }
+    ],
+    "uniforms": [
+        { "name": "ModelViewMat", "type": "matrix4x4", "count": 16, "values": [ 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0 ] },
+        { "name": "ProjMat", "type": "matrix4x4", "count": 16, "values": [ 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0 ] },
+        { "name": "InvProjMat", "type": "matrix4x4", "count": 16, "values": [ 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0 ] },
+        { "name": "InvViewMat", "type": "matrix4x4", "count": 16, "values": [ 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0 ] },
+        { "name": "ScreenSize", "type": "float", "count": 2, "values": [ 1.0, 1.0 ] },
+        { "name": "CameraFract", "type": "float", "count": 3, "values": [ 0.0, 0.0, 0.0 ] },
+        { "name": "AnchorOffset", "type": "float", "count": 3, "values": [ 0.0, 0.0, 0.0 ] },
+        { "name": "GridOffset", "type": "int", "count": 3, "values": [ 0, 0, 0 ] },
+        { "name": "ShadowGrid", "type": "int", "count": 1, "values": [ 5 ] },
+        { "name": "WorldWrap", "type": "float", "count": 3, "values": [ 0.0, 0.0, 0.0 ] },
+        { "name": "Pixelated", "type": "float", "count": 1, "values": [ 1.0 ] },
+        { "name": "Haze", "type": "float", "count": 1, "values": [ 1.0 ] },
+        { "name": "Murk", "type": "float", "count": 1, "values": [ 1.0 ] },
+        { "name": "GameTime", "type": "float", "count": 1, "values": [ 0.0 ] },
+        { "name": "FadeRange", "type": "float", "count": 1, "values": [ 64.0 ] },
+        { "name": "Strength", "type": "float", "count": 1, "values": [ 1.0 ] },
+        { "name": "HaloScale", "type": "float", "count": 1, "values": [ 0.35 ] },
+        { "name": "HaloCap", "type": "float", "count": 1, "values": [ 2.5 ] },
+        { "name": "HaloGain", "type": "float", "count": 1, "values": [ 1.0 ] },
+        { "name": "Shadows", "type": "float", "count": 1, "values": [ 0.0 ] },
+        { "name": "FogStart", "type": "float", "count": 1, "values": [ 0.0 ] },
+        { "name": "FogEnd", "type": "float", "count": 1, "values": [ 1.0 ] }
+    ]
+}
