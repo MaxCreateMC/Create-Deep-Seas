@@ -10,14 +10,19 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class MaterialProperties {
     private static final Map<ResourceLocation, double[]> PROPERTIES = new HashMap<>();
     private static final Map<ResourceLocation, double[]> DIRECTIONAL_MODIFIERS = new HashMap<>();
     private static final Map<Block, double[]> RESOLVED = new ConcurrentHashMap<>();
+    private static final Set<ResourceLocation> BRITTLE = new HashSet<>();
+    private static final ResourceLocation REINFORCED_GLASS = ResourceLocation.fromNamespaceAndPath("simulated",
+            "reinforced_glass");
 
     private static final double[] METAL = { 2.00e11, 2.50e8, 0.29, 101 };
     private static final double[] STONE = { 5.00e10, 1.50e8, 0.25, 80 };
@@ -591,6 +596,20 @@ public class MaterialProperties {
         for (String v : new String[]{"pumpkin", "carved_pumpkin", "jack_o_lantern", "melon"}) {
             PROPERTIES.put(ResourceLocation.withDefaultNamespace(v), new double[]{5.00e6, 1.00e4, 0.40});
         }
+
+        for (String v : new String[]{"glass", "tinted_glass", "glass_pane", "obsidian", "crying_obsidian",
+                "amethyst_block", "budding_amethyst", "calcite", "terracotta"}) {
+            BRITTLE.add(ResourceLocation.withDefaultNamespace(v));
+        }
+        for (String c : new String[]{"white", "orange", "magenta", "light_blue", "yellow", "lime", "pink", "gray",
+                "light_gray", "cyan", "purple", "blue", "brown", "green", "red", "black"}) {
+            for (String suffix : new String[]{"_stained_glass", "_stained_glass_pane", "_terracotta",
+                    "_glazed_terracotta"})
+                BRITTLE.add(ResourceLocation.withDefaultNamespace(c + suffix));
+        }
+        BRITTLE.add(ResourceLocation.fromNamespaceAndPath("create", "framed_glass_door"));
+        BRITTLE.add(ResourceLocation.fromNamespaceAndPath("create", "framed_glass_trapdoor"));
+        BRITTLE.add(REINFORCED_GLASS);
     }
 
 
@@ -629,6 +648,16 @@ public class MaterialProperties {
         if (sound == SoundType.GLASS)
             return GLASS;
         return SOFT;
+    }
+
+    public static boolean brittle(BlockState state) {
+        return BRITTLE.contains(state.getBlock().builtInRegistryHolder().key().location());
+    }
+
+    public static double tensile(BlockState state) {
+        if (state.getBlock().builtInRegistryHolder().key().location().equals(REINFORCED_GLASS))
+            return 1.20e8;
+        return of(state)[1];
     }
 
     public static double[] grain(BlockState state) {

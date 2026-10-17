@@ -12,6 +12,7 @@
 - Added glowing plankton or marine snow in the water, and bioluminescent wakes behind swimming mobs
 - Added `/vortex mist` to place drifting mist lit by the coloured lights
 - Added `/vortex profiler` to write a render report to `vortex-profiles/`
+- Sails on ships now billow and furl under Iris shader packs too (Photon, Complementary, BSL, Bliss, Rethinking Voxels), with the `shaderpackSails` client option to draw them flat
 
 ### Changes
 - Toned down the light of Sea Lanterns and Sea Pickles and raised the light of Magma Blocks in the Vortex Engine
@@ -19,6 +20,7 @@
 - Progressive flooding now sends one update per ship and per tick instead of one per broken block
 - An imploding compartment now sends at most 256 smoke particles instead of one per cell
 - The hull shape analysis now runs at low priority so it never competes with the game
+- The experimental Realistic pressure model uses the updated structural solver: stresses are calibrated against a uniform pressure test, glass, obsidian, amethyst, calcite and terracotta crack under tension instead of crushing, slabs, stairs and other partial blocks only bond to the neighbours they really touch, and the solve converges much faster. A single-walled 9×7×25 iron hull still holds about 200 m; small hulls hold a bit less than before and long ones a bit more
 
 ### Bug Fixes
 - Fixed leaves decaying on intact trees since 3.4.0 (#114, #118)
@@ -29,6 +31,7 @@
 - Fixed server lag with many boats or submarines with dry holds loaded; block lookups now only check the ships nearby (#112)
 - Fixed the hull shape analysis of large ships restarting over and over instead of finishing
 - Fixed block light updates staying slower after a ship's failed lights were replaced
+- Fixed the sonar keeping an old picture of the terrain for up to 10 seconds while the ship stood still
 
 ### Removed
 - Removed the Veil coloured lights and the `veilLights` client option, replaced by the Vortex Engine

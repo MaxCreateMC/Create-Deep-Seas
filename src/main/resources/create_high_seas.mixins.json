@@ -13,6 +13,7 @@
     "ContraptionVisualSailBakeMixin",
     "HumanoidModelPoseMixin",
     "compat.iris.IrisSailPhaseMixin",
+    "compat.iris.IrisSailVanillaMixin",
     "PonderSailBakeMixin",
     "SailRenderLayerMixin",
     "compat.sodium.SailSodiumMaterialMixin",

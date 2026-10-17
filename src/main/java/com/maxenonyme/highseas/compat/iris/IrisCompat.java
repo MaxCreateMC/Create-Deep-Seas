@@ -9,6 +9,8 @@ public class IrisCompat {
 
     private static Object irisApi;
     private static Method shaderPackInUse;
+    private static Method currentPackName;
+    private static boolean nameResolved;
     private static boolean apiResolved;
 
     public static Object nonePhase() {
@@ -45,6 +47,27 @@ public class IrisCompat {
             return (boolean) shaderPackInUse.invoke(irisApi);
         } catch (ReflectiveOperationException e) {
             return false;
+        }
+    }
+
+    public static String packName() {
+        if (!nameResolved) {
+            nameResolved = true;
+
+            try {
+                currentPackName = Class.forName("net.irisshaders.iris.Iris").getMethod("getCurrentPackName");
+            } catch (ReflectiveOperationException ignored) {
+            }
+        }
+
+        if (currentPackName == null)
+            return "";
+
+        try {
+            Object name = currentPackName.invoke(null);
+            return name == null ? "" : name.toString();
+        } catch (ReflectiveOperationException e) {
+            return "";
         }
     }
 }

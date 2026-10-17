@@ -1,5 +1,7 @@
 package com.maxenonyme.highseas.client;
 
+import com.maxenonyme.highseas.compat.iris.sail.IrisSailUniforms;
+import com.maxenonyme.highseas.compat.iris.sail.SailSubdivision;
 import com.maxenonyme.highseas.block.BoatSailBlock;
 import com.maxenonyme.highseas.block.SailCorner;
 import net.minecraft.client.renderer.RenderType;
@@ -24,7 +26,11 @@ public class SailTriangleModel extends BakedModelWrapper<BakedModel> {
     private record Key(BlockState state, @Nullable Direction side, @Nullable RenderType type) {
     }
 
+    private record Fine(Key key, int cells) {
+    }
+
     private final Map<Key, List<BakedQuad>> cache = new ConcurrentHashMap<>();
+    private final Map<Fine, List<BakedQuad>> fine = new ConcurrentHashMap<>();
 
     public SailTriangleModel(BakedModel original) {
         super(original);
@@ -33,6 +39,15 @@ public class SailTriangleModel extends BakedModelWrapper<BakedModel> {
     @Override
     public List<BakedQuad> getQuads(@Nullable BlockState state, @Nullable Direction side, RandomSource rand,
                                     ModelData data, @Nullable RenderType renderType) {
+        int cells = IrisSailUniforms.cells();
+        if (state != null && cells > 1)
+            return fine.computeIfAbsent(new Fine(new Key(state, side, renderType), cells),
+                    k -> SailSubdivision.split(shaped(state, side, rand, data, renderType), cells));
+        return shaped(state, side, rand, data, renderType);
+    }
+
+    private List<BakedQuad> shaped(@Nullable BlockState state, @Nullable Direction side, RandomSource rand,
+                                   ModelData data, @Nullable RenderType renderType) {
         if (state == null || !state.hasProperty(BoatSailBlock.CORNER) || state.getValue(BoatSailBlock.CORNER) == SailCorner.NONE
                 || state.getValue(BoatSailBlock.AXIS) == Direction.Axis.Y)
             return super.getQuads(state, side, rand, data, renderType);
