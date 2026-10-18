@@ -3,6 +3,7 @@ package com.maxenonyme.highseas.client;
 import com.maxenonyme.highseas.block.BoatEngineBlock;
 import com.maxenonyme.highseas.block.entity.BoatEngineBlockEntity;
 import com.maxenonyme.highseas.helm.HelmClient;
+import com.maxenonyme.highseas.compat.iris.IrisCompat;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Axis;
 import dev.engine_room.flywheel.api.visualization.VisualizationManager;

@@ -1,5 +1,6 @@
 package com.maxenonyme.createsubmarine.submarine.system;
 
+import com.maxenonyme.highseas.sail.SailWindRegistry;
 import dev.ryanhcode.sable.api.physics.force.ForceGroup;
 import dev.ryanhcode.sable.api.physics.force.QueuedForceGroup;
 import dev.ryanhcode.sable.api.sublevel.ServerSubLevelContainer;
@@ -17,20 +18,25 @@ public class PhysicsWakeSystem {
     public static void onServerTick(ServerTickEvent.Post event) {
         if (++tickCounter % 100 != 0)
             return;
+
         for (ServerLevel level : event.getServer().getAllLevels()) {
             SubLevelContainer container = SubLevelContainer.getContainer(level);
             if (!(container instanceof ServerSubLevelContainer serverContainer))
                 continue;
+
             for (SubLevel subLevel : serverContainer.getAllSubLevels()) {
                 if (!(subLevel instanceof ServerSubLevel serverSub))
                     continue;
                 if (serverSub.getPlot() == null)
                     continue;
-                boolean hasForces = !serverSub.getPlot().getLiftProviders().isEmpty();
+
+                boolean hasForces = !SailWindRegistry.getSails(serverSub, event.getServer().getTickCount()).isEmpty()
+                        || SailWindRegistry.getRudder(serverSub.getUniqueId()) != null;
                 if (!hasForces) {
                     Object2ObjectMap<ForceGroup, QueuedForceGroup> groups = serverSub.getQueuedForceGroups();
                     hasForces = groups != null && !groups.isEmpty();
                 }
+
                 if (hasForces) {
                     serverContainer.physicsSystem().getPipeline().wakeUp(serverSub);
                 }

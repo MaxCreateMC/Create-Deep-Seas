@@ -207,7 +207,14 @@ public class SubmarineSinkingSystem {
                 ImplosionSequence.inside(sub, comp.internal()));
         burst(serverLevel, sub, center.x, center.y, center.z, baseTick + 3, 1.0f);
         burst(serverLevel, sub, center.x, center.y, center.z, baseTick + 9, 0.7f);
+
+        int stride = Math.max(1, comp.internal().size() / 256);
+        int cell = 0;
+
         for (BlockPos p : comp.internal()) {
+            if (cell++ % stride != 0)
+                continue;
+
             Vector3d wp = new Vector3d(p.getX() + 0.5, p.getY() + 0.5, p.getZ() + 0.5);
             sub.logicalPose().transformPosition(wp);
             serverLevel.sendParticles(ParticleTypes.LARGE_SMOKE, wp.x, wp.y, wp.z, 1, 0.3, 0.3, 0.3, 0.02);

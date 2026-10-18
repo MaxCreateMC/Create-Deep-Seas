@@ -3,6 +3,7 @@ package com.maxenonyme.highseas.client;
 import com.maxenonyme.highseas.block.BoatEngineBlock;
 import com.maxenonyme.highseas.block.entity.BoatEngineBlockEntity;
 import com.maxenonyme.highseas.helm.HelmClient;
+import com.maxenonyme.highseas.compat.iris.IrisCompat;
 import dev.engine_room.flywheel.api.instance.Instance;
 import dev.engine_room.flywheel.api.visual.DynamicVisual;
 import dev.engine_room.flywheel.api.visualization.VisualizationContext;

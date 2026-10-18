@@ -1,10 +1,9 @@
 #version 150
 
 uniform sampler2D DiffuseSampler;
-uniform sampler2D VeilLightSampler;
 uniform float Strength;
 uniform float Grey;
-uniform float VeilLights;
+uniform float Tunnel;
 
 in vec2 texCoord;
 in vec2 oneTexel;
@@ -16,8 +15,8 @@ void main() {
     centered.x *= oneTexel.y / oneTexel.x;
     float dist = length(centered);
 
-    float inner = mix(0.62, 0.14, Strength);
-    float band = mix(0.42, 0.32, Strength);
+    float inner = mix(0.62, 0.14, Strength) - 0.12 * Tunnel;
+    float band = mix(0.42, 0.32, Strength) - 0.1 * Tunnel;
     float edge = smoothstep(inner, inner + band, dist);
     float radius = edge * Strength * 4.0;
 
@@ -36,9 +35,7 @@ void main() {
         float luma = dot(color, vec3(0.299, 0.587, 0.114));
         float peak = max(color.r, max(color.g, color.b));
         float lamp = smoothstep(0.6, 0.95, peak) * 0.45;
-        vec3 veil = texture(VeilLightSampler, texCoord).rgb * VeilLights;
-        float glow = clamp(max(veil.r, max(veil.g, veil.b)) * 1.6, 0.0, 1.0);
-        vec3 lit = mix(vec3(luma), color, max(glow, lamp));
+        vec3 lit = mix(vec3(luma), color, lamp);
         color = mix(color, lit, Grey);
     }
 

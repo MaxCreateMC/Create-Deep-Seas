@@ -40,7 +40,7 @@ public class CameraShake {
         public static void onComputeCameraAngles(ViewportEvent.ComputeCameraAngles event) {
             if (shakeTicks > 0 && shakeIntensity > 0) {
                 Minecraft mc = Minecraft.getInstance();
-                if (mc.player != null && !mc.isPaused()) {
+                if (mc.player != null && !mc.isPaused() && !mc.player.isDeadOrDying()) {
                     float progress = maxShakeTicks > 0 ? (float) shakeTicks / maxShakeTicks : 1.0f;
                     float currentIntensity = shakeIntensity * progress;
 

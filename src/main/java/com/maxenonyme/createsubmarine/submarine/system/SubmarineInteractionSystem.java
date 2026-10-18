@@ -41,26 +41,32 @@ public class SubmarineInteractionSystem {
             SUB_VELOCITIES.clear();
             return;
         }
+
         for (Map.Entry<UUID, OrientedBoundingBox3d> entry : hulls.entrySet()) {
             UUID id = entry.getKey();
             OrientedBoundingBox3d obb = entry.getValue();
             Level level = SubLevelRegistry.getLevel(id);
+            
             if (level instanceof ServerLevel serverLevel) {
                 Vector3d currentPos = new Vector3d(obb.getPosition());
                 Vector3d lastPos = LAST_POSITIONS.get(id);
                 double velocity = 0;
+
                 if (lastPos != null) {
                     velocity = currentPos.distance(lastPos);
                 }
+
                 LAST_POSITIONS.put(id, currentPos);
                 SUB_VELOCITIES.put(id, velocity);
                 blockEntities(serverLevel, obb, velocity);
+
                 if (velocity > 0.01 && tickCounter % 5 == 0) {
                     clearVegetation(serverLevel, obb);
                 }
             }
         }
     }
+
     private static void blockEntities(ServerLevel level, OrientedBoundingBox3d obb, double velocity) {
         Vector3d pos = obb.getPosition();
         Vector3d dim = obb.getDimensions();
@@ -70,6 +76,7 @@ public class SubmarineInteractionSystem {
             pos.x - maxDim, pos.y - maxDim, pos.z - maxDim,
             pos.x + maxDim, pos.y + maxDim, pos.z + maxDim
         );
+
         for (Entity entity : level.getEntitiesOfClass(Entity.class, searchBox)) {
             if (entity instanceof WaterAnimal || entity.getType().is(EntityTypeTags.AQUATIC)) {
                 if (SubmarineHullManager.contains(obb, entity.getX(), entity.getY(), entity.getZ())) {
@@ -83,11 +90,13 @@ public class SubmarineInteractionSystem {
                     } else {
                         entity.setDeltaMovement(entity.getDeltaMovement().add(pushDir.scale(0.2)));
                     }
+
                     entity.hasImpulse = true;
                 }
             }
         }
     }
+
     private static void clearVegetation(ServerLevel level, OrientedBoundingBox3d obb) {
         Vector3d pos = obb.getPosition();
         Vector3d dim = obb.getDimensions();
@@ -104,22 +113,28 @@ public class SubmarineInteractionSystem {
         int minZ = (int) Math.floor(pos.z - hz);
         int maxZ = (int) Math.ceil(pos.z + hz);
         BlockPos.MutableBlockPos mutablePos = new BlockPos.MutableBlockPos();
+
         for (int cx = minX >> 4; cx <= maxX >> 4; cx++) {
             for (int cz = minZ >> 4; cz <= maxZ >> 4; cz++) {
                 LevelChunk chunk = level.getChunkSource().getChunkNow(cx, cz);
                 if (chunk == null)
                     continue;
+
                 int x0 = Math.max(minX, cx << 4), x1 = Math.min(maxX, (cx << 4) + 15);
                 int z0 = Math.max(minZ, cz << 4), z1 = Math.min(maxZ, (cz << 4) + 15);
                 LevelChunkSection[] sections = chunk.getSections();
+
                 for (int sy = chunk.getSectionIndex(minY); sy <= chunk.getSectionIndex(maxY); sy++) {
                     if (sy < 0 || sy >= sections.length)
                         continue;
+
                     LevelChunkSection section = sections[sy];
                     if (section == null || section.hasOnlyAir() || !section.maybeHas(SubmarineInteractionSystem::isVegetation))
                         continue;
+
                     int yBase = SectionPos.sectionToBlockCoord(chunk.getSectionYFromSectionIndex(sy));
                     int y0 = Math.max(minY, yBase), y1 = Math.min(maxY, yBase + 15);
+
                     for (int y = y0; y <= y1; y++) {
                         for (int x = x0; x <= x1; x++) {
                             for (int z = z0; z <= z1; z++) {
@@ -128,8 +143,10 @@ public class SubmarineInteractionSystem {
                                     continue;
                                 if (!SubmarineHullManager.contains(obb, x + 0.5, y + 0.5, z + 0.5))
                                     continue;
+
                                 mutablePos.set(x, y, z);
                                 clearVegetationColumn(level, mutablePos);
+
                                 if (RAND.nextFloat() < 0.1f) {
                                     level.sendParticles(ParticleTypes.BUBBLE, x + 0.5, y + 0.5, z + 0.5, 2, 0.2, 0.2, 0.2, 0.01);
                                 }
@@ -140,8 +157,10 @@ public class SubmarineInteractionSystem {
             }
         }
     }
+
     private static void clearVegetationColumn(ServerLevel level, BlockPos pos) {
         BlockPos.MutableBlockPos cursor = pos.mutable();
+
         while (isVegetation(level.getBlockState(cursor))) {
             level.setBlock(cursor, Blocks.WATER.defaultBlockState(), 3);
             cursor.move(Direction.UP);
@@ -149,7 +168,9 @@ public class SubmarineInteractionSystem {
                 break;
         }
     }
+
     private static final Random RAND = new Random();
+
     private static boolean isVegetation(BlockState state) {
         return state.is(Blocks.KELP) || state.is(Blocks.KELP_PLANT) ||
                state.is(Blocks.SEAGRASS) || state.is(Blocks.TALL_SEAGRASS);

@@ -9,6 +9,8 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.chunk.LevelChunk;
+import net.minecraft.world.level.chunk.LevelChunkSection;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -46,6 +48,7 @@ public class GirderSupport {
             int maxX, int maxY, int maxZ) {
         if (level == null)
             return NONE;
+
         long now = level.getGameTime();
         long bounds = ((((((long) minX * 31 + minY) * 31 + minZ) * 31 + maxX) * 31 + maxY) * 31) + maxZ;
         Key key = new Key(id, level.isClientSide);
@@ -56,13 +59,16 @@ public class GirderSupport {
         Support[] supports = scan(level, minX, minY, minZ, maxX, maxY, maxZ);
         Set<Long> collapses = COLLAPSES.get(id);
         long[] collapsed = new long[0];
+
         if (collapses != null) {
             for (Support s : supports) {
                 collapses.remove(s.a());
                 collapses.remove(s.b());
             }
+
             collapsed = collapses.stream().mapToLong(Long::longValue).toArray();
         }
+
         Layout layout = supports.length == 0 && collapsed.length == 0 ? NONE : new Layout(supports, collapsed);
         CACHE.put(key, new Cached(now, version, bounds, layout));
         return layout;
@@ -82,18 +88,23 @@ public class GirderSupport {
 
     public static double factor(Layout layout, BlockPos pos) {
         double best = 0.0;
+
         for (Support s : layout.supports())
             best = Math.max(best, Math.max(bonus(s.a(), pos), bonus(s.b(), pos)));
+
         double weak = 1.0;
+
         for (long c : layout.collapsed())
             if (distance(c, pos) <= RADIUS)
                 weak = COLLAPSED;
+
         return (1.0 + best) * weak;
     }
 
     public static Support carrier(Layout layout, BlockPos pos) {
         Support found = null;
         double best = 0.0;
+
         for (Support s : layout.supports()) {
             double b = Math.max(bonus(s.a(), pos), bonus(s.b(), pos));
             if (b > best) {
@@ -101,6 +112,7 @@ public class GirderSupport {
                 found = s;
             }
         }
+
         return found;
     }
 
@@ -116,35 +128,63 @@ public class GirderSupport {
         long volume = (long) (maxX - minX + 1) * (maxY - minY + 1) * (maxZ - minZ + 1);
         if (volume <= 0 || volume > MAX_VOLUME)
             return new Support[0];
+
         LongOpenHashSet girders = new LongOpenHashSet();
-        BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
-        for (int x = minX; x <= maxX; x++)
-            for (int y = minY; y <= maxY; y++)
-                for (int z = minZ; z <= maxZ; z++)
-                    if (girder(level.getBlockState(cursor.set(x, y, z))))
-                        girders.add(cursor.asLong());
+
+        for (int cx = minX >> 4; cx <= maxX >> 4; cx++) {
+            for (int cz = minZ >> 4; cz <= maxZ >> 4; cz++) {
+                LevelChunk chunk = level.getChunk(cx, cz);
+
+                for (int sy = minY >> 4; sy <= maxY >> 4; sy++) {
+                    int index = chunk.getSectionIndexFromSectionY(sy);
+                    if (index < 0 || index >= chunk.getSectionsCount())
+                        continue;
+
+                    LevelChunkSection section = chunk.getSection(index);
+                    if (section.hasOnlyAir() || !section.maybeHas(GirderSupport::girder))
+                        continue;
+
+                    int x0 = Math.max(minX, cx << 4), x1 = Math.min(maxX, (cx << 4) + 15);
+                    int y0 = Math.max(minY, sy << 4), y1 = Math.min(maxY, (sy << 4) + 15);
+                    int z0 = Math.max(minZ, cz << 4), z1 = Math.min(maxZ, (cz << 4) + 15);
+
+                    for (int x = x0; x <= x1; x++)
+                        for (int y = y0; y <= y1; y++)
+                            for (int z = z0; z <= z1; z++)
+                                if (girder(section.getBlockState(x & 15, y & 15, z & 15)))
+                                    girders.add(BlockPos.asLong(x, y, z));
+                }
+            }
+        }
+
         if (girders.isEmpty())
             return new Support[0];
+
         List<Support> out = new ArrayList<>();
         Direction[] axes = { Direction.UP, Direction.EAST, Direction.SOUTH };
+
         for (Direction up : axes) {
             for (long g : girders) {
                 BlockPos start = BlockPos.of(g);
                 if (girders.contains(start.relative(up.getOpposite()).asLong()))
                     continue;
+
                 LongArrayList run = new LongArrayList();
                 BlockPos end = start;
                 run.add(end.asLong());
+
                 while (girders.contains(end.relative(up).asLong())) {
                     end = end.relative(up);
                     run.add(end.asLong());
                 }
+
                 BlockPos a = start.relative(up.getOpposite());
                 BlockPos b = end.relative(up);
                 if (hull(level, a) && hull(level, b))
                     out.add(new Support(a.asLong(), b.asLong(), run.toLongArray()));
             }
         }
+
         return out.toArray(new Support[0]);
     }
 

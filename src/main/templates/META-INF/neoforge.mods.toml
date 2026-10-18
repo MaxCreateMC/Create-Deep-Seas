@@ -11,6 +11,9 @@ config="create_abyss.mixins.json"
 [[mixins]]
 config="create_high_seas.mixins.json"
 
+[[mixins]]
+config="vortex_engine.mixins.json"
+
 [[mods]]
 modId="${mod_id}"
 version="${mod_version}"

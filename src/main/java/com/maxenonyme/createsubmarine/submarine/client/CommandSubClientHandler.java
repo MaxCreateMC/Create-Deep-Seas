@@ -19,6 +19,7 @@ import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.client.event.InputEvent;
+import net.neoforged.neoforge.client.event.RenderFrameEvent;
 import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
 import net.neoforged.neoforge.network.PacketDistributor;
 import org.joml.Matrix4f;
@@ -44,6 +45,7 @@ public class CommandSubClientHandler {
     private static float hoveredV;
 
     private static boolean clickLatched;
+    private static Camera viewCamera;
 
     private static CommandSubBlockEntity typingConsole;
     private static final StringBuilder typed = new StringBuilder();
@@ -197,8 +199,12 @@ public class CommandSubClientHandler {
             cancelTyping();
     }
 
+    public static void onFrameStart(RenderFrameEvent.Pre event) {
+        viewCamera = Minecraft.getInstance().gameRenderer.getMainCamera();
+    }
+
     public static void onRenderStage(RenderLevelStageEvent event) {
-        if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_SKY)
+        if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_SKY || event.getCamera() != viewCamera)
             return;
         hoveredConsole = null;
         hoveredWidget = -1;

@@ -2,6 +2,7 @@ package com.maxenonyme.highseas.helm;
 
 import com.maxenonyme.highseas.CreateHighSeas;
 import com.maxenonyme.highseas.block.BoatEngineBlock;
+import com.maxenonyme.highseas.block.entity.BoatEngineBlockEntity;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
@@ -52,6 +53,10 @@ public class HelmSeatEntity extends Entity {
         return entityData.get(FACING);
     }
 
+    public Vec3 anchor() {
+        return BoatEngineBlockEntity.helmAnchor(getEnginePos(), getFacing());
+    }
+
     @Override
     public void tick() {
         if (level().isClientSide)
@@ -71,7 +76,8 @@ public class HelmSeatEntity extends Entity {
     @Override
     protected void positionRider(Entity rider, Entity.MoveFunction callback) {
         if (hasPassenger(rider)) {
-            callback.accept(rider, getX(), getY(), getZ());
+            Vec3 anchor = anchor();
+            callback.accept(rider, anchor.x, anchor.y, anchor.z);
             pinBody(rider);
         }
     }
@@ -107,7 +113,7 @@ public class HelmSeatEntity extends Entity {
     @Override
     public Vec3 getDismountLocationForPassenger(LivingEntity rider) {
         Direction f = getFacing();
-        return position().add(f.getStepX() * 0.6, 0.15, f.getStepZ() * 0.6);
+        return anchor().add(f.getStepX() * 0.6, 0.15, f.getStepZ() * 0.6);
     }
 
     @Override

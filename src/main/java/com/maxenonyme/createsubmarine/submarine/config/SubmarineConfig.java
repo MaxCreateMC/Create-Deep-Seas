@@ -29,7 +29,6 @@ public class SubmarineConfig {
         public static final ModConfigSpec.BooleanValue ENABLE_DEEPER_OCEANS;
         public static final ModConfigSpec.IntValue DEEPER_OCEANS_DEPTH;
         public static final ModConfigSpec.BooleanValue DISABLE_STARTUP_SCREENS;
-        public static final ModConfigSpec.BooleanValue VEIL_LIGHTS;
         public static final ModConfigSpec.BooleanValue PHOTOSENSITIVE_MODE;
         public static final ModConfigSpec.BooleanValue PRESSURE_EFFECTS;
         public static final ModConfigSpec.BooleanValue ALARM_STEADY_LIGHT;
@@ -61,6 +60,7 @@ public class SubmarineConfig {
                                         .withStyle(color);
                 }
         }
+
         public static ModConfigSpec.ConfigValue<String> IGNORED_UPDATE_VERSION;
 
         static {
@@ -96,7 +96,8 @@ public class SubmarineConfig {
                                 .define("disableImplosion", false);
                 IMPLOSION_DEPTH = server
                                 .comment("Depth below the surface, in blocks, past which a hull block giving way to the pressure implodes the whole submarine.",
-                                                "Above it, the block only bursts and the room floods through the hole.")
+                                                "Above it, the block only bursts and the room floods through the hole.",
+                                                "Past it, a submarine more than 30 blocks beyond its hull limit also seizes its pump controllers and shakes its crew.")
                                 .defineInRange("implosionDepth", 120, 1, 2048);
                 OXYGEN_MAX_FILL_BLOCKS = server
                                 .comment("Maximum size, in blocks, of a creation that oxygen diffusers can scan and fill with breathable air.",
@@ -124,7 +125,7 @@ public class SubmarineConfig {
                                                 "small panels, thick walls, ribs and rounded hulls hold more.",
                                                 "REALISTIC: a structural solver computes how much every block of the hull really bends under the water,",
                                                 "from its material (stiffness, strength, wood grain) and the shape of the whole ship.")
-                                .defineEnum("pressureModel", PressureModel.REALISTIC);
+                                .defineEnum("pressureModel", PressureModel.HYBRID);
                 SHAPE_REFERENCE_SPAN = server
                                 .comment("HYBRID only: free width, in blocks, of a single-thickness wall that keeps exactly its block's maxWaterDepth.",
                                                 "Wider panels hold less, narrower or thicker ones hold more.")
@@ -221,14 +222,10 @@ public class SubmarineConfig {
                                 .comment("Disable all Deep Seas startup UI screens (Welcome screen and Update notifications).",
                                                 "Highly recommended to set this to TRUE if you are creating a modpack to avoid annoying your players.")
                                 .define("disableStartupScreens", false);
-                VEIL_LIGHTS = client
-                                .comment("Coloured moving lights on the Sonar, the Industrial Alarm and the Submarine Staff (Veil).",
-                                                "Turn off to light every block and item with plain Minecraft light only.",
-                                                "Always off when Iris is installed: Veil cannot draw them next to Iris, even with shaders turned off.")
-                                .define("veilLights", true);
                 PHOTOSENSITIVE_MODE = client
-                                .comment("For photosensitive or epileptic players: the Industrial Alarm no longer throws its coloured flashing Veil light,",
-                                                "only normal Minecraft light. Other Veil lights are not affected.")
+                                .comment("For photosensitive or epileptic players: the Industrial Alarm",
+                                                "no longer throws its coloured flashing light, only normal Minecraft light.",
+                                                "Other coloured lights are not affected.")
                                 .define("photosensitiveMode", false);
                 PRESSURE_EFFECTS = client
                                 .comment("Tunnel vision and a racing heartbeat while the hull is under too much pressure,",
@@ -242,6 +239,7 @@ public class SubmarineConfig {
                 } else {
                         IGNORED_UPDATE_VERSION = null;
                 }
+
                 client.pop();
 
                 CLIENT_SPEC = client.build();

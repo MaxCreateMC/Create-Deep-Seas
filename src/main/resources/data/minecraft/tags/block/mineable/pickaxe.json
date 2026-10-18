@@ -24,9 +24,21 @@
     "create_high_seas:anchor",
     "create_high_seas:boat_engine",
     "create_high_seas:buoy",
-    "create_abyss:geothermal_vent",
-    "create_abyss:foam_rock_geothermal_vent",
-    "create_abyss:deepslate_geothermal_vent",
-    "create_abyss:magma"
+    {
+      "id": "create_abyss:geothermal_vent",
+      "required": false
+    },
+    {
+      "id": "create_abyss:foam_rock_geothermal_vent",
+      "required": false
+    },
+    {
+      "id": "create_abyss:deepslate_geothermal_vent",
+      "required": false
+    },
+    {
+      "id": "create_abyss:magma",
+      "required": false
+    }
   ]
 }

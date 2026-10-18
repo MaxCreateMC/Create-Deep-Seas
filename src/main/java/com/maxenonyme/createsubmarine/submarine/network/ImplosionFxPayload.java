@@ -17,6 +17,9 @@ public record ImplosionFxPayload(int kind, float strength, int ticks) implements
     public static final int PANIC = 4;
     public static final int SILENCE = 5;
     public static final int END = 6;
+    public static final int SQUEEZE = 7;
+    public static final int THOUGHT = 8;
+    public static final int DEPTH = 9;
 
     public static final Type<ImplosionFxPayload> TYPE = new Type<>(
             ResourceLocation.fromNamespaceAndPath(CreateSubmarine.MOD_ID, "implosion_fx"));

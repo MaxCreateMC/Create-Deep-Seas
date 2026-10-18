@@ -1,6 +1,5 @@
 package com.maxenonyme.createsubmarine.submarine.client;
 
-import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
 import org.lwjgl.opengl.GL15;
@@ -8,9 +7,7 @@ import org.lwjgl.opengl.GL21;
 
 public class VeilUploadGuard {
 
-    public static void onRenderStage(RenderLevelStageEvent event) {
-        if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_LEVEL)
-            return;
+    public static void reset() {
         GL15.glBindBuffer(GL21.GL_PIXEL_UNPACK_BUFFER, 0);
         GL11.glPixelStorei(GL11.GL_UNPACK_ROW_LENGTH, 0);
         GL11.glPixelStorei(GL11.GL_UNPACK_SKIP_ROWS, 0);

@@ -1,5 +1,6 @@
 package com.maxenonyme.highseas.sail;
 
+import com.maxenonyme.createsubmarine.submarine.compartment.CompartmentTracker;
 import com.maxenonyme.createsubmarine.submarine.util.SablePhysicsHelper;
 import com.maxenonyme.highseas.wind.WindConfig;
 import com.maxenonyme.highseas.wind.WindManager;
@@ -185,7 +186,7 @@ public class SailWindSystem {
         for (int dy = 0; dy <= 1; dy++) {
             for (double[] probe : probes) {
                 pose.transformPosition(vec.set(probe[0], bb.minY() + 0.5 + dy, probe[1]));
-                if (!level.getFluidState(BlockPos.containing(vec.x, vec.y, vec.z)).isEmpty())
+                if (!CompartmentTracker.realFluidState(level, BlockPos.containing(vec.x, vec.y, vec.z)).isEmpty())
                     return true;
             }
         }

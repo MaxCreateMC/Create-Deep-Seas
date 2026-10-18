@@ -7,7 +7,9 @@ import com.maxenonyme.createsubmarine.submarine.util.SablePhysicsHelper;
 import dev.ryanhcode.sable.companion.SableCompanion;
 import dev.ryanhcode.sable.companion.SubLevelAccess;
 import dev.ryanhcode.sable.sublevel.SubLevel;
+import dev.simulated_team.simulated.content.blocks.docking_connector.DockingConnectorBlockEntity;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.SectionPos;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
@@ -24,8 +26,11 @@ import org.joml.Quaterniond;
 import org.joml.Vector3d;
 import org.joml.Vector3dc;
 
+import java.util.ArrayDeque;
 import java.util.Collections;
+import java.util.Deque;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -38,6 +43,9 @@ import com.maxenonyme.createsubmarine.submarine.network.DiagnosticPayload;
 public class CommandSubBlockEntity extends BlockEntity {
     public static final Set<CommandSubBlockEntity> LOADED_ON_CLIENT = Collections.newSetFromMap(new WeakHashMap<>());
     private static final Map<UUID, CommandSubBlockEntity> BY_SUB = new ConcurrentHashMap<>();
+    private static Map<UUID, Set<UUID>> dockLinks = Map.of();
+    private static Level dockLinksLevel;
+    private static long dockLinksTick = Long.MIN_VALUE;
 
     public int targetDepth = 20;
     public int speedMode = 1;
@@ -61,6 +69,7 @@ public class CommandSubBlockEntity extends BlockEntity {
     public int syncedFill = -1;
     public int syncedPumps;
     public int syncedStatus = 1;
+    public int syncedDock;
 
     public DiagnosticPayload report;
     public long scanStarted = -1;
@@ -87,6 +96,7 @@ public class CommandSubBlockEntity extends BlockEntity {
     private double lastFill = Double.NaN;
     private long lastFillTick;
     private double fillRate = 0.02;
+    private double wantFill = Double.NaN;
 
     public CommandSubBlockEntity(BlockPos pos, BlockState state) {
         super(CreateSubmarine.COMMAND_SUB_BE.get(), pos, state);
@@ -95,6 +105,7 @@ public class CommandSubBlockEntity extends BlockEntity {
     public void tick() {
         if (level == null || level.isClientSide)
             return;
+
         tickCount++;
         SubLevelAccess subLevel = SableCompanion.INSTANCE.getContaining(level, worldPosition);
         claim(subLevel == null ? null : subLevel.getUniqueId());
@@ -111,6 +122,7 @@ public class CommandSubBlockEntity extends BlockEntity {
                 BY_SUB.remove(registeredSub, this);
             registeredSub = subId;
         }
+
         if (subId != null)
             BY_SUB.compute(subId, (id, current) -> current == null || current.isRemoved() ? this : current);
     }
@@ -124,6 +136,7 @@ public class CommandSubBlockEntity extends BlockEntity {
         int depth = 0;
         int weakest = -1;
         int surface = Integer.MIN_VALUE;
+
         if (subLevel != null) {
             Level ocean = subLevel instanceof SubLevel sl && sl.getLevel() != null ? sl.getLevel() : level;
             Vector3dc center = subLevel.logicalPose().position();
@@ -159,16 +172,19 @@ public class CommandSubBlockEntity extends BlockEntity {
         double[] xs = new double[5];
         double[] zs = new double[5];
         int n = 0;
+
         for (int i = 0; i < 8; i++) {
             corner.set((i & 1) == 0 ? box.minX() : box.maxX() + 1, (i & 2) == 0 ? box.minY() : box.maxY() + 1,
                     (i & 4) == 0 ? box.minZ() : box.maxZ() + 1);
             pose.transformPosition(corner);
             keel = Math.min(keel, corner.y);
+
             if ((i & 2) == 0) {
                 xs[n] = corner.x;
                 zs[n++] = corner.z;
             }
         }
+
         corner.set((box.minX() + box.maxX() + 1) / 2.0, box.minY(), (box.minZ() + box.maxZ() + 1) / 2.0);
         pose.transformPosition(corner);
         xs[4] = corner.x;
@@ -186,6 +202,7 @@ public class CommandSubBlockEntity extends BlockEntity {
         int bottom = Math.max(ocean.getMinBuildHeight(), (int) Math.floor(keel) - FLOOR_BELOW);
         int highest = Integer.MIN_VALUE;
         BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
+
         for (double ahead = 0; ahead <= reach; ahead += 2) {
             for (int s = 0; s < 5; s++) {
                 int x = Mth.floor(xs[s] + dx * ahead);
@@ -193,17 +210,21 @@ public class CommandSubBlockEntity extends BlockEntity {
                 ChunkAccess chunk = ocean.getChunk(x >> 4, z >> 4, ChunkStatus.FULL, false);
                 if (chunk == null)
                     continue;
+
                 for (int y = top; y >= bottom && y >= highest; y--) {
                     cursor.set(x, y, z);
+
                     if (CompartmentTracker.realBlockState(chunk, cursor).blocksMotion()) {
                         highest = Math.max(highest, y + 1);
                         break;
                     }
                 }
             }
+
             if (reach == 0)
                 break;
         }
+
         if (highest == Integer.MIN_VALUE)
             return -1;
 
@@ -224,6 +245,8 @@ public class CommandSubBlockEntity extends BlockEntity {
         pumps.values().removeIf(seen -> now - seen > 40);
 
         int wanted = PumpControllerBlockEntity.HOLD;
+        CommandSubBlockEntity leader = subLevel == null ? null : dockLeader(subLevel.getUniqueId());
+        int dock = leader == null ? 0 : leader == this ? 1 : 2;
         double fill = subLevel == null ? Double.NaN : BallastTankBlockEntity.fillRatio(subLevel.getUniqueId());
         if (!Double.isNaN(fill)) {
             if (!Double.isNaN(lastFill) && command != PumpControllerBlockEntity.HOLD && now > lastFillTick) {
@@ -231,43 +254,120 @@ public class CommandSubBlockEntity extends BlockEntity {
                 if (sample > 0)
                     fillRate += (sample - fillRate) * 0.3;
             }
+
             lastFill = fill;
             lastFillTick = now;
         }
-        if (subLevel != null && !Double.isNaN(fill)) {
+
+        wantFill = Double.NaN;
+
+        if (dock == 2 && !Double.isNaN(fill)) {
+            wantFill = leader.wantFill;
+        } else if (subLevel != null && !Double.isNaN(fill)) {
             double error = depth(subLevel) - activeTarget();
             double maxSpeed = SubmarineConfig.BALLAST_VERTICAL_SPEED.get();
             double modeSpeed = maxSpeed * RATES[speedMode];
             double braking = Math.max(0.02, 2 * maxSpeed * fillRate) * BRAKING_MARGIN;
             double wantSpeed = Math.signum(error) * Math.min(modeSpeed, Math.sqrt(2 * braking * Math.abs(error)));
-            double wantFill = Mth.clamp(0.5 - wantSpeed / (2 * maxSpeed), 0, 1);
+            Vector3dc velocity = SablePhysicsHelper.getVelocity(subLevel);
+            double rising = velocity == null ? wantSpeed : velocity.y();
+            double push = wantSpeed + 2 * (wantSpeed - rising);
+            wantFill = Mth.clamp(0.5 - push / (2 * maxSpeed), 0, 1);
+        }
+
+        if (!Double.isNaN(wantFill)) {
             if (fill < wantFill - 0.01)
                 wanted = PumpControllerBlockEntity.FILL;
             else if (fill > wantFill + 0.01)
                 wanted = PumpControllerBlockEntity.DRAIN;
         }
+
         command = wanted;
 
         int percent = Double.isNaN(fill) ? -1 : (int) Math.round(fill * 100);
         int status = command + 1;
-        if (percent != syncedFill || pumps.size() != syncedPumps || status != syncedStatus) {
+        if (percent != syncedFill || pumps.size() != syncedPumps || status != syncedStatus || dock != syncedDock) {
             syncedFill = percent;
             syncedPumps = pumps.size();
             syncedStatus = status;
+            syncedDock = dock;
             level.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), 3);
         }
     }
 
+    private CommandSubBlockEntity dockLeader(UUID self) {
+        Map<UUID, Set<UUID>> links = dockLinks(level);
+        if (!links.containsKey(self))
+            return null;
+
+        Deque<UUID> queue = new ArrayDeque<>();
+        Set<UUID> seen = new HashSet<>();
+        queue.add(self);
+        seen.add(self);
+        CommandSubBlockEntity leader = null;
+        int computers = 0;
+
+        while (!queue.isEmpty()) {
+            UUID id = queue.poll();
+            CommandSubBlockEntity computer = onSub(id);
+            if (computer != null) {
+                computers++;
+                if (leader == null || id.compareTo(leader.registeredSub) < 0)
+                    leader = computer;
+            }
+
+            for (UUID next : links.getOrDefault(id, Set.of()))
+                if (seen.add(next))
+                    queue.add(next);
+        }
+
+        return computers >= 2 ? leader : null;
+    }
+
+    private static Map<UUID, Set<UUID>> dockLinks(Level level) {
+        long now = level.getGameTime();
+        if (level == dockLinksLevel && now == dockLinksTick)
+            return dockLinks;
+
+        Map<UUID, Set<UUID>> links = new HashMap<>();
+        Map<SectionPos, HashSet<BlockPos>> connectors = DockingConnectorBlockEntity.MAGNET_CONTROLLER.magnetMap
+                .get(level);
+        if (connectors != null) {
+            for (HashSet<BlockPos> section : connectors.values()) {
+                for (BlockPos pos : section) {
+                    if (!(level.getBlockEntity(pos) instanceof DockingConnectorBlockEntity connector)
+                            || !connector.isLocked() || connector.otherConnectorSubLevelId == null)
+                        continue;
+                    SubLevelAccess own = SableCompanion.INSTANCE.getContaining(level, pos);
+                    UUID other = connector.otherConnectorSubLevelId;
+                    if (own == null || own.getUniqueId().equals(other))
+                        continue;
+
+                    links.computeIfAbsent(own.getUniqueId(), id -> new HashSet<>()).add(other);
+                    links.computeIfAbsent(other, id -> new HashSet<>()).add(own.getUniqueId());
+                }
+            }
+        }
+
+        dockLinks = links;
+        dockLinksLevel = level;
+        dockLinksTick = now;
+        return links;
+    }
+
     private void trim(SubLevelAccess subLevel) {
-        if (subLevel == null || pumps.isEmpty() || Double.isNaN(lastFill) || activeTarget() == 0)
+        if (subLevel == null || pumps.isEmpty() || Double.isNaN(lastFill) || activeTarget() == 0 || syncedDock == 2)
             return;
+
         double error = depth(subLevel) - activeTarget();
         if (Math.abs(error) > TRIM_RANGE)
             return;
+
         Object handle = SablePhysicsHelper.getHandle(subLevel);
         Vector3dc velocity = SablePhysicsHelper.getVelocity(handle);
         if (handle == null || velocity == null)
             return;
+
         double want = Mth.clamp(error * 0.6, -0.6, 0.6);
         double change = Mth.clamp(want - velocity.y(), -TRIM_ACCEL / 20, TRIM_ACCEL / 20);
         Vector3d impulse = new Vector3d(0, change * SablePhysicsHelper.readMass(subLevel), 0);
@@ -283,9 +383,11 @@ public class CommandSubBlockEntity extends BlockEntity {
     public boolean mayDiagnose() {
         if (level == null)
             return false;
+
         long now = level.getGameTime();
         if (now - lastDiagnostic < DIAGNOSTIC_COOLDOWN)
             return false;
+
         lastDiagnostic = now;
         return true;
     }
@@ -301,6 +403,7 @@ public class CommandSubBlockEntity extends BlockEntity {
     public float pumpBoost() {
         if (registeredSub == null || pumps.isEmpty())
             return 1f;
+
         double needed = BallastTankBlockEntity.tankCount(registeredSub) / (pumps.size() * TANKS_PER_PUMP);
         return Math.max(1f, Math.round(needed * 4) / 4f);
     }
@@ -312,9 +415,11 @@ public class CommandSubBlockEntity extends BlockEntity {
     public void apply(int action, int value) {
         if (level == null || level.isClientSide)
             return;
+
         if (action == CommandSubPayload.SPEED) {
             if (value < 0 || value > 2)
                 return;
+
             speedMode = value;
         } else if (action == CommandSubPayload.DEPTH) {
             targetDepth = Math.max(0, Math.min(9999, value));
@@ -325,6 +430,7 @@ public class CommandSubBlockEntity extends BlockEntity {
         } else {
             return;
         }
+
         setChanged();
         level.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), 3);
     }
@@ -363,6 +469,7 @@ public class CommandSubBlockEntity extends BlockEntity {
         tag.putInt("Fill", syncedFill);
         tag.putInt("Pumps", syncedPumps);
         tag.putInt("Status", syncedStatus);
+        tag.putInt("Dock", syncedDock);
         tag.putBoolean("Autopilot", autopilot);
         tag.putInt("AutoTarget", syncedAutoTarget);
     }
@@ -380,6 +487,7 @@ public class CommandSubBlockEntity extends BlockEntity {
         syncedFill = tag.contains("Fill") ? tag.getInt("Fill") : -1;
         syncedPumps = tag.getInt("Pumps");
         syncedStatus = tag.contains("Status") ? tag.getInt("Status") : 1;
+        syncedDock = tag.getInt("Dock");
         autopilot = tag.getBoolean("Autopilot");
         syncedAutoTarget = tag.contains("AutoTarget") ? tag.getInt("AutoTarget") : -1;
     }
