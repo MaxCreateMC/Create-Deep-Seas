@@ -32,9 +32,7 @@ import java.util.Set;
 import java.util.UUID;
 
 @EventBusSubscriber(modid = CreateHighSeas.MOD_ID, value = Dist.CLIENT)
-public final class BoatCullDebugRenderer {
-    private BoatCullDebugRenderer() {
-    }
+public class BoatCullDebugRenderer {
 
     @SubscribeEvent
     public static void onRenderLevel(RenderLevelStageEvent event) {
@@ -55,18 +53,18 @@ public final class BoatCullDebugRenderer {
 
         for (Map.Entry<UUID, SubLevelAccess> e : subs.entrySet()) {
             UUID id = e.getKey();
-            SubLevelAccess sub = e.getValue();
+            SubLevelAccess ship = e.getValue();
 
             List<CompartmentDetector.Component> comps = CompartmentTracker.getCompartments(id);
             Set<BlockPos> union = new HashSet<>();
             Set<BlockPos> air = new HashSet<>();
             if (comps != null) {
-                for (CompartmentDetector.Component c : comps) {
-                    if (!c.sealed())
+                for (CompartmentDetector.Component compartment : comps) {
+                    if (!compartment.sealed())
                         continue;
-                    union.addAll(c.internal());
-                    union.addAll(c.hull());
-                    air.addAll(c.internal());
+                    union.addAll(compartment.internal());
+                    union.addAll(compartment.hull());
+                    air.addAll(compartment.internal());
                 }
             }
 
@@ -81,7 +79,7 @@ public final class BoatCullDebugRenderer {
             if (union.isEmpty())
                 continue;
 
-            Pose3dc pose = (sub instanceof ClientSubLevel csl) ? csl.renderPose() : sub.logicalPose();
+            Pose3dc pose = (ship instanceof ClientSubLevel subLevel) ? subLevel.renderPose() : ship.logicalPose();
             Quaterniondc q = pose.orientation();
             poseStack.pushPose();
             poseStack.translate(pose.position().x() - cam.x, pose.position().y() - cam.y, pose.position().z() - cam.z);

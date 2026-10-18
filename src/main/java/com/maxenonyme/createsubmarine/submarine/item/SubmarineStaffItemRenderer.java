@@ -9,6 +9,7 @@ import net.minecraft.client.resources.model.BakedModel;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
 import com.maxenonyme.createsubmarine.submarine.client.renderer.AllPartialModels;
+import com.mojang.math.Axis;
 
 public class SubmarineStaffItemRenderer extends BlockEntityWithoutLevelRenderer {
 
@@ -52,7 +53,7 @@ public class SubmarineStaffItemRenderer extends BlockEntityWithoutLevelRenderer 
         if (topcore1 != null) {
             poseStack.pushPose();
             poseStack.translate(originX, originY, originZ);
-            poseStack.mulPose(com.mojang.math.Axis.XP.rotationDegrees(12.5f));
+            poseStack.mulPose(Axis.XP.rotationDegrees(12.5f));
             poseStack.translate(-originX, -originY, -originZ);
             itemRenderer.render(stack, ItemDisplayContext.NONE, false, poseStack, buffer, packedLight, packedOverlay,
                     topcore1);
@@ -62,7 +63,7 @@ public class SubmarineStaffItemRenderer extends BlockEntityWithoutLevelRenderer 
         if (topcore2 != null) {
             poseStack.pushPose();
             poseStack.translate(originX, originY, originZ);
-            poseStack.mulPose(com.mojang.math.Axis.XP.rotationDegrees(-14.5f));
+            poseStack.mulPose(Axis.XP.rotationDegrees(-14.5f));
             poseStack.translate(-originX, -originY, -originZ);
             itemRenderer.render(stack, ItemDisplayContext.NONE, false, poseStack, buffer, packedLight, packedOverlay,
                     topcore2);
@@ -72,9 +73,9 @@ public class SubmarineStaffItemRenderer extends BlockEntityWithoutLevelRenderer 
         if (topcore3 != null) {
             poseStack.pushPose();
             poseStack.translate(originX, originY, originZ);
-            poseStack.mulPose(com.mojang.math.Axis.XP.rotationDegrees(94.46829f));
-            poseStack.mulPose(com.mojang.math.Axis.YP.rotationDegrees(89.80437f));
-            poseStack.mulPose(com.mojang.math.Axis.ZP.rotationDegrees(82.27781f));
+            poseStack.mulPose(Axis.XP.rotationDegrees(94.46829f));
+            poseStack.mulPose(Axis.YP.rotationDegrees(89.80437f));
+            poseStack.mulPose(Axis.ZP.rotationDegrees(82.27781f));
             poseStack.translate(-originX, -originY, -originZ);
             itemRenderer.render(stack, ItemDisplayContext.NONE, false, poseStack, buffer, packedLight, packedOverlay,
                     topcore3);
@@ -84,9 +85,9 @@ public class SubmarineStaffItemRenderer extends BlockEntityWithoutLevelRenderer 
         if (topcore4 != null) {
             poseStack.pushPose();
             poseStack.translate(originX, originY, originZ);
-            poseStack.mulPose(com.mojang.math.Axis.XP.rotationDegrees(67.46829f));
-            poseStack.mulPose(com.mojang.math.Axis.YP.rotationDegrees(89.80437f));
-            poseStack.mulPose(com.mojang.math.Axis.ZP.rotationDegrees(82.27781f));
+            poseStack.mulPose(Axis.XP.rotationDegrees(67.46829f));
+            poseStack.mulPose(Axis.YP.rotationDegrees(89.80437f));
+            poseStack.mulPose(Axis.ZP.rotationDegrees(82.27781f));
             poseStack.translate(-originX, -originY, -originZ);
             itemRenderer.render(stack, ItemDisplayContext.NONE, false, poseStack, buffer, packedLight, packedOverlay,
                     topcore4);

@@ -72,14 +72,20 @@ public class RudderCopycatModel extends CopycatModel {
             double maxX = 1, maxY = 1, maxZ = 1;
 
             if (axis == Direction.Axis.X) {
-                if (front) maxX = 2.0 / 16.0;
-                else minX = 14.0 / 16.0;
+                if (front)
+                    maxX = 2.0 / 16.0;
+                else
+                    minX = 14.0 / 16.0;
             } else if (axis == Direction.Axis.Y) {
-                if (front) maxY = 2.0 / 16.0;
-                else minY = 14.0 / 16.0;
+                if (front)
+                    maxY = 2.0 / 16.0;
+                else
+                    minY = 14.0 / 16.0;
             } else {
-                if (front) maxZ = 2.0 / 16.0;
-                else minZ = 14.0 / 16.0;
+                if (front)
+                    maxZ = 2.0 / 16.0;
+                else
+                    minZ = 14.0 / 16.0;
             }
 
             AABB bb = new AABB(minX, minY, minZ, maxX, maxY, maxZ);
@@ -89,8 +95,10 @@ public class RudderCopycatModel extends CopycatModel {
             for (BakedQuad quad : templateQuads) {
                 Direction direction = quad.getDirection();
                 
-                if (front && direction == facing) continue;
-                if (!front && direction == facing.getOpposite()) continue;
+                if (front && direction == facing)
+                    continue;
+                if (!front && direction == facing.getOpposite())
+                    continue;
 
                 quads.add(BakedQuadHelper.cloneWithCustomGeometry(quad,
                         BakedModelHelper.cropAndMove(quad.getVertices(), quad.getSprite(), bb, offset)));

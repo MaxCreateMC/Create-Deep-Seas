@@ -70,7 +70,7 @@ public class BarometerDisplaySource extends SingleLineDisplaySource {
     public void initConfigurationWidgets(DisplayLinkContext context, ModularGuiLineBuilder builder,
             boolean isFirstLine) {
         super.initConfigurationWidgets(context, builder, isFirstLine);
-        if (!isFirstLine)
+        if (isFirstLine)
             return;
 
         builder.addSelectionScrollInput(0, 100, (si, label) -> {

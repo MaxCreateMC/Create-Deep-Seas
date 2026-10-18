@@ -27,9 +27,7 @@ import org.lwjgl.glfw.GLFW;
 import java.util.Set;
 import com.maxenonyme.highseas.config.HighSeasConfig;
 
-public final class SeaglideClientHandler {
-    private SeaglideClientHandler() {
-    }
+public class SeaglideClientHandler {
 
     private static final float MAX_SPEED = 42.0f;
     private static final float SPIN_UP = 0.055f;
@@ -49,6 +47,8 @@ public final class SeaglideClientHandler {
     private static final double BOUND_MIN_UP = 0.50;
     private static final int LEAP_COOLDOWN = 10;
     private static final double ENTRY_BLEED = 0.88;
+    private static final double FLIGHT_PULL = 0.1;
+    private static final int FLIGHT_DRAIN = 2;
     private static final double ARC_REFERENCE = 0.60;
     private static final float ARC_SMOOTH = 0.16f;
     private static final float BLEND_SMOOTH = 0.13f;
@@ -135,10 +135,10 @@ public final class SeaglideClientHandler {
 
         boolean active = mc.player != null && mc.level != null && mc.screen == null
                 && isHolding(mc.player) && mc.options.keyAttack.isDown()
-                && mc.player.getFoodData().getFoodLevel() > 0;
+                && SeaglideDrainPayload.hasFuel(mc.player);
 
         if (active) {
-            drainTicks++;
+            drainTicks += mc.player.isFallFlying() ? FLIGHT_DRAIN : 1;
             if (drainTicks >= DRAIN_INTERVAL) {
                 PacketDistributor.sendToServer(new SeaglideDrainPayload((byte) drainTicks));
                 drainTicks = 0;
@@ -220,6 +220,13 @@ public final class SeaglideClientHandler {
                 next = next.scale(Math.max(HighSeasConfig.seaglideMaxSwim, len * ENTRY_BLEED) / len);
             }
             player.setDeltaMovement(next);
+        } else if (player.isFallFlying()) {
+            Vec3 v = player.getDeltaMovement();
+            double top = HighSeasConfig.seaglideFlightSpeed;
+            player.setDeltaMovement(v.add(
+                    (look.x * top - v.x) * FLIGHT_PULL * power,
+                    (look.y * top - v.y) * FLIGHT_PULL * power,
+                    (look.z * top - v.z) * FLIGHT_PULL * power));
         }
 
         Vec3 at = nozzle(player);
@@ -234,7 +241,7 @@ public final class SeaglideClientHandler {
         }
 
         if (leap > 0) {
-            if (wet) {
+            if (wet || player.isFallFlying()) {
                 leap = 0;
             } else if (player.onGround()) {
                 leap = 0;

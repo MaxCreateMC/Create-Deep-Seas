@@ -132,23 +132,23 @@ public class BuoyBlockEntity extends SmartBlockEntity implements RopeStrandHolde
     }
 
     @Override
-    public void sable$physicsTick(ServerSubLevel sub, RigidBodyHandle handle, double timeStep) {
+    public void sable$physicsTick(ServerSubLevel subLevel, RigidBodyHandle handle, double timeStep) {
         if (!(level instanceof ServerLevel server)) {
             return;
         }
-        Pose3dc pose = sub.logicalPose();
+        Pose3dc pose = subLevel.logicalPose();
         Vector3d centre = new Vector3d(worldPosition.getX() + 0.5, worldPosition.getY() + 0.5,
                 worldPosition.getZ() + 0.5);
         pose.transformPosition(centre);
 
         double surface = BoatBuoyancySystem.surfaceNear(server, centre.x, centre.y, centre.z);
         if (surface == Double.NEGATIVE_INFINITY) {
-            BuoyFloatSystem.release(sub.getUniqueId());
+            BuoyFloatSystem.release(subLevel.getUniqueId());
             return;
         }
         double immersion = Mth.clamp((surface - centre.y + BAND) / BAND, 0.0, 1.0);
         if (immersion <= 0.0) {
-            BuoyFloatSystem.release(sub.getUniqueId());
+            BuoyFloatSystem.release(subLevel.getUniqueId());
             return;
         }
 
@@ -158,7 +158,7 @@ public class BuoyBlockEntity extends SmartBlockEntity implements RopeStrandHolde
         double wanted = Mth.clamp(error * SNAP, -MAX_SINK, MAX_RISE);
 
         double lift = (surface - RIDE_HEIGHT) - centre.y;
-        BuoyFloatSystem.hold(sub.getUniqueId(), pose.position().y() + lift);
+        BuoyFloatSystem.hold(subLevel.getUniqueId(), pose.position().y() + lift);
 
         double hop = hop(server, velocity, immersion);
         if (hop > 0.0) {

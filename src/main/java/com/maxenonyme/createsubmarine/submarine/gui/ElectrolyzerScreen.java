@@ -157,7 +157,8 @@ public class ElectrolyzerScreen extends AbstractSimiContainerScreen<Electrolyzer
     }
 
     private void drawFluidFill(GuiGraphics g, int x, int y, int w, int h, int tint) {
-        if (w <= 0 || h <= 0) return;
+        if (w <= 0 || h <= 0)
+            return;
 
         TextureAtlasSprite sprite = Minecraft.getInstance()
             .getTextureAtlas(InventoryMenu.BLOCK_ATLAS)

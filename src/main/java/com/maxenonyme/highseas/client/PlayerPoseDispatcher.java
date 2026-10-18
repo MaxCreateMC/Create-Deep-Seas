@@ -7,9 +7,7 @@ import net.minecraft.client.player.AbstractClientPlayer;
 import net.minecraft.world.entity.player.Player;
 import com.maxenonyme.highseas.block.entity.BuoySeatEntity;
 
-public final class PlayerPoseDispatcher {
-    private PlayerPoseDispatcher() {
-    }
+public class PlayerPoseDispatcher {
 
     public static void before(AbstractClientPlayer player, HumanoidModel<?> model) {
         model.head.resetPose();

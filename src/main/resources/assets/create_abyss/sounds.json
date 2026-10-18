@@ -14,5 +14,21 @@
                 "stream": false
             }
         ]
+    },
+    "music_disc.seafoam": {
+        "sounds": [
+            {
+                "name": "create_abyss:musics/seafoam",
+                "stream": true
+            }
+        ]
+    },
+    "music_disc.snells_window": {
+        "sounds": [
+            {
+                "name": "create_abyss:musics/snells_window",
+                "stream": true
+            }
+        ]
     }
 }

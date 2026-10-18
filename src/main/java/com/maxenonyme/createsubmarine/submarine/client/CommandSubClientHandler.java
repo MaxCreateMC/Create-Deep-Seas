@@ -19,15 +19,14 @@ import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.client.event.InputEvent;
+import net.neoforged.neoforge.client.event.RenderFrameEvent;
 import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
 import net.neoforged.neoforge.network.PacketDistributor;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
 import org.lwjgl.glfw.GLFW;
 
-public final class CommandSubClientHandler {
-    private CommandSubClientHandler() {
-    }
+public class CommandSubClientHandler {
 
     public static final int FIELD = 0;
     public static final int SPEED_FIRST = 1;
@@ -46,6 +45,7 @@ public final class CommandSubClientHandler {
     private static float hoveredV;
 
     private static boolean clickLatched;
+    private static Camera viewCamera;
 
     private static CommandSubBlockEntity typingConsole;
     private static final StringBuilder typed = new StringBuilder();
@@ -199,8 +199,12 @@ public final class CommandSubClientHandler {
             cancelTyping();
     }
 
+    public static void onFrameStart(RenderFrameEvent.Pre event) {
+        viewCamera = Minecraft.getInstance().gameRenderer.getMainCamera();
+    }
+
     public static void onRenderStage(RenderLevelStageEvent event) {
-        if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_SKY)
+        if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_SKY || event.getCamera() != viewCamera)
             return;
         hoveredConsole = null;
         hoveredWidget = -1;
@@ -222,17 +226,17 @@ public final class CommandSubClientHandler {
             BlockPos pos = be.getBlockPos();
             Vec3 from = eye;
             Vec3 dir = look;
-            SubLevel sub = Sable.HELPER.getContaining(be);
-            if (sub instanceof ClientSubLevel csl) {
-                from = csl.renderPose().transformPositionInverse(eye);
-                dir = csl.renderPose().transformNormalInverse(look);
+            SubLevel ship = Sable.HELPER.getContaining(be);
+            if (ship instanceof ClientSubLevel subLevel) {
+                from = subLevel.renderPose().transformPositionInverse(eye);
+                dir = subLevel.renderPose().transformNormalInverse(look);
             }
             if (from.distanceToSqr(Vec3.atCenterOf(pos)) > 64)
                 continue;
 
             double limit = reach;
-            if (hitPos != null && !hitPos.equals(pos) && sub == null)
-                limit = Math.min(limit, hit.getLocation().distanceTo(eye) + 0.05);
+            if (hitPos != null && !hitPos.equals(pos) && ship == null)
+                limit = Math.min(limit, hit.getLocation().distanceTo(eye) + 1.0);
 
             Matrix4f toCanvas = CommandSubRenderer.canvasToBlock(be.getBlockState()).invert();
             Vector3f a = toCanvas.transformPosition(new Vector3f(

@@ -6,7 +6,7 @@ import com.mojang.blaze3d.vertex.VertexFormat;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import net.minecraft.client.renderer.RenderType;
 
-public final class CommandSubRenderTypes extends RenderType {
+public class CommandSubRenderTypes extends RenderType {
 
     private static final Int2ObjectOpenHashMap<RenderType> DIAGRAMS = new Int2ObjectOpenHashMap<>();
 

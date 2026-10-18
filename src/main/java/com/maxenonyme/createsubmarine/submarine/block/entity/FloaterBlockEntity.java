@@ -66,20 +66,20 @@ public class FloaterBlockEntity extends BlockEntity implements BlockEntitySubLev
     public static void serverTick(Level level, BlockPos pos, FloaterBlockEntity be) {
         FloaterBlockEntity master = be.getMaster();
         master.refreshShared(level);
-        SubLevelAccess sub = master.sharedSub;
-        boolean sealed = sub != null
-                && CompartmentTracker.hasAnySealed(sub.getUniqueId());
+        SubLevelAccess ship = master.sharedSub;
+        boolean sealed = ship != null
+                && CompartmentTracker.hasAnySealed(ship.getUniqueId());
 
         if (++be.pressureTickCounter >= PRESSURE_CHECK_INTERVAL) {
             be.pressureTickCounter = 0;
             Level worldLevel = level;
             BlockPos worldPos = pos;
-            if (sub != null) {
-                Level parent = SubLevelRegistry.getLevel(sub.getUniqueId());
+            if (ship != null) {
+                Level parent = SubLevelRegistry.getLevel(ship.getUniqueId());
                 if (parent != null)
                     worldLevel = parent;
                 Vector3d wp = new Vector3d(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5);
-                sub.logicalPose().transformPosition(wp);
+                ship.logicalPose().transformPosition(wp);
                 worldPos = BlockPos.containing(wp.x, wp.y, wp.z);
             }
             int threshold = PRESSURE_THRESHOLD;
@@ -94,17 +94,17 @@ public class FloaterBlockEntity extends BlockEntity implements BlockEntitySubLev
             }
         }
 
-        if (sub == null)
+        if (ship == null)
             return;
 
         Vector3d worldPos = new Vector3d(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5);
-        sub.logicalPose().transformPosition(worldPos);
+        ship.logicalPose().transformPosition(worldPos);
 
         Vector3dc currentVel = master.sharedVel;
         double currentVelY = master.sharedVelY;
 
-        Level parentLevel = SubLevelRegistry.getLevel(sub.getUniqueId());
-        if (parentLevel == null && sub instanceof SubLevel sl) {
+        Level parentLevel = SubLevelRegistry.getLevel(ship.getUniqueId());
+        if (parentLevel == null && ship instanceof SubLevel sl) {
             parentLevel = sl.getLevel();
         }
 
@@ -140,11 +140,13 @@ public class FloaterBlockEntity extends BlockEntity implements BlockEntitySubLev
         boolean isUnderWater = (depth > 0.0);
 
         if (!isUnderWater) {
-            if (sealed) checkCrash(level, pos, parentLevel, parentPos, currentVel);
+            if (sealed)
+                checkCrash(level, pos, parentLevel, parentPos, currentVel);
             return;
         }
 
-        if (sealed) checkCrash(level, pos, parentLevel, parentPos, currentVel);
+        if (sealed)
+            checkCrash(level, pos, parentLevel, parentPos, currentVel);
 
         double submergedRatio = Math.max(0.0, Math.min(1.0, depth));
         double distanceToSurface = localWaterSurfaceY - worldPos.y;
@@ -163,9 +165,9 @@ public class FloaterBlockEntity extends BlockEntity implements BlockEntitySubLev
         if (Double.isFinite(forceToApply)) {
             double finalForce = (Math.abs(currentVelY) < 0.01 && forceToApply < 0) ? forceToApply * 0.1 : forceToApply;
             master.pendingForceY += finalForce;
-            if (sub instanceof ServerSubLevel ssl && ssl.isTrackingIndividualQueuedForces()) {
+            if (ship instanceof ServerSubLevel ssl && ssl.isTrackingIndividualQueuedForces()) {
                 Vector3d forceVec = new Vector3d(0, finalForce, 0);
-                sub.logicalPose().orientation().conjugate(new Quaterniond()).transform(forceVec);
+                ship.logicalPose().orientation().conjugate(new Quaterniond()).transform(forceVec);
                 be.recordedForceVec = forceVec;
             }
         }
@@ -185,10 +187,10 @@ public class FloaterBlockEntity extends BlockEntity implements BlockEntitySubLev
 
     private static int countWaterAbove(Level level, BlockPos pos) {
         int depth = 0;
-        BlockPos.MutableBlockPos m = new BlockPos.MutableBlockPos();
+        BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
         for (int y = pos.getY() + 1; y < pos.getY() + 1 + MAX_WATER_SCAN; y++) {
-            m.set(pos.getX(), y, pos.getZ());
-            if (CompartmentTracker.realFluidState(level, m).is(FluidTags.WATER)) {
+            cursor.set(pos.getX(), y, pos.getZ());
+            if (CompartmentTracker.realFluidState(level, cursor).is(FluidTags.WATER)) {
                 depth++;
             } else {
                 break;
@@ -217,7 +219,7 @@ public class FloaterBlockEntity extends BlockEntity implements BlockEntitySubLev
         if (speed < 0.35)
             return;
 
-        BlockState parentState = parentLevel.getBlockState(parentPos);
+        BlockState parentState = CompartmentTracker.realBlockState(parentLevel, parentPos);
         if (parentState.isSolid() && !parentState.is(BlockTags.LEAVES)) {
             subLevel.destroyBlock(localPos, false);
             parentLevel.playSound(null, parentPos, SoundEvents.FIREWORK_ROCKET_BLAST,
@@ -248,10 +250,12 @@ public class FloaterBlockEntity extends BlockEntity implements BlockEntitySubLev
     }
 
     public List<FloaterBlockEntity> getCluster() {
-        if (level == null) return List.of(this);
+        if (level == null)
+            return List.of(this);
         long tick = level.getGameTime();
         List<FloaterBlockEntity> known = cachedCluster;
-        if (known != null && cachedEpoch == clusterEpoch && tick - clusterCacheTick < CLUSTER_REFRESH) return known;
+        if (known != null && cachedEpoch == clusterEpoch && tick - clusterCacheTick < CLUSTER_REFRESH)
+            return known;
         int epoch = clusterEpoch;
         Block floaterBlock = CreateSubmarine.FLOATER.get();
         List<FloaterBlockEntity> cluster = new ArrayList<>();
@@ -294,19 +298,20 @@ public class FloaterBlockEntity extends BlockEntity implements BlockEntitySubLev
     }
 
     @Override
-    public void sable$physicsTick(ServerSubLevel sub, RigidBodyHandle handle, double timeStep) {
+    public void sable$physicsTick(ServerSubLevel ship, RigidBodyHandle handle, double timeStep) {
         List<FloaterBlockEntity> cluster = cachedCluster;
-        if (cachedMaster != this || cluster == null) return;
+        if (cachedMaster != this || cluster == null)
+            return;
 
         if (pendingForceY != 0.0) {
             Vector3d forceVec = new Vector3d(0, pendingForceY, 0);
-            sub.logicalPose().orientation().conjugate(new Quaterniond()).transform(forceVec);
+            ship.logicalPose().orientation().conjugate(new Quaterniond()).transform(forceVec);
             handle.applyLinearImpulse(forceVec);
             pendingForceY = 0.0;
         }
 
-        if (sub.isTrackingIndividualQueuedForces()) {
-            QueuedForceGroup forceGroup = sub.getOrCreateQueuedForceGroup(CreateSubmarine.FLOATER_FORCE_GROUP.get());
+        if (ship.isTrackingIndividualQueuedForces()) {
+            QueuedForceGroup forceGroup = ship.getOrCreateQueuedForceGroup(CreateSubmarine.FLOATER_FORCE_GROUP.get());
             Vector3d totalForce = new Vector3d();
             Vector3d centerPos = new Vector3d();
             int count = 0;

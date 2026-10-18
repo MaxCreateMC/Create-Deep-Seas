@@ -40,6 +40,10 @@ public class SeaglideItem extends Item {
             tooltip.add(Component.empty());
             addLines(tooltip, "item.create_high_seas.seaglide.tooltip.condition3", ChatFormatting.GRAY.getColor());
             addLines(tooltip, "item.create_high_seas.seaglide.tooltip.behaviour4", CREATE_YELLOW);
+
+            tooltip.add(Component.empty());
+            addLines(tooltip, "item.create_high_seas.seaglide.tooltip.condition4", ChatFormatting.GRAY.getColor());
+            addLines(tooltip, "item.create_high_seas.seaglide.tooltip.behaviour5", CREATE_YELLOW);
         } else {
             tooltip.add(Component.translatable("create_submarine.tooltip.holdForInfo",
                     Component.translatable("create_submarine.tooltip.keyShift").withStyle(ChatFormatting.GRAY))

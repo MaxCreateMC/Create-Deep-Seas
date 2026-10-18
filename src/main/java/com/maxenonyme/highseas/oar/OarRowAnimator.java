@@ -12,9 +12,7 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
 
-public final class OarRowAnimator {
-    private OarRowAnimator() {
-    }
+public class OarRowAnimator {
 
     private static final float STROKE_PERIOD = 24.0f;
 

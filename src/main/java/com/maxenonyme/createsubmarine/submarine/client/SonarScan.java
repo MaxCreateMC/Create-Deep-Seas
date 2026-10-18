@@ -6,8 +6,9 @@ import net.minecraft.core.BlockPos;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
-public final class SonarScan {
+public class SonarScan {
     AdvancedFbo fbo;
     AdvancedFbo outline;
     AdvancedFbo result;
@@ -21,6 +22,9 @@ public final class SonarScan {
     BlockPos origin;
     BlockPos previousOrigin;
     boolean swept;
+    CompletableFuture<SonarTerrain.Bake> baking;
+    BlockPos bakingOrigin;
+    volatile boolean freed;
 
     long lastDraw;
     long lastPing;
@@ -54,6 +58,7 @@ public final class SonarScan {
     void resize(int w, int h) {
         if (fbo != null && w == width && h == height)
             return;
+
         freeTargets();
         width = w;
         height = h;
@@ -74,10 +79,16 @@ public final class SonarScan {
     }
 
     void free() {
+        freed = true;
         freeTargets();
         close(shells);
         close(previous);
         shells = previous = null;
+
+        if (baking != null) {
+            baking.thenAccept(SonarTerrain::discard);
+            baking = null;
+        }
     }
 
     private void freeTargets() {
@@ -85,6 +96,7 @@ public final class SonarScan {
             CommandSubRenderTypes.forget(result.getColorTextureAttachment(0).getId());
             result.free();
         }
+
         if (fbo != null)
             fbo.free();
         if (outline != null)
@@ -95,6 +107,7 @@ public final class SonarScan {
     private static void close(VertexBuffer[] buffers) {
         if (buffers == null)
             return;
+
         for (VertexBuffer buffer : buffers) {
             if (buffer != null)
                 buffer.close();

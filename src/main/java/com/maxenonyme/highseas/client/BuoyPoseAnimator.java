@@ -5,9 +5,7 @@ import net.minecraft.client.model.HumanoidModel;
 import net.minecraft.client.player.AbstractClientPlayer;
 import net.minecraft.util.Mth;
 
-public final class BuoyPoseAnimator {
-    private BuoyPoseAnimator() {
-    }
+public class BuoyPoseAnimator {
 
     private static final float ARM_RAISE = (float) Math.toRadians(140.0);
     private static final float ARM_SPREAD = (float) Math.toRadians(11.0);

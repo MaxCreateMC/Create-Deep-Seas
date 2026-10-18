@@ -15,9 +15,7 @@ import org.joml.Vector3d;
 import java.util.HashMap;
 import java.util.Map;
 
-public final class BoatEngineSoundHandler {
-    private BoatEngineSoundHandler() {
-    }
+public class BoatEngineSoundHandler {
 
     private static final Map<BlockPos, BoatEngineSoundInstance[]> active = new HashMap<>();
 
@@ -44,14 +42,14 @@ public final class BoatEngineSoundHandler {
 
     public static Vec3 worldPos(BoatEngineBlockEntity be) {
         Level level = be.getLevel();
-        BlockPos p = be.getBlockPos();
-        Vector3d v = new Vector3d(p.getX() + 0.5, p.getY() + 0.5, p.getZ() + 0.5);
+        BlockPos blockPos = be.getBlockPos();
+        Vector3d v = new Vector3d(blockPos.getX() + 0.5, blockPos.getY() + 0.5, blockPos.getZ() + 0.5);
         if (level != null) {
-            SubLevelAccess sub = SableCompanion.INSTANCE.getContaining(level, p);
-            if (sub instanceof ClientSubLevel csl) {
-                csl.renderPose().transformPosition(v);
-            } else if (sub != null) {
-                sub.logicalPose().transformPosition(v);
+            SubLevelAccess ship = SableCompanion.INSTANCE.getContaining(level, blockPos);
+            if (ship instanceof ClientSubLevel subLevel) {
+                subLevel.renderPose().transformPosition(v);
+            } else if (ship != null) {
+                ship.logicalPose().transformPosition(v);
             }
         }
         return new Vec3(v.x, v.y, v.z);

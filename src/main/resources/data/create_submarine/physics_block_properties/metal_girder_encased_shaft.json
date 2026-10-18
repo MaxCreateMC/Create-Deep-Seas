@@ -1,0 +1,7 @@
+{
+  "selector": "create:metal_girder_encased_shaft",
+  "priority": 1001,
+  "properties": {
+    "sable:restitution": 0.7
+  }
+}

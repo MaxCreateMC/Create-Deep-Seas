@@ -8,6 +8,8 @@ import net.minecraft.client.renderer.entity.MobRenderer;
 import net.minecraft.resources.ResourceLocation;
 
 import net.minecraft.client.renderer.RenderType;
+import net.minecraft.client.renderer.entity.RenderLayerParent;
+import net.minecraft.client.renderer.entity.layers.EyesLayer;
 
 public class AmphistiumRenderer extends MobRenderer<AmphistiumEntity, Amphistium<AmphistiumEntity>> {
     private static final ResourceLocation TEXTURE = ResourceLocation.fromNamespaceAndPath(CreateAbyss.MOD_ID, "textures/entity/amphistium.png");
@@ -22,10 +24,10 @@ public class AmphistiumRenderer extends MobRenderer<AmphistiumEntity, Amphistium
         return TEXTURE;
     }
 
-    private static class AmphistiumGlowingLayer extends net.minecraft.client.renderer.entity.layers.EyesLayer<AmphistiumEntity, Amphistium<AmphistiumEntity>> {
+    private static class AmphistiumGlowingLayer extends EyesLayer<AmphistiumEntity, Amphistium<AmphistiumEntity>> {
         private static final RenderType GLOWING_RENDER_TYPE = RenderType.eyes(ResourceLocation.fromNamespaceAndPath(CreateAbyss.MOD_ID, "textures/entity/amphistium_glowing.png"));
 
-        public AmphistiumGlowingLayer(net.minecraft.client.renderer.entity.RenderLayerParent<AmphistiumEntity, Amphistium<AmphistiumEntity>> parent) {
+        public AmphistiumGlowingLayer(RenderLayerParent<AmphistiumEntity, Amphistium<AmphistiumEntity>> parent) {
             super(parent);
         }
 

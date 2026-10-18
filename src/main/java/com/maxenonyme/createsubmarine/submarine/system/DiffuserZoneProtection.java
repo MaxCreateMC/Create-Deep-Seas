@@ -18,9 +18,7 @@ import net.neoforged.neoforge.event.level.PistonEvent;
 import java.util.HashSet;
 import java.util.Set;
 
-public final class DiffuserZoneProtection {
-    private DiffuserZoneProtection() {
-    }
+public class DiffuserZoneProtection {
 
     private static boolean isProtected(LevelAccessor level, BlockPos pos) {
         return isMachine(level.getBlockState(pos.below()));
@@ -28,6 +26,13 @@ public final class DiffuserZoneProtection {
 
     private static boolean isMachine(BlockState state) {
         return state.is(CreateSubmarine.ELECTROLYZER.get()) || state.is(CreateSubmarine.OXYGENE_DIFFUSER.get());
+    }
+
+    public static boolean evict(Level level, BlockPos pos) {
+        if (level.isClientSide || level.getBlockState(pos.above()).canBeReplaced())
+            return false;
+        level.destroyBlock(pos, true);
+        return true;
     }
 
     public static boolean canPlaceMachine(BlockPlaceContext context) {

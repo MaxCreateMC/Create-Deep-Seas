@@ -1,4 +1,5 @@
 {
+  "create_submarine.ui.button.later": "Может быть позже",
   "block.create_submarine.ballast_tank": "Балласт субмарины",
   "block.create_submarine.ballast_vent": "Клапан балласта",
   "block.create_submarine.decompression_chamber": "Декомпрессионная камера",
@@ -136,10 +137,6 @@
   "create_submarine.update.message": "Доступна новая версия Create Deep Seas: v%s! Скачайте её на %s.",
   "create_submarine.update.message_screen": "Доступна новая версия Create Deep Seas: v%s",
   "create_submarine.update.title": "Обновление Deep Seas",
-  "create_submarine.welcome.configure": "Настроить мод",
-  "create_submarine.welcome.dismiss": "Может быть позже",
-  "create_submarine.welcome.message": "Настоятельно рекомендуется настроить параметры Deep Seas перед погружением — прочность корпуса, движение, глубину океана и многое другое можно настроить под себя.",
-  "create_submarine.welcome.title": "Добро пожаловать в Create Deep Seas",
   "death.attack.create_submarine.suffocation": "%1$s задохнулся в густом дыму",
   "effect.create_submarine.suffocation": "Удушение",
   "fluid.create_submarine.oxygen": "Кислород",

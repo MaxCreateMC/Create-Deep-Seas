@@ -1,5 +1,6 @@
 package com.maxenonyme.highseas.sail;
 
+import com.maxenonyme.createsubmarine.submarine.compartment.CompartmentTracker;
 import dev.ryanhcode.sable.api.SubLevelHelper;
 import dev.ryanhcode.sable.companion.math.BoundingBox3ic;
 import dev.ryanhcode.sable.companion.math.Pose3dc;
@@ -18,14 +19,9 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-public final class BoatClassifier {
-    private BoatClassifier() {
-    }
+public class BoatClassifier {
 
-    private static final double MIN_SUBMERGED = 0.12;
-    private static final int SAMPLES = 5;
     private static final int REFRESH = 20;
-    private static final double KEEL_DEPTH = 4.0;
 
     private record Cached(long tick, Map<UUID, SubLevel> rootMap) {
     }
@@ -39,26 +35,26 @@ public final class BoatClassifier {
         }
         Map<UUID, SubLevel> map = new HashMap<>();
         for (SubLevel s : all) {
-            if (map.containsKey(s.getUniqueId()) || !isInWater(parent, s)) {
+            if (map.containsKey(s.getUniqueId())) {
                 continue;
             }
             Collection<SubLevel> chain;
             try {
                 chain = SubLevelHelper.getConnectedChain(s);
-            } catch (Exception e) {
+            } catch (RuntimeException e) {
                 chain = List.of(s);
             }
             SubLevel hull = s;
             long biggest = volume(s);
-            for (SubLevel c : chain) {
-                long v = volume(c);
-                if (v > biggest && isInWater(parent, c)) {
+            for (SubLevel subLevel : chain) {
+                long v = volume(subLevel);
+                if (v > biggest) {
                     biggest = v;
-                    hull = c;
+                    hull = subLevel;
                 }
             }
-            for (SubLevel c : chain) {
-                map.put(c.getUniqueId(), hull);
+            for (SubLevel subLevel : chain) {
+                map.put(subLevel.getUniqueId(), hull);
             }
             map.put(s.getUniqueId(), hull);
         }
@@ -81,49 +77,12 @@ public final class BoatClassifier {
         return rootMap(parent, all, gameTime).get(sub.getUniqueId());
     }
 
-    public static boolean isInWater(Level parent, SubLevel ship) {
-        if (ship.getPlot() == null) {
-            return false;
-        }
-        BoundingBox3ic bb = ship.getPlot().getBoundingBox();
-        Pose3dc pose = ship.logicalPose();
-        int water = 0;
-        int total = 0;
-        Vector3d p = new Vector3d();
-        BlockPos.MutableBlockPos m = new BlockPos.MutableBlockPos();
-        double keel = Math.min(bb.maxY() + 1, bb.minY() + KEEL_DEPTH);
-        for (int i = 0; i < SAMPLES; i++) {
-            for (int j = 0; j < SAMPLES; j++) {
-                for (int k = 0; k < SAMPLES; k++) {
-                    p.set(lerp(bb.minX(), bb.maxX() + 1, frac(i)),
-                            lerp(bb.minY(), keel, frac(j)),
-                            lerp(bb.minZ(), bb.maxZ() + 1, frac(k)));
-                    pose.transformPosition(p);
-                    m.set((int) Math.floor(p.x), (int) Math.floor(p.y), (int) Math.floor(p.z));
-                    if (parent.getFluidState(m).is(FluidTags.WATER)) {
-                        water++;
-                    }
-                    total++;
-                }
-            }
-        }
-        return total > 0 && (double) water / total >= MIN_SUBMERGED;
-    }
-
     public static boolean inAir(Level parent, SubLevel ship, Vec3 localCenter) {
         Pose3dc pose = ship.logicalPose();
-        Vector3d p = new Vector3d(localCenter.x, localCenter.y, localCenter.z);
-        pose.transformPosition(p);
-        BlockPos bp = BlockPos.containing(p.x, p.y, p.z);
-        return !parent.getFluidState(bp).is(FluidTags.WATER);
-    }
-
-    private static double frac(int i) {
-        return i / (SAMPLES - 1.0);
-    }
-
-    private static double lerp(double a, double b, double t) {
-        return a + (b - a) * t;
+        Vector3d point = new Vector3d(localCenter.x, localCenter.y, localCenter.z);
+        pose.transformPosition(point);
+        BlockPos bp = BlockPos.containing(point.x, point.y, point.z);
+        return !CompartmentTracker.realFluidState(parent, bp).is(FluidTags.WATER);
     }
 
     public static void clearAll() {

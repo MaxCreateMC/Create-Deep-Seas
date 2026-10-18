@@ -10,6 +10,9 @@ import net.minecraft.client.gui.screens.TitleScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.FormattedCharSequence;
 import net.neoforged.neoforge.client.event.ScreenEvent;
+import net.neoforged.neoforge.client.gui.ConfigurationScreen;
+import net.neoforged.fml.ModList;
+import com.maxenonyme.createsubmarine.CreateSubmarine;
 
 import java.util.List;
 
@@ -39,8 +42,7 @@ public class DeepSeasSafetyScreen extends Screen {
         if (!(event.getNewScreen() instanceof TitleScreen menu)) {
             return;
         }
-        if (!SubmarineConfig.CLIENT_SPEC.isLoaded() || !SubmarineClientState.hasSeenWelcomeScreen()
-                || SubmarineClientState.hasSeenSafetyScreen()) {
+        if (!SubmarineConfig.CLIENT_SPEC.isLoaded() || SubmarineClientState.hasSeenSafetyScreen()) {
             return;
         }
         if (SubmarineConfig.DISABLE_STARTUP_SCREENS.get()) {
@@ -74,11 +76,19 @@ public class DeepSeasSafetyScreen extends Screen {
         photosensitive.setX((this.width - photosensitive.getWidth()) / 2);
         addRenderableWidget(photosensitive);
 
-        int buttonW = Math.min(170, panelW - 8);
+        int gap = 8;
+        int buttonW = Math.min(170, (panelW - gap) / 2);
+        int buttonsY = panelY + panelH + 14;
+        int centerX = this.width / 2;
         addRenderableWidget(Button.builder(
                         Component.translatable("create_submarine.safety.continue"),
                         b -> onClose())
-                .bounds((this.width - buttonW) / 2, panelY + panelH + 14, buttonW, 20)
+                .bounds(centerX - gap / 2 - buttonW, buttonsY, buttonW, 20)
+                .build());
+        addRenderableWidget(Button.builder(
+                        Component.translatable("create_submarine.safety.settings"),
+                        b -> openSettings())
+                .bounds(centerX + gap / 2, buttonsY, buttonW, 20)
                 .build());
     }
 
@@ -114,11 +124,22 @@ public class DeepSeasSafetyScreen extends Screen {
         }
     }
 
-    @Override
-    public void onClose() {
+    private void acknowledge() {
         SubmarineConfig.PHOTOSENSITIVE_MODE.set(photosensitive != null && photosensitive.selected());
         SubmarineConfig.PHOTOSENSITIVE_MODE.save();
         SubmarineClientState.setSafetyScreenSeen(true);
+    }
+
+    private void openSettings() {
+        acknowledge();
+        ModList.get().getModContainerById(CreateSubmarine.MOD_ID).ifPresentOrElse(
+                container -> this.minecraft.setScreen(new ConfigurationScreen(container, titleScreen)),
+                () -> this.minecraft.setScreen(titleScreen));
+    }
+
+    @Override
+    public void onClose() {
+        acknowledge();
         this.minecraft.setScreen(titleScreen);
     }
 }

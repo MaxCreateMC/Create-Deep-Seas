@@ -1,5 +1,7 @@
 package com.maxenonyme.createsubmarine.submarine.block.entity;
 
+import com.maxenonyme.createsubmarine.CreateSubmarine;
+import com.maxenonyme.createsubmarine.submarine.config.SubmarineConfig;
 import dev.ryanhcode.sable.api.block.propeller.BlockEntityPropeller;
 import dev.ryanhcode.sable.api.block.propeller.BlockEntitySubLevelPropellerActor;
 import net.minecraft.core.BlockPos;
@@ -9,6 +11,9 @@ import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.Connection;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.tags.FluidTags;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
@@ -19,24 +24,22 @@ import net.neoforged.neoforge.fluids.capability.templates.FluidTank;
 public class WaterThrusterBlockEntity extends BlockEntity implements BlockEntitySubLevelPropellerActor, BlockEntityPropeller {
     public static final int WATER_CAPACITY = 1000;
 
-    public final FluidTank waterTank = new FluidTank(WATER_CAPACITY, fluid -> fluid.getFluid().is(net.minecraft.tags.FluidTags.WATER)) {
+    public final FluidTank waterTank = new FluidTank(WATER_CAPACITY, fluid -> fluid.getFluid().is(FluidTags.WATER)) {
         @Override
         protected void onContentsChanged() {
             setChanged();
-            if (level != null && !level.isClientSide) {
-                level.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), 3);
-            }
         }
     };
 
     private int thrustMagnitude = 0;
 
     public WaterThrusterBlockEntity(BlockPos pos, BlockState state) {
-        super(com.maxenonyme.createsubmarine.CreateSubmarine.WATER_THRUSTER_BE.get(), pos, state);
+        super(CreateSubmarine.WATER_THRUSTER_BE.get(), pos, state);
     }
 
-    public static void serverTick(net.minecraft.world.level.Level level, BlockPos pos, BlockState state, WaterThrusterBlockEntity be) {
-        if (level.isClientSide) return;
+    public static void serverTick(Level level, BlockPos pos, BlockState state, WaterThrusterBlockEntity be) {
+        if (level.isClientSide)
+            return;
 
         int drained = be.waterTank.drain(50, IFluidHandler.FluidAction.EXECUTE).getAmount();
         boolean changed = be.thrustMagnitude != drained;
@@ -66,17 +69,18 @@ public class WaterThrusterBlockEntity extends BlockEntity implements BlockEntity
     @Override
     public void onDataPacket(Connection net, ClientboundBlockEntityDataPacket pkt, HolderLookup.Provider registries) {
         CompoundTag tag = pkt.getTag();
-        if (tag != null) loadAdditional(tag, registries);
+        if (tag != null)
+            loadAdditional(tag, registries);
     }
 
     @Override
     public double getThrust() {
-        return thrustMagnitude * 8.0 * com.maxenonyme.createsubmarine.submarine.config.SubmarineConfig.WATER_THRUSTER_POWER_MULTIPLIER.get();
+        return thrustMagnitude * 8.0 * SubmarineConfig.WATER_THRUSTER_POWER_MULTIPLIER.get();
     }
 
     @Override
     public double getAirflow() {
-        return thrustMagnitude * 0.4 * com.maxenonyme.createsubmarine.submarine.config.SubmarineConfig.WATER_THRUSTER_POWER_MULTIPLIER.get();
+        return thrustMagnitude * 0.4 * SubmarineConfig.WATER_THRUSTER_POWER_MULTIPLIER.get();
     }
 
     @Override
@@ -95,7 +99,7 @@ public class WaterThrusterBlockEntity extends BlockEntity implements BlockEntity
     }
 
     private void spawnWaterParticles() {
-        if (!(level instanceof net.minecraft.server.level.ServerLevel serverLevel))
+        if (!(level instanceof ServerLevel serverLevel))
             return;
 
         Direction facing = getBlockState().getValue(BlockStateProperties.FACING);

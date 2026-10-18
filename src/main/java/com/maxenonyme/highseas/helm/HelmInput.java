@@ -1,8 +1,6 @@
 package com.maxenonyme.highseas.helm;
 
-public final class HelmInput {
-    private HelmInput() {
-    }
+public class HelmInput {
 
     public static final int FORWARD = 1;
     public static final int BACKWARD = 2;

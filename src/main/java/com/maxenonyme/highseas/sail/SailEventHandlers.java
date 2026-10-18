@@ -21,11 +21,14 @@ public class SailEventHandlers {
 
     @SubscribeEvent
     public static void onBlockBreak(BlockEvent.BreakEvent event) {
-        if (!(event.getLevel() instanceof ServerSubLevel ship)) return;
-        if (!event.getState().is(BoatSailBlock.SAILS)) return;
+        if (!(event.getLevel() instanceof ServerSubLevel ship))
+            return;
+        if (!event.getState().is(BoatSailBlock.SAILS))
+            return;
         
         ServerLevel parentLevel = (ServerLevel) ship.getLevel();
-        if (parentLevel == null) return;
+        if (parentLevel == null)
+            return;
 
         long time = parentLevel.getGameTime();
         List<SailGroup> sails = SailWindRegistry.getSails(ship, time);

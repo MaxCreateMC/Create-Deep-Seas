@@ -2,6 +2,7 @@ package com.maxenonyme.createsubmarine.submarine.block.entity.renderer;
 
 import com.maxenonyme.createsubmarine.submarine.block.SonarBlock;
 import com.maxenonyme.createsubmarine.submarine.block.entity.SonarBlockEntity;
+import com.maxenonyme.createsubmarine.submarine.client.DeviceGlitch;
 import com.maxenonyme.createsubmarine.submarine.client.renderer.AllPartialModels;
 import dev.engine_room.flywheel.api.instance.Instance;
 import dev.engine_room.flywheel.api.visual.DynamicVisual;
@@ -64,7 +65,8 @@ public class SonarVisual extends AbstractBlockEntityVisual<SonarBlockEntity> imp
     }
 
     public static float angle(Level level) {
-        return (AnimationTickHolder.getRenderTime(level) % SonarBlockEntity.TURN_TICKS) * SPIN;
+        return (AnimationTickHolder.getRenderTime(level) % SonarBlockEntity.TURN_TICKS) * SPIN
+                + DeviceGlitch.spinDegrees(AnimationTickHolder.getPartialTicks()) * 2f * Mth.DEG_TO_RAD;
     }
 
     @Override
@@ -78,10 +80,10 @@ public class SonarVisual extends AbstractBlockEntityVisual<SonarBlockEntity> imp
     }
 
     private void place(TransformedInstance instance, float partialTick) {
-        BlockPos p = getVisualPosition();
+        BlockPos pos = getVisualPosition();
         BlockState state = blockEntity.getBlockState();
         instance.setIdentityTransform()
-                .translate(p.getX(), p.getY(), p.getZ())
+                .translate(pos.getX(), pos.getY(), pos.getZ())
                 .rotateYCentered(yaw(state))
                 .rotateXCentered(tilt(state))
                 .translate(0, PIVOT_Y, PIVOT_Z)

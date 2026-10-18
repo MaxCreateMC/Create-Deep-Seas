@@ -1,8 +1,10 @@
 package com.maxenonyme.AbyssDimension.system;
 
+import com.maxenonyme.AbyssDimension.CreateAbyss;
 import com.maxenonyme.AbyssDimension.LianaRegistry;
 import com.maxenonyme.AbyssDimension.block.entity.SubmarineLianaBlockEntity;
 import com.maxenonyme.createsubmarine.submarine.util.SablePhysicsHelper;
+import com.mojang.brigadier.arguments.FloatArgumentType;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.context.CommandContext;
 import dev.ryanhcode.sable.api.SubLevelAssemblyHelper;
@@ -16,6 +18,7 @@ import dev.ryanhcode.sable.companion.math.BoundingBox3i;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -43,11 +46,11 @@ import java.util.Set;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 
-public final class SubmarineLianaCommand {
+public class SubmarineLianaCommand {
     private static final int SEGMENT_SIZE = 3;
     private static final boolean SPAWN_FRUITS = false;
 
-    private static final class PendingSpawn {
+    private static class PendingSpawn {
         final ServerLevel level;
         final ServerSubLevelContainer container;
         final BlockPos targetPos;
@@ -69,8 +72,8 @@ public final class SubmarineLianaCommand {
 
     public static void onServerTick(ServerTickEvent.Post event) {
         if (!wakeUpQueue.isEmpty()) {
-            ServerSubLevel sub = wakeUpQueue.pollFirst();
-            Object handle = SablePhysicsHelper.getHandle(sub);
+            ServerSubLevel segment = wakeUpQueue.pollFirst();
+            Object handle = SablePhysicsHelper.getHandle(segment);
             SablePhysicsHelper.setAsleep(handle, false);
             return;
         }
@@ -92,16 +95,13 @@ public final class SubmarineLianaCommand {
         PendingSpawn spawn = pendingSpawns.pollFirst();
         List<ServerSubLevel> spawned = spawnLianaChain(spawn.level, spawn.container, spawn.targetPos, spawn.length);
         if (batchActive && spawned != null) {
-            for (ServerSubLevel sub : spawned) {
-                Object handle = SablePhysicsHelper.getHandle(sub);
+            for (ServerSubLevel segment : spawned) {
+                Object handle = SablePhysicsHelper.getHandle(segment);
                 SablePhysicsHelper.setAsleep(handle, true);
-                frozenSubLevels.add(sub);
+                frozenSubLevels.add(segment);
             }
         }
         spawnCooldown = 4;
-    }
-
-    private SubmarineLianaCommand() {
     }
 
     public static void register(RegisterCommandsEvent event) {
@@ -113,7 +113,115 @@ public final class SubmarineLianaCommand {
                         .then(Commands.literal("lian_radius")
                                 .then(Commands.argument("radius", IntegerArgumentType.integer(1, 50))
                                         .then(Commands.argument("length", IntegerArgumentType.integer(1, 100))
-                                                .executes(SubmarineLianaCommand::runRadius)))));
+                                                .executes(SubmarineLianaCommand::runRadius))))
+                        .then(Commands.literal("lian_terrain")
+                                .then(Commands.argument("radius", IntegerArgumentType.integer(1, 64))
+                                        .then(Commands.argument("chance", FloatArgumentType.floatArg(0.0f, 100.0f))
+                                                .executes(ctx -> runTerrain(ctx, 12))
+                                                .then(Commands.argument("max_length", IntegerArgumentType.integer(2, 100))
+                                                        .executes(ctx -> runTerrain(ctx,
+                                                                IntegerArgumentType.getInteger(ctx, "max_length"))))))));
+    }
+
+    private static int runTerrain(CommandContext<CommandSourceStack> ctx, int maxLength) {
+        CommandSourceStack source = ctx.getSource();
+        ServerPlayer player = source.getPlayer();
+        if (player == null) {
+            source.sendFailure(Component.translatable("create_abyss.command.player_only"));
+            return 0;
+        }
+
+        int radius = IntegerArgumentType.getInteger(ctx, "radius");
+        float chance = FloatArgumentType.getFloat(ctx, "chance") / 100.0f;
+        ServerLevel level = source.getLevel();
+        ServerSubLevelContainer container = (ServerSubLevelContainer) SubLevelContainer.getContainer(level);
+        if (container == null) {
+            source.sendFailure(Component.translatable("create_abyss.command.no_sublevel_container"));
+            return 0;
+        }
+
+        BlockPos origin = player.blockPosition();
+        int reach = Math.max(radius, 16);
+        int minLength = Math.max(2, maxLength / 2);
+        Random random = new Random();
+        List<PendingSpawn> found = new ArrayList<>();
+
+        for (int dx = -radius; dx <= radius; dx++) {
+            for (int dz = -radius; dz <= radius; dz++) {
+                if (dx * dx + dz * dz > radius * radius || random.nextFloat() >= chance) {
+                    continue;
+                }
+                BlockPos ground = findGround(level, origin.offset(dx, 0, dz), reach);
+                if (ground == null) {
+                    continue;
+                }
+                int room = openAbove(level, ground, maxLength + 1);
+                if (room < 3) {
+                    continue;
+                }
+                int length = Math.min(minLength + random.nextInt(maxLength - minLength + 1), room - 1);
+                found.add(new PendingSpawn(level, container, ground, length));
+            }
+        }
+
+        if (found.isEmpty()) {
+            source.sendFailure(Component.translatable("create_abyss.command.no_liana_ground"));
+            return 0;
+        }
+
+        found.sort(Comparator.comparingDouble(s -> s.targetPos.distSqr(origin)));
+        pendingSpawns.addAll(found);
+
+        int count = found.size();
+        source.sendSuccess(() -> Component.translatable("create_abyss.command.queue_terrain_lianas", count, radius), true);
+        return count;
+    }
+
+    private static BlockPos findGround(ServerLevel level, BlockPos column, int reach) {
+        if (!level.isLoaded(column)) {
+            return null;
+        }
+        BlockPos.MutableBlockPos cursor = column.mutable();
+        if (isGround(level, cursor)) {
+            for (int i = 0; i < reach; i++) {
+                cursor.move(Direction.UP);
+                if (!isGround(level, cursor)) {
+                    return isOpen(level, cursor) ? cursor.below() : null;
+                }
+            }
+            return null;
+        }
+        for (int i = 0; i < reach; i++) {
+            cursor.move(Direction.DOWN);
+            if (level.isOutsideBuildHeight(cursor)) {
+                return null;
+            }
+            if (isGround(level, cursor)) {
+                return cursor.immutable();
+            }
+        }
+        return null;
+    }
+
+    private static int openAbove(ServerLevel level, BlockPos ground, int cap) {
+        int room = 0;
+        while (room < cap && isOpen(level, ground.above(room + 1))) {
+            room++;
+        }
+        return room;
+    }
+
+    private static boolean isGround(ServerLevel level, BlockPos pos) {
+        BlockState state = level.getBlockState(pos);
+        return !state.is(LianaRegistry.LIANA_BLOCK.get()) && state.isFaceSturdy(level, pos, Direction.UP);
+    }
+
+    private static boolean isOpen(ServerLevel level, BlockPos pos) {
+        if (level.isOutsideBuildHeight(pos)) {
+            return false;
+        }
+        BlockState state = level.getBlockState(pos);
+        return !state.is(LianaRegistry.LIANA_BLOCK.get()) && (state.isAir() || state.canBeReplaced());
     }
 
     private static int run(CommandContext<CommandSourceStack> ctx) {
@@ -206,13 +314,15 @@ public final class SubmarineLianaCommand {
             Method method = ServerSubLevelContainer.class.getMethod("removeSubLevel",
                     SubLevel.class, reasonCls);
             Object reason = reasonCls.getEnumConstants()[0];
-            for (ServerSubLevel sub : subLevels) {
+            for (ServerSubLevel segment : subLevels) {
                 try {
-                    method.invoke(container, sub, reason);
-                } catch (Throwable ignored) {
+                    method.invoke(container, segment, reason);
+                } catch (ReflectiveOperationException e) {
+                    CreateAbyss.LOGGER.warn("Couldn't remove liana sub-level {}", segment.getUniqueId(), e);
                 }
             }
-        } catch (Throwable ignored) {
+        } catch (ReflectiveOperationException e) {
+            CreateAbyss.LOGGER.warn("Sable has no removeSubLevel(SubLevel, SubLevelRemovalReason)", e);
         }
     }
 

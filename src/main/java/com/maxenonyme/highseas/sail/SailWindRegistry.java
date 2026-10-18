@@ -12,9 +12,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import com.maxenonyme.highseas.config.HighSeasConfig;
 import java.util.ArrayList;
 
-public final class SailWindRegistry {
-    private SailWindRegistry() {
-    }
+public class SailWindRegistry {
 
     private static final Map<UUID, List<SailGroup>> SAILS = new ConcurrentHashMap<>();
     private static final Map<UUID, Vec3> RUDDERS = new ConcurrentHashMap<>();
@@ -33,7 +31,7 @@ public final class SailWindRegistry {
         Vec3 rudder = null;
         Level blocks = ship.getLevel();
         if (blocks != null && ship.getPlot() != null) {
-            List<SailGroup> detected = SailDetector.detect(blocks, ship.getPlot().getBoundingBox());
+            List<SailGroup> detected = SailDetector.detect(blocks, ship.getPlot());
             
             if (cached != null) {
                 List<SailGroup> newResult = new ArrayList<>();
@@ -45,18 +43,18 @@ public final class SailWindRegistry {
                             break;
                         }
                     }
-                    newResult.add(new SailGroup(g.axis(), g.localCenter(), g.area(), g.min(), g.max(), g.supportSign(), st));
+                    newResult.add(g.startingAt(st));
                 }
                 result = newResult;
             } else {
                 List<SailGroup> newResult = new ArrayList<>();
                 for (SailGroup g : detected) {
-                    newResult.add(new SailGroup(g.axis(), g.localCenter(), g.area(), g.min(), g.max(), g.supportSign(), gameTime));
+                    newResult.add(g.startingAt(gameTime));
                 }
                 result = newResult;
             }
             
-            rudder = RudderDetector.centroid(blocks, ship.getPlot().getBoundingBox());
+            rudder = RudderDetector.centroid(ship.getPlot());
 
         }
         SAILS.put(id, result);
@@ -79,7 +77,8 @@ public final class SailWindRegistry {
 
     public static List<DecayingSail> getDecayingSails(UUID id, long currentTick) {
         List<DecayingSail> list = DECAYING_SAILS.get(id);
-        if (list == null) return List.of();
+        if (list == null)
+            return List.of();
         list.removeIf(d -> currentTick - d.startTick() > 60);
         return list;
     }

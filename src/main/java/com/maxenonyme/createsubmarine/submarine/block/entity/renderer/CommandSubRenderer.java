@@ -1,5 +1,8 @@
 package com.maxenonyme.createsubmarine.submarine.block.entity.renderer;
 
+import java.util.HashMap;
+import java.util.Map;
+import net.minecraft.locale.Language;
 import com.maxenonyme.createsubmarine.submarine.block.CommandSubBlock;
 import com.maxenonyme.createsubmarine.submarine.block.entity.CommandSubBlockEntity;
 import com.maxenonyme.createsubmarine.submarine.block.entity.SonarBlockEntity;
@@ -13,6 +16,7 @@ import com.mojang.blaze3d.vertex.VertexConsumer;
 import dev.ryanhcode.sable.Sable;
 import dev.ryanhcode.sable.sublevel.ClientSubLevel;
 import dev.ryanhcode.sable.sublevel.SubLevel;
+import com.maxenonyme.createsubmarine.submarine.client.DeviceGlitch;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.renderer.MultiBufferSource;
@@ -21,6 +25,7 @@ import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
 import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
 import com.maxenonyme.createsubmarine.submarine.network.DiagnosticPayload;
 import com.mojang.math.Axis;
+import net.createmod.catnip.animation.AnimationTickHolder;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
@@ -118,14 +123,23 @@ public class CommandSubRenderer implements BlockEntityRenderer<CommandSubBlockEn
     public void render(CommandSubBlockEntity be, float partialTicks, PoseStack ms, MultiBufferSource buffer, int light, int overlay) {
         if (CommandSubDiagram.drawing)
             return;
+
         Font font = Minecraft.getInstance().font;
 
         double subY = be.getBlockPos().getY() + 0.5;
-        SubLevel sub = Sable.HELPER.getContaining(be);
-        if (sub instanceof ClientSubLevel csl)
-            subY = csl.renderPose().position().y();
+        SubLevel ship = Sable.HELPER.getContaining(be);
+        if (ship instanceof ClientSubLevel subLevel)
+            subY = subLevel.renderPose().position().y();
         float depth = be.surfaceY == Integer.MIN_VALUE ? 0 : Math.max(0f, (float) (be.surfaceY + 1 - subY));
         trackVerticalSpeed(be, subY);
+        float glitch = DeviceGlitch.at(be.getLevel(), be.getBlockPos());
+        float shownVs = be.shownVs;
+
+        if (glitch > 0.15f) {
+            float time = DeviceGlitch.time(be.getLevel(), partialTicks);
+            depth = Math.abs(depth + glitch * (time * 173f % 9000f) * DeviceGlitch.noise(be.getBlockPos(), time * 1.3f));
+            shownVs = glitch * 900f * DeviceGlitch.noise(be.getBlockPos().above(), time * 2.1f);
+        }
 
         int hovered = CommandSubClientHandler.hoveredWidget(be);
 
@@ -134,16 +148,19 @@ public class CommandSubRenderer implements BlockEntityRenderer<CommandSubBlockEn
 
         drawArrow(PREV, "<", hovered == CommandSubClientHandler.PREV, ms, buffer, font, light);
         drawArrow(NEXT, ">", hovered == CommandSubClientHandler.NEXT, ms, buffer, font, light);
+
         if (be.page == 1) {
             drawSonar(be, hovered == CommandSubClientHandler.EXPAND, ms, buffer, font, light);
             ms.popPose();
             return;
         }
+
         if (be.page == 2) {
             drawAutopilot(be, hovered, ms, buffer, font, light);
             ms.popPose();
             return;
         }
+
         if (be.page == 3) {
             drawDiagnostic(be, hovered == CommandSubClientHandler.DIAGNOSE, ms, buffer, font, light);
             ms.popPose();
@@ -152,7 +169,7 @@ public class CommandSubRenderer implements BlockEntityRenderer<CommandSubBlockEn
 
         fill(ms, buffer, 44, 4, 44.6f, 108, 0.5f, DULL, light);
 
-        text(ms, buffer, font, Component.translatable("create_submarine.command_sub.target").getString(),
+        text(ms, buffer, font, tr("create_submarine.command_sub.target"),
                 5, 5, 0.6f, INK, light, false);
         String typed = CommandSubClientHandler.typedFor(be);
         boolean fieldHover = typed == null && hovered == CommandSubClientHandler.FIELD;
@@ -162,7 +179,7 @@ public class CommandSubRenderer implements BlockEntityRenderer<CommandSubBlockEn
         text(ms, buffer, font, shown, (FIELD[0] + FIELD[2]) / 2, FIELD[1] + 4, 1f,
                 fieldHover ? PAPER : INK, light, true);
 
-        text(ms, buffer, font, Component.translatable("create_submarine.command_sub.speed").getString(),
+        text(ms, buffer, font, tr("create_submarine.command_sub.speed"),
                 5, 36, 0.6f, INK, light, false);
         for (int i = 0; i < 3; i++) {
             float[] r = SPEEDS[i];
@@ -170,27 +187,32 @@ public class CommandSubRenderer implements BlockEntityRenderer<CommandSubBlockEn
             boolean selected = be.speedMode == i;
             int back = hover ? INK : selected ? DULL : PAPER;
             box(ms, buffer, r, back, selected || hover ? LINE : BUTTON, light);
-            String label = Component.translatable("create_submarine.command_sub.speed." + SPEED_NAMES[i]).getString();
+            String label = tr("create_submarine.command_sub.speed." + SPEED_NAMES[i]);
             float scale = Math.min(0.75f, (r[2] - r[0] - 4) / font.width(label));
             text(ms, buffer, font, label, (r[0] + r[2]) / 2, (r[1] + r[3]) / 2 - 4.5f * scale, scale,
                     hover ? PAPER : INK, light, true);
         }
 
-        text(ms, buffer, font, Component.translatable("create_submarine.command_sub.vertical").getString(),
+        text(ms, buffer, font, tr("create_submarine.command_sub.vertical"),
                 5, 93, 0.6f, INK, light, false);
-        text(ms, buffer, font, String.format(Locale.ROOT, "%+.1f m/s", be.shownVs), 5, 100, 0.75f, INK, light, false);
+        text(ms, buffer, font, String.format(Locale.ROOT, "%+.1f m/s", shownVs), 5, 100, 0.75f, INK, light, false);
 
         drawTape(be, depth, ms, buffer, font, light);
 
         String ballast = be.syncedFill < 0
-                ? Component.translatable("create_submarine.command_sub.no_ballast").getString()
+                ? tr("create_submarine.command_sub.no_ballast")
                 : Component.translatable("create_submarine.command_sub.ballast", be.syncedFill).getString();
         text(ms, buffer, font, ballast, 123, 7, 0.5f, INK, light, false, true);
         String pumps = be.syncedPumps == 0
-                ? Component.translatable("create_submarine.command_sub.pump.none").getString()
+                ? tr("create_submarine.command_sub.pump.none")
                 : Component.translatable("create_submarine.command_sub.pump." + PUMP_STATES[Math.max(0, Math.min(2, be.syncedStatus))],
                         be.syncedPumps).getString();
         text(ms, buffer, font, pumps, 123, 12.5f, 0.5f, be.syncedPumps == 0 ? DANGER : INK, light, false, true);
+
+        if (be.syncedDock > 0) {
+            String docked = tr("create_submarine.command_sub.docked." + (be.syncedDock == 1 ? "lead" : "follow"));
+            text(ms, buffer, font, docked, 123, 18, 0.5f, INK, light, false, true);
+        }
 
         ms.popPose();
     }
@@ -207,7 +229,7 @@ public class CommandSubRenderer implements BlockEntityRenderer<CommandSubBlockEn
 
     private static void drawAutopilot(CommandSubBlockEntity be, int hovered, PoseStack ms, MultiBufferSource buffer,
             Font font, int light) {
-        text(ms, buffer, font, Component.translatable("create_submarine.command_sub.tab.autopilot").getString(),
+        text(ms, buffer, font, tr("create_submarine.command_sub.tab.autopilot"),
                 5, 5, 0.6f, INK, light, false);
         boolean sonar = SonarBlockEntity.onSameSub(be) != null;
         boolean hover = sonar && hovered == CommandSubClientHandler.AUTOPILOT;
@@ -215,85 +237,97 @@ public class CommandSubRenderer implements BlockEntityRenderer<CommandSubBlockEn
         int border = !sonar ? DULL : hover || be.autopilot ? INK : LINE;
         int ink = !sonar ? DULL : hover ? PAPER : INK;
         box(ms, buffer, AUTO, back, border, light);
-        String label = Component.translatable(be.autopilot && sonar ? "create_submarine.command_sub.autopilot.on"
-                : "create_submarine.command_sub.autopilot.off").getString();
+        String label = tr(be.autopilot && sonar ? "create_submarine.command_sub.autopilot.on"
+                : "create_submarine.command_sub.autopilot.off");
         float scale = Math.min(0.7f, (AUTO[2] - AUTO[0] - 4) / font.width(label));
         text(ms, buffer, font, label, (AUTO[0] + AUTO[2]) / 2, (AUTO[1] + AUTO[3]) / 2 - 4.5f * scale, scale, ink, light,
                 true);
 
         String status;
         int color = INK;
+
         if (!sonar) {
-            status = Component.translatable("create_submarine.command_sub.no_sonar").getString();
+            status = tr("create_submarine.command_sub.no_sonar");
             color = DANGER;
         } else if (!be.autopilot) {
-            status = Component.translatable("create_submarine.command_sub.autopilot.idle").getString();
+            status = tr("create_submarine.command_sub.autopilot.idle");
         } else if (be.syncedAutoTarget < 0) {
-            status = Component.translatable("create_submarine.command_sub.autopilot.no_floor").getString();
+            status = tr("create_submarine.command_sub.autopilot.no_floor");
         } else {
             status = Component.translatable("create_submarine.command_sub.autopilot.following", be.syncedAutoTarget)
                     .getString();
         }
+
         text(ms, buffer, font, status, 6, 36, 0.6f, color, light, false);
     }
 
     public static boolean scanning(CommandSubBlockEntity be) {
         if (be.scanStarted < 0)
             return false;
+
         long elapsed = System.currentTimeMillis() - be.scanStarted;
         if (be.report == null && elapsed > SCAN_TIMEOUT) {
             be.scanStarted = -1;
             return false;
         }
+
         return be.report == null || elapsed < SCAN_MILLIS;
     }
 
     private static void drawDiagnostic(CommandSubBlockEntity be, boolean hover, PoseStack ms, MultiBufferSource buffer,
             Font font, int light) {
-        text(ms, buffer, font, Component.translatable("create_submarine.command_sub.tab.diagnostic").getString(),
+        text(ms, buffer, font, tr("create_submarine.command_sub.tab.diagnostic"),
                 5, 5, 0.6f, INK, light, false);
         if (scanning(be)) {
             drawScan(be, ms, buffer, font, light);
             return;
         }
+
         DiagnosticPayload report = be.report;
         if (report == null) {
             box(ms, buffer, DIAG_RUN, hover ? INK : PAPER, hover ? INK : LINE, light, 0.6f);
             box(ms, buffer, new float[] { DIAG_RUN[0] + 1.4f, DIAG_RUN[1] + 1.4f, DIAG_RUN[2] - 1.4f, DIAG_RUN[3] - 1.4f },
                     hover ? INK : PAPER, hover ? PAPER : BUTTON, light, 0.9f);
-            String run = Component.translatable("create_submarine.command_sub.diag.run").getString();
+            String run = tr("create_submarine.command_sub.diag.run");
             float scale = Math.min(0.7f, (DIAG_RUN[2] - DIAG_RUN[0] - 8) / font.width(run));
             text(ms, buffer, font, run, (DIAG_RUN[0] + DIAG_RUN[2]) / 2, (DIAG_RUN[1] + DIAG_RUN[3]) / 2 - 4.5f * scale,
                     scale, hover ? PAPER : INK, light, true);
-            String[] hint = Component.translatable("create_submarine.command_sub.diag.hint").getString().split("\n");
+            String[] hint = tr("create_submarine.command_sub.diag.hint").split("\n");
+
             for (int i = 0; i < hint.length; i++)
                 text(ms, buffer, font, hint[i], 64, 72 + i * 5, 0.45f, BUTTON, light, true);
+
             drawTank(ms, buffer, light);
             return;
         }
 
         box(ms, buffer, DIAG_RERUN, hover ? INK : PAPER, hover ? INK : LINE, light, 0.6f);
-        text(ms, buffer, font, Component.translatable("create_submarine.command_sub.diag.rerun").getString(),
+        text(ms, buffer, font, tr("create_submarine.command_sub.diag.rerun"),
                 (DIAG_RERUN[0] + DIAG_RERUN[2]) / 2, DIAG_RERUN[1] + 2.2f, 0.5f, hover ? PAPER : INK, light, true);
         if (!report.onVessel()) {
-            text(ms, buffer, font, Component.translatable("create_submarine.command_sub.diag.no_vessel").getString(),
+            text(ms, buffer, font, tr("create_submarine.command_sub.diag.no_vessel"),
                     64, 52, 0.7f, DANGER, light, true);
             return;
         }
+
         drawReport(report, ms, buffer, font, light);
     }
 
     private static void drawTank(PoseStack ms, MultiBufferSource buffer, int light) {
         box(ms, buffer, TANK, PAPER, LINE, light, 0.3f);
-        long now = System.currentTimeMillis();
+        long now = (long) (AnimationTickHolder.getRenderTime() * 50);
+
         for (float x = TANK[0] + 3; x < TANK[2] - 3; x += 6) {
             float wave = (float) Math.sin(now / 500.0 + x * 0.4) * 0.5f;
             fill(ms, buffer, x, TANK[1] + 3 + wave, x + 3, TANK[1] + 3.4f + wave, 0.5f, DULL, light);
         }
+
         fill(ms, buffer, TANK[0] + 0.6f, TANK[3] - 3, TANK[2] - 0.6f, TANK[3] - 0.6f, 0.5f, SAND, light);
+
         for (int i = 0; i < WEEDS.length; i++) {
             float x = TANK[0] + WEEDS[i];
             float sway = (float) Math.sin(now / 700.0 + i) * 0.6f;
+
             for (int k = 0; k < 4; k++) {
                 float y = TANK[3] - 3 - (k + 1) * 1.6f;
                 fill(ms, buffer, x + sway * k * 0.4f, y, x + 1 + sway * k * 0.4f, y + 1.6f, 0.6f, WEED, light);
@@ -309,12 +343,19 @@ public class CommandSubRenderer implements BlockEntityRenderer<CommandSubBlockEn
         float fy = (TANK[1] + TANK[3]) / 2 - FISH_PIXEL * FISH.length / 2f - 1 + (float) Math.sin(now / 420.0) * 1.2f;
         boolean flick = (now / 180) % 2 == 0;
         int width = FISH[0].length();
+
         for (int row = 0; row < FISH.length; row++) {
-            String line = flick && (row == 1 || row == FISH.length - 2) ? FISH_FLICK[row == 1 ? 0 : 1] : FISH[row];
+            String line = FISH[row];
+            if (flick && row == 1)
+                line = FISH_FLICK[0];
+            else if (flick && row == FISH.length - 2)
+                line = FISH_FLICK[1];
+
             for (int col = 0; col < width; col++) {
                 int color = fishColor(line.charAt(col));
                 if (color == 0)
                     continue;
+
                 int drawn = left ? col : width - 1 - col;
                 float px = fx + drawn * FISH_PIXEL;
                 float py = fy + row * FISH_PIXEL;
@@ -323,6 +364,7 @@ public class CommandSubRenderer implements BlockEntityRenderer<CommandSubBlockEn
         }
 
         float mouth = left ? fx : fx + width * FISH_PIXEL;
+
         for (int i = 0; i < 3; i++) {
             float t = ((now + i * 700) % 2100) / 2100f;
             float by = fy + FISH_PIXEL * 2 - t * (fy - TANK[1] - 2);
@@ -349,6 +391,7 @@ public class CommandSubRenderer implements BlockEntityRenderer<CommandSubBlockEn
         box(ms, buffer, SCAN_FRAME, PAPER, LINE, light, 0.3f);
         RenderType diagram = CommandSubDiagram.textureFor(be);
         float[] inner = { SCAN_FRAME[0] + 1, SCAN_FRAME[1] + 1, SCAN_FRAME[2] - 1, SCAN_FRAME[3] - 1 };
+
         if (diagram != null) {
             picture(ms, buffer.getBuffer(diagram), inner, 0.6f, light);
         } else {
@@ -357,25 +400,29 @@ public class CommandSubRenderer implements BlockEntityRenderer<CommandSubBlockEn
             fill(ms, buffer, 58, cy - 9, 68, cy - 4, 0.6f, LINE, light);
             fill(ms, buffer, 34, cy - 2, 40, cy + 2, 0.6f, BUTTON, light);
         }
+
         float sweep = (elapsed % 1100) / 1100f;
         float x = inner[0] + (inner[2] - inner[0]) * sweep;
         fill(ms, buffer, inner[0], inner[1], x, inner[3], 0.9f, 0x224F5257, light);
         fill(ms, buffer, x - 0.4f, inner[1], x + 0.4f, inner[3], 1.0f, DANGER, light);
+
         for (float y = inner[1] + 2; y < inner[3]; y += 4)
             fill(ms, buffer, x - 1.6f, y, x - 0.4f, y + 0.4f, 1.0f, DANGER, light);
 
         box(ms, buffer, SCAN_BAR, PAPER, LINE, light, 0.3f);
         float barEnd = SCAN_BAR[0] + 0.8f + (SCAN_BAR[2] - SCAN_BAR[0] - 1.6f) * progress;
         fill(ms, buffer, SCAN_BAR[0] + 0.8f, SCAN_BAR[1] + 0.8f, barEnd, SCAN_BAR[3] - 0.8f, 0.8f, INK, light);
+
         for (float tick = SCAN_BAR[0] + 10; tick < SCAN_BAR[2]; tick += 10)
             fill(ms, buffer, tick - 0.2f, SCAN_BAR[3], tick + 0.2f, SCAN_BAR[3] + 1.2f, 0.5f, BUTTON, light);
+
         text(ms, buffer, font, (int) (progress * 100) + "%", SCAN_BAR[2], SCAN_BAR[3] + 2.5f, 0.5f, INK, light, false,
                 true);
 
         int step = Math.min(SCAN_STEPS.length - 1, (int) (progress * SCAN_STEPS.length));
         String dots = ".".repeat(1 + (int) ((elapsed / 300) % 3));
-        text(ms, buffer, font, Component.translatable("create_submarine.command_sub.diag.step." + SCAN_STEPS[step])
-                .getString() + dots, SCAN_BAR[0], SCAN_BAR[3] + 2.5f, 0.5f, INK, light, false);
+        text(ms, buffer, font, tr("create_submarine.command_sub.diag.step." + SCAN_STEPS[step]) + dots, SCAN_BAR[0], SCAN_BAR[3] + 2.5f, 0.5f, INK, light, false);
+
         for (int i = 0; i < SCAN_STEPS.length; i++) {
             float cx = 50 + i * 9;
             int color = i < step ? INK : i == step && (elapsed / 250) % 2 == 0 ? DANGER : DULL;
@@ -387,6 +434,7 @@ public class CommandSubRenderer implements BlockEntityRenderer<CommandSubBlockEn
         text(ms, buffer, font, diag("max_depth"), 5, 14, 0.5f, BUTTON, light, false);
         String max = report.maxDepth() < 0 ? "--" : report.maxDepth() + " m";
         text(ms, buffer, font, max, 5, 19, 1.3f, report.maxDepth() < 0 ? DULL : INK, light, false);
+
         if (report.maxDepth() >= 0 && !report.weakest().isEmpty()) {
             String name = Component.translatable(report.weakest()).getString();
             text(ms, buffer, font, diag("weakest", name), 5, 32, 0.45f, INK, light, false);
@@ -424,6 +472,7 @@ public class CommandSubRenderer implements BlockEntityRenderer<CommandSubBlockEn
                     report.hermetic() ? INK : DANGER, light, false);
             return;
         }
+
         text(ms, buffer, font, diag("breaches", report.breachCount()), 5, 68, 0.5f, DANGER, light, false);
         int shown = Math.min(4, report.breaches().size());
         boolean more = report.breachCount() > shown;
@@ -431,6 +480,7 @@ public class CommandSubRenderer implements BlockEntityRenderer<CommandSubBlockEn
             shown = 3;
         for (int i = 0; i < shown; i++)
             text(ms, buffer, font, "- " + coords(report.breaches().get(i)), 7, 74 + i * 5, 0.45f, INK, light, false);
+
         if (more)
             text(ms, buffer, font, diag("more", report.breachCount() - shown), 7, 74 + shown * 5, 0.45f, BUTTON,
                     light, false);
@@ -459,20 +509,22 @@ public class CommandSubRenderer implements BlockEntityRenderer<CommandSubBlockEn
     private static void drawSonar(CommandSubBlockEntity be, boolean hover, PoseStack ms, MultiBufferSource buffer,
             Font font, int light) {
         box(ms, buffer, SONAR, PAPER, LINE, light, 0.3f);
-        text(ms, buffer, font, Component.translatable("create_submarine.command_sub.tab.sonar").getString(),
+        text(ms, buffer, font, tr("create_submarine.command_sub.tab.sonar"),
                 SONAR[0] + 2, SONAR[1] + 2, 0.55f, INK, light, false);
         if (SonarBlockEntity.onSameSub(be) == null) {
-            text(ms, buffer, font, Component.translatable("create_submarine.command_sub.no_sonar").getString(),
+            text(ms, buffer, font, tr("create_submarine.command_sub.no_sonar"),
                     (SONAR[0] + SONAR[2]) / 2, (SONAR[1] + SONAR[3]) / 2 - 3, 0.7f, DANGER, light, true);
             return;
         }
+
         SonarScan scan = SonarView.preview(be);
         RenderType picture = SonarView.previewTexture(scan);
         if (picture != null)
             picture(ms, buffer.getBuffer(picture), new float[] { SONAR[0] + 0.6f, SONAR[1] + 0.6f, SONAR[2] - 0.6f,
                     SONAR[3] - 0.6f }, 0.9f, light, scan.u0());
         drawExpand(hover, ms, buffer, light);
-        String mineLabel = Component.translatable("create_submarine.command_sub.mine").getString();
+        String mineLabel = tr("create_submarine.command_sub.mine");
+
         for (SonarContact contact : scan.contacts()) {
             float cx = SONAR[0] + (SONAR[2] - SONAR[0]) * contact.u();
             float cy = SONAR[1] + (SONAR[3] - SONAR[1]) * contact.v();
@@ -481,6 +533,7 @@ public class CommandSubRenderer implements BlockEntityRenderer<CommandSubBlockEn
             if (contact.kind() == SonarContact.MINE)
                 text(ms, buffer, font, mineLabel, cx + 1.8f, cy - 1.6f, 0.4f, DANGER, light, false);
         }
+
         float[] cursor = CommandSubClientHandler.cursor(be);
         if (cursor != null && cursor[0] >= SONAR[0] && cursor[0] <= SONAR[2] && cursor[1] >= SONAR[1]
                 && cursor[1] <= SONAR[3]) {
@@ -500,6 +553,7 @@ public class CommandSubRenderer implements BlockEntityRenderer<CommandSubBlockEn
                 text(ms, buffer, font, name, x, y, 0.5f, INK, light, false);
             }
         }
+
         String floor = SonarView.floorLabel(scan.floor()).getString();
         fill(ms, buffer, SONAR[0] + 1, SONAR[3] - 7.5f, SONAR[0] + 4 + font.width(floor) * 0.55f, SONAR[3] - 1, 1.2f,
                 PAPER, light);
@@ -513,9 +567,10 @@ public class CommandSubRenderer implements BlockEntityRenderer<CommandSubBlockEn
             if (limitY < TAPE_BOTTOM) {
                 float top = Math.max(TAPE_TOP, limitY);
                 fill(ms, buffer, 48, top, 124, TAPE_BOTTOM, 0.2f, DANGER_WASH, light);
+
                 if (limitY >= TAPE_TOP) {
                     fill(ms, buffer, 48, limitY, 124, limitY + 0.6f, 0.5f, DANGER, light);
-                    text(ms, buffer, font, Component.translatable("create_submarine.command_sub.limit").getString(),
+                    text(ms, buffer, font, tr("create_submarine.command_sub.limit"),
                             123, limitY + 1.5f, 0.5f, DANGER, light, false, true);
                 }
             }
@@ -524,10 +579,12 @@ public class CommandSubRenderer implements BlockEntityRenderer<CommandSubBlockEn
         fill(ms, buffer, AXIS_X, TAPE_TOP, AXIS_X + 0.6f, TAPE_BOTTOM, 0.5f, LINE, light);
         int from = (int) Math.floor(depth - (CENTER_Y - TAPE_TOP) / PER_BLOCK);
         int to = (int) Math.ceil(depth + (TAPE_BOTTOM - CENTER_Y) / PER_BLOCK);
+
         for (int d = from; d <= to; d++) {
             float y = tapeY(d, depth);
             if (y < TAPE_TOP || y > TAPE_BOTTOM)
                 continue;
+
             float len = d % 10 == 0 ? 7 : d % 5 == 0 ? 4.5f : 2;
             fill(ms, buffer, AXIS_X - len, y - 0.3f, AXIS_X, y + 0.3f, 0.5f, d % 5 == 0 ? LINE : BUTTON, light);
             if (d % 10 == 0 && y > TAPE_TOP + 3 && y < TAPE_BOTTOM - 3)
@@ -538,7 +595,8 @@ public class CommandSubRenderer implements BlockEntityRenderer<CommandSubBlockEn
         if (surfaceY >= TAPE_TOP && surfaceY <= TAPE_BOTTOM) {
             for (float x = 48; x < 124; x += 4)
                 fill(ms, buffer, x, surfaceY - 0.3f, x + 2, surfaceY + 0.3f, 0.6f, LINE, light);
-            text(ms, buffer, font, Component.translatable("create_submarine.command_sub.surface").getString(),
+
+            text(ms, buffer, font, tr("create_submarine.command_sub.surface"),
                     123, surfaceY - 5, 0.5f, INK, light, false, true);
         }
 
@@ -546,6 +604,7 @@ public class CommandSubRenderer implements BlockEntityRenderer<CommandSubBlockEn
         if (targetY >= TAPE_TOP && targetY <= TAPE_BOTTOM) {
             for (float x = AXIS_X + 2; x < 124; x += 3)
                 fill(ms, buffer, x, targetY - 0.25f, x + 1.5f, targetY + 0.25f, 0.6f, BUTTON, light);
+
             fill(ms, buffer, AXIS_X + 0.6f, targetY - 2.5f, AXIS_X + 4, targetY + 2.5f, 0.7f, INK, light);
         }
 
@@ -572,14 +631,17 @@ public class CommandSubRenderer implements BlockEntityRenderer<CommandSubBlockEn
 
     private static void trackVerticalSpeed(CommandSubBlockEntity be, double y) {
         long now = System.nanoTime();
+
         if (Double.isNaN(be.lastY)) {
             be.lastY = y;
             be.lastNanos = now;
             return;
         }
+
         double dt = (now - be.lastNanos) / 1.0e9;
         if (dt < 0.05)
             return;
+
         float raw = (float) ((y - be.lastY) / dt);
         be.shownVs += (raw - be.shownVs) * (float) Math.min(1.0, dt * 3.0);
         be.lastY = y;
@@ -631,6 +693,19 @@ public class CommandSubRenderer implements BlockEntityRenderer<CommandSubBlockEn
         vc.addVertex(pose, x0, y1, z).setColor(argb).setLight(light);
         vc.addVertex(pose, x1, y1, z).setColor(argb).setLight(light);
         vc.addVertex(pose, x1, y0, z).setColor(argb).setLight(light);
+    }
+
+    private static final Map<String, String> LABELS = new HashMap<>();
+    private static Language labelsFor;
+
+    private static String tr(String key) {
+        Language language = Language.getInstance();
+        if (language != labelsFor) {
+            LABELS.clear();
+            labelsFor = language;
+        }
+
+        return LABELS.computeIfAbsent(key, k -> Component.translatable(k).getString());
     }
 
     private static void text(PoseStack ms, MultiBufferSource buffer, Font font, String s, float x, float y, float scale,

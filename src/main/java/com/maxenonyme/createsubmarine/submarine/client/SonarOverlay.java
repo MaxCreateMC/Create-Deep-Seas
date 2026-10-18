@@ -27,9 +27,7 @@ import org.joml.Vector3f;
 
 import java.util.List;
 
-final class SonarOverlay {
-    private SonarOverlay() {
-    }
+class SonarOverlay {
 
     private static final int ROPE = 0xFF6B5A45;
     private static final int WAVE = 0x3F86E0;

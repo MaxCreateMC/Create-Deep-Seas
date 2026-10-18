@@ -19,9 +19,7 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import net.minecraft.world.phys.AABB;
 
-public final class HelmServer {
-    private HelmServer() {
-    }
+public class HelmServer {
 
     private static final int INPUT_DECAY = 30;
 
@@ -50,7 +48,7 @@ public final class HelmServer {
         }
 
         Direction facing = be.getBlockState().getValue(BoatEngineBlock.FACING);
-        Vec3 anchor = be.helmAnchor();
+        Vec3 anchor = BoatEngineBlockEntity.helmAnchor(be.getBlockPos(), facing);
         if (!level.noBlockCollision(null, new AABB(anchor.x - 0.25, anchor.y + 0.3,
                 anchor.z - 0.25, anchor.x + 0.25, anchor.y + 1.5, anchor.z + 0.25))) {
             deny(player, "blocked");
@@ -58,7 +56,7 @@ public final class HelmServer {
         }
         HelmSeatEntity seat = new HelmSeatEntity(level);
         seat.setEngine(be.getBlockPos(), facing);
-        seat.setPos(anchor.x, anchor.y, anchor.z);
+        seat.setPos(Vec3.atBottomCenterOf(be.getBlockPos()));
         seat.setYRot(facing.toYRot());
         if (!level.addFreshEntity(seat))
             return false;

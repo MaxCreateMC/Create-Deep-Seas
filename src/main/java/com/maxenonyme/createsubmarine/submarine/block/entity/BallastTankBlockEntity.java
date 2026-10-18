@@ -66,11 +66,10 @@ public class BallastTankBlockEntity extends BlockEntity
         @Override
         protected void onContentsChanged() {
             setChanged();
-            if (level != null && !level.isClientSide) {
-                level.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), 3);
-            }
+            syncPending = true;
         }
     };
+    private boolean syncPending;
     private static final int CLUSTER_REFRESH = 100;
     private static volatile int clusterEpoch;
 
@@ -179,8 +178,8 @@ public class BallastTankBlockEntity extends BlockEntity
             clusterPositions.add(be.getBlockPos());
         }
         for (BallastTankBlockEntity be : getCluster()) {
-            for (Direction d : Direction.values()) {
-                BlockPos n = be.getBlockPos().relative(d);
+            for (Direction direction : Direction.values()) {
+                BlockPos n = be.getBlockPos().relative(direction);
                 if (!clusterPositions.contains(n) && visited.add(n)) {
                     queue.add(n);
                 }
@@ -336,6 +335,12 @@ public class BallastTankBlockEntity extends BlockEntity
             return;
         be.getCluster();
         be.shareFluidWithNeighbors();
+
+        if (be.syncPending && level.getGameTime() % 10 == 0) {
+            be.syncPending = false;
+            level.sendBlockUpdated(pos, be.getBlockState(), be.getBlockState(), 3);
+        }
+
         SubLevelAccess sub = SableCompanion.INSTANCE.getContaining(level, pos);
         if (sub == null)
             return;
@@ -412,7 +417,7 @@ public class BallastTankBlockEntity extends BlockEntity
             targetVelY = baseTarget;
         }
 
-        double perceivedVelY = Math.max(-0.2, Math.min(0.2, currentVelY));
+        double perceivedVelY = Math.max(-maxSpeed, Math.min(maxSpeed, currentVelY));
         double errorY = targetVelY - perceivedVelY;
         double mass = SablePhysicsHelper.readMass(sub);
 
@@ -536,10 +541,10 @@ public class BallastTankBlockEntity extends BlockEntity
 
     private static int countWaterAbove(Level level, BlockPos pos) {
         int depth = 0;
-        BlockPos.MutableBlockPos m = new BlockPos.MutableBlockPos();
+        BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
         for (int y = pos.getY() + 1; y < pos.getY() + 1 + 200; y++) {
-            m.set(pos.getX(), y, pos.getZ());
-            if (CompartmentTracker.realFluidState(level, m)
+            cursor.set(pos.getX(), y, pos.getZ());
+            if (CompartmentTracker.realFluidState(level, cursor)
                     .is(FluidTags.WATER)) {
                 depth++;
             } else {

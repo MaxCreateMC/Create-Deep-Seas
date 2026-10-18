@@ -11,6 +11,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.saveddata.SavedData;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.server.ServerStartedEvent;
+import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import net.neoforged.neoforge.network.PacketDistributor;
 
 import java.util.HashSet;
@@ -20,25 +21,35 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-public final class BreachLedger {
-    private BreachLedger() {
-    }
+public class BreachLedger {
 
     private static final String NAME = "create_submarine_breaches";
     private static final Map<UUID, Set<BlockPos>> BREACHES = new ConcurrentHashMap<>();
+    private static final Set<UUID> UNSENT = ConcurrentHashMap.newKeySet();
     private static Data data;
 
     public static void changed(UUID id, Set<BlockPos> plugs) {
-        Set<BlockPos> next = Set.copyOf(plugs);
-        if (next.equals(BREACHES.getOrDefault(id, Set.of())))
+        if (plugs.equals(BREACHES.getOrDefault(id, Set.of())))
             return;
-        if (next.isEmpty())
+
+        if (plugs.isEmpty())
             BREACHES.remove(id);
         else
-            BREACHES.put(id, next);
+            BREACHES.put(id, Set.copyOf(plugs));
         if (data != null)
             data.setDirty();
-        PacketDistributor.sendToAllPlayers(new BreachSyncPayload(id, List.copyOf(next)));
+        UNSENT.add(id);
+    }
+
+    public static void onServerTick(ServerTickEvent.Post event) {
+        if (UNSENT.isEmpty())
+            return;
+
+        for (UUID id : UNSENT)
+            PacketDistributor.sendToAllPlayers(
+                    new BreachSyncPayload(id, List.copyOf(BREACHES.getOrDefault(id, Set.of()))));
+
+        UNSENT.clear();
     }
 
     public static void onServerStarted(ServerStartedEvent event) {
@@ -55,7 +66,7 @@ public final class BreachLedger {
                 PacketDistributor.sendToPlayer(player, new BreachSyncPayload(id, List.copyOf(plugs))));
     }
 
-    private static final class Data extends SavedData {
+    private static class Data extends SavedData {
         static Data load(CompoundTag tag, HolderLookup.Provider provider) {
             for (String key : tag.getAllKeys()) {
                 UUID id;
@@ -77,8 +88,8 @@ public final class BreachLedger {
         public CompoundTag save(CompoundTag tag, HolderLookup.Provider provider) {
             BREACHES.forEach((id, plugs) -> {
                 ListTag list = new ListTag();
-                for (BlockPos p : plugs)
-                    list.add(LongTag.valueOf(p.asLong()));
+                for (BlockPos pos : plugs)
+                    list.add(LongTag.valueOf(pos.asLong()));
                 tag.put(id.toString(), list);
             });
             return tag;

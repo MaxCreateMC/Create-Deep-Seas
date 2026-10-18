@@ -1,6 +1,8 @@
 {
   "replace": false,
   "values": [
-    "create_submarine:implosion"
+    "create_submarine:implosion",
+    "create_submarine:pressure",
+    "create_submarine:crushed"
   ]
 }

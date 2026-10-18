@@ -15,9 +15,7 @@ import org.joml.Vector3d;
 
 import java.util.List;
 
-public final class WindVaneGoggle {
-    private WindVaneGoggle() {
-    }
+public class WindVaneGoggle {
 
     public static double alignment(Level level, BlockPos pos) {
         if (level == null) {

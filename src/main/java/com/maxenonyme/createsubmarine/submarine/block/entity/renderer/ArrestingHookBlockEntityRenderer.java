@@ -13,6 +13,7 @@ import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
 import net.minecraft.core.Direction;
 import net.minecraft.world.inventory.InventoryMenu;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.AABB;
 import org.joml.Quaternionf;
 
 public class ArrestingHookBlockEntityRenderer implements BlockEntityRenderer<ArrestingHookBlockEntity> {
@@ -32,7 +33,8 @@ public class ArrestingHookBlockEntityRenderer implements BlockEntityRenderer<Arr
     @Override
     public void render(ArrestingHookBlockEntity be, float partialTicks, PoseStack ms, MultiBufferSource buffer, int light, int overlay) {
         BlockState state = be.getBlockState();
-        if (!state.hasProperty(ArrestingHookBlock.FACING)) return;
+        if (!state.hasProperty(ArrestingHookBlock.FACING))
+            return;
 
         advanceArm(be, state);
 
@@ -52,8 +54,8 @@ public class ArrestingHookBlockEntityRenderer implements BlockEntityRenderer<Arr
     }
 
     @Override
-    public net.minecraft.world.phys.AABB getRenderBoundingBox(ArrestingHookBlockEntity be) {
-        return new net.minecraft.world.phys.AABB(be.getBlockPos()).inflate(2.0);
+    public AABB getRenderBoundingBox(ArrestingHookBlockEntity be) {
+        return new AABB(be.getBlockPos()).inflate(2.0);
     }
 
     private void advanceArm(ArrestingHookBlockEntity be, BlockState state) {

@@ -1,5 +1,6 @@
 package com.maxenonyme.createsubmarine.submarine.block.entity;
 
+import com.maxenonyme.createsubmarine.submarine.system.DiffuserZoneProtection;
 import com.maxenonyme.createsubmarine.CreateSubmarine;
 import com.maxenonyme.createsubmarine.submarine.block.ElectrolyzerBlock;
 import com.simibubi.create.content.kinetics.base.KineticBlockEntity;
@@ -91,6 +92,7 @@ public class ElectrolyzerBlockEntity extends KineticBlockEntity {
 
     private boolean isEnabled = false;
     private int generated;
+    private int syncedWater = -1;
 
     public final ContainerData data = new ContainerData() {
         @Override
@@ -137,6 +139,8 @@ public class ElectrolyzerBlockEntity extends KineticBlockEntity {
     @Override
     public void tick() {
         super.tick();
+        if (DiffuserZoneProtection.evict(level, worldPosition))
+            return;
         BlockState state = getBlockState();
         if (level.isClientSide) {
             if (state.getValue(ElectrolyzerBlock.POWERED) && level.random.nextInt(5) == 0) {
@@ -169,7 +173,12 @@ public class ElectrolyzerBlockEntity extends KineticBlockEntity {
             waterTank.drain(10, IFluidHandler.FluidAction.EXECUTE);
             oxygenTank.fill(new FluidStack(CreateSubmarine.OXYGEN.get(), 10), IFluidHandler.FluidAction.EXECUTE);
             setChanged();
-            sendData();
+
+            int water = waterTank.getFluidAmount() * 100 / waterTank.getCapacity();
+            if (water != syncedWater) {
+                syncedWater = water;
+                sendData();
+            }
 
             if (!state.getValue(ElectrolyzerBlock.POWERED))
                 level.setBlock(worldPosition, state.setValue(ElectrolyzerBlock.POWERED, true), 3);

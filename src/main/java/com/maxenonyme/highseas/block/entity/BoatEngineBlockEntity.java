@@ -26,9 +26,9 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundSource;
-import net.minecraft.world.Containers;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.inventory.ContainerData;
 import net.minecraft.world.InteractionHand;
@@ -174,14 +174,8 @@ public class BoatEngineBlockEntity extends BlockEntity implements BlockEntitySub
         return true;
     }
 
-    public void dropFuel() {
-        if (level == null || level.isClientSide)
-            return;
-        ItemStack out = fuelSlot.removeItemNoUpdate(0);
-        if (!out.isEmpty()) {
-            Containers.dropItemStack(level, worldPosition.getX() + 0.5, worldPosition.getY() + 0.5,
-                    worldPosition.getZ() + 0.5, out);
-        }
+    public ItemStack fuel() {
+        return fuelSlot.getItem(0);
     }
 
     public boolean hasDriver() {
@@ -221,8 +215,8 @@ public class BoatEngineBlockEntity extends BlockEntity implements BlockEntitySub
         syncDirty = true;
     }
 
-    public Vec3 helmAnchor() {
-        return offset(-0.3125, -0.5, -1.75, getBlockState().getValue(BoatEngineBlock.FACING));
+    public static Vec3 helmAnchor(BlockPos pos, Direction facing) {
+        return offset(pos, -0.3125, -0.5, -1.75, facing);
     }
 
     public static void serverTick(Level level, BlockPos pos, BlockState state, BoatEngineBlockEntity be) {
@@ -270,8 +264,12 @@ public class BoatEngineBlockEntity extends BlockEntity implements BlockEntitySub
         if (driverId != null) {
             Player driver = sl.getPlayerByUUID(driverId);
             if (driver == null || !(driver.getVehicle() instanceof HelmSeatEntity seat)
-                    || !seat.getEnginePos().equals(worldPosition))
+                    || !seat.getEnginePos().equals(worldPosition)) {
                 driverId = null;
+            } else if (driver instanceof ServerPlayer player) {
+                seat.positionRider(player);
+                sl.getChunkSource().move(player);
+            }
         }
 
         byte mask = driverId == null ? 0 : HelmServer.maskFor(driverId, sl.getGameTime());
@@ -317,9 +315,9 @@ public class BoatEngineBlockEntity extends BlockEntity implements BlockEntitySub
 
         Vector3d where = new Vector3d(worldPosition.getX() + 0.5, worldPosition.getY() + 0.5,
                 worldPosition.getZ() + 0.5);
-        SubLevelAccess sub = SableCompanion.INSTANCE.getContaining(level, worldPosition);
-        if (sub != null)
-            sub.logicalPose().transformPosition(where);
+        SubLevelAccess subLevel = SableCompanion.INSTANCE.getContaining(level, worldPosition);
+        if (subLevel != null)
+            subLevel.logicalPose().transformPosition(where);
         PacketDistributor.sendToPlayersNear(sl, null, where.x, where.y, where.z, 96.0,
                 EngineStatePayload.of(worldPosition, throttle, steer, throttleCap));
     }
@@ -362,20 +360,20 @@ public class BoatEngineBlockEntity extends BlockEntity implements BlockEntitySub
     }
 
     @Override
-    public void sable$physicsTick(ServerSubLevel sub, RigidBodyHandle handle, double timeStep) {
+    public void sable$physicsTick(ServerSubLevel subLevel, RigidBodyHandle handle, double timeStep) {
         if (level == null || level.isClientSide)
             return;
         Direction facing = getBlockState().getValue(BoatEngineBlock.FACING);
         forward.set(facing.getStepX(), 0.0, facing.getStepZ());
 
-        Pose3dc pose = sub.logicalPose();
+        Pose3dc pose = subLevel.logicalPose();
         pose.orientation().conjugate(inverse);
-        double mass = Math.max(1.0, SablePhysicsHelper.readMass(sub));
+        double mass = Math.max(1.0, SablePhysicsHelper.readMass(subLevel));
 
         Vec3 prop = offset(0.0, -1.15625, 0.40625, facing);
         pose.transformPosition(propWorld.set(prop.x, prop.y, prop.z));
 
-        double surface = BoatBuoyancySystem.surfaceFor(sub.getUniqueId());
+        double surface = BoatBuoyancySystem.surfaceFor(subLevel.getUniqueId());
         if (surface == Double.NEGATIVE_INFINITY && level instanceof ServerLevel server) {
             surface = BoatBuoyancySystem.surfaceNear(server, propWorld.x, propWorld.y, propWorld.z);
         }
@@ -412,6 +410,10 @@ public class BoatEngineBlockEntity extends BlockEntity implements BlockEntitySub
 
 
     private Vec3 offset(double ox, double oy, double oz, Direction facing) {
+        return offset(worldPosition, ox, oy, oz, facing);
+    }
+
+    private static Vec3 offset(BlockPos origin, double ox, double oy, double oz, Direction facing) {
         double dx;
         double dz;
         switch (facing) {
@@ -432,8 +434,7 @@ public class BoatEngineBlockEntity extends BlockEntity implements BlockEntitySub
                 dz = oz;
             }
         }
-        return new Vec3(worldPosition.getX() + 0.5 + dx, worldPosition.getY() + 0.5 + oy,
-                worldPosition.getZ() + 0.5 + dz);
+        return new Vec3(origin.getX() + 0.5 + dx, origin.getY() + 0.5 + oy, origin.getZ() + 0.5 + dz);
     }
 
     private static void resolveSounds() {

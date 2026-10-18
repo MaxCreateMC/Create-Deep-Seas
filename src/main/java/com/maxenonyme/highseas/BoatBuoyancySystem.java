@@ -1,5 +1,6 @@
 package com.maxenonyme.highseas;
 
+import com.maxenonyme.highseas.config.HighSeasConfig;
 import com.maxenonyme.createsubmarine.submarine.compartment.CompartmentDetector;
 import com.maxenonyme.createsubmarine.submarine.compartment.CompartmentTracker;
 import com.maxenonyme.createsubmarine.submarine.compartment.FloodSystem;
@@ -27,9 +28,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-public final class BoatBuoyancySystem {
-    private BoatBuoyancySystem() {
-    }
+public class BoatBuoyancySystem {
 
     private static final double LIFT_PER_CELL = 1.5;
     private static final double DRAG_FORWARD_LINEAR = 0.25;
@@ -97,10 +96,10 @@ public final class BoatBuoyancySystem {
         Set<BlockPos> flooded = FloodSystem.soakedCells(id);
         int count = 0;
         int minX = Integer.MAX_VALUE, maxX = Integer.MIN_VALUE, minZ = Integer.MAX_VALUE, maxZ = Integer.MIN_VALUE;
-        for (CompartmentDetector.Component c : comps) {
-            if (!c.sealed() || sunken.contains(c.anchor()))
+        for (CompartmentDetector.Component compartment : comps) {
+            if (!compartment.sealed() || sunken.contains(compartment.anchor()))
                 continue;
-            for (BlockPos cell : c.internal()) {
+            for (BlockPos cell : compartment.internal()) {
                 minX = Math.min(minX, cell.getX());
                 maxX = Math.max(maxX, cell.getX());
                 minZ = Math.min(minZ, cell.getZ());
@@ -115,10 +114,10 @@ public final class BoatBuoyancySystem {
 
         double[] cells = new double[count * 3];
         int k = 0;
-        for (CompartmentDetector.Component c : comps) {
-            if (!c.sealed() || sunken.contains(c.anchor()))
+        for (CompartmentDetector.Component compartment : comps) {
+            if (!compartment.sealed() || sunken.contains(compartment.anchor()))
                 continue;
-            for (BlockPos cell : c.internal()) {
+            for (BlockPos cell : compartment.internal()) {
                 if (flooded.contains(cell))
                     continue;
                 cells[k++] = cell.getX() + 0.5;
@@ -131,8 +130,8 @@ public final class BoatBuoyancySystem {
         if (maxX - minX != maxZ - minZ) {
             forwardIsX = maxX - minX > maxZ - minZ;
         } else if (sub.getPlot() != null) {
-            BoundingBox3ic b = sub.getPlot().getBoundingBox();
-            forwardIsX = (b.maxX() - b.minX()) >= (b.maxZ() - b.minZ());
+            BoundingBox3ic bounds = sub.getPlot().getBoundingBox();
+            forwardIsX = (bounds.maxX() - bounds.minX()) >= (bounds.maxZ() - bounds.minZ());
         }
         double length = Math.max(maxX - minX, maxZ - minZ) + 3;
         return new Hull(cells, k / 3, surface, mass, forwardIsX, length, comps, water);
@@ -143,10 +142,10 @@ public final class BoatBuoyancySystem {
         int cz = Mth.floor(z);
         int top = Mth.floor(y + SURFACE_REACH);
         int bottom = Mth.floor(y - SURFACE_REACH);
-        BlockPos.MutableBlockPos p = new BlockPos.MutableBlockPos();
+        BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
         for (int cy = top; cy >= bottom; cy--) {
-            p.set(cx, cy, cz);
-            if (CompartmentTracker.realFluidState(level, p).is(FluidTags.WATER)) {
+            pos.set(cx, cy, cz);
+            if (CompartmentTracker.realFluidState(level, pos).is(FluidTags.WATER)) {
                 return cy + 1.0;
             }
         }
@@ -156,6 +155,11 @@ public final class BoatBuoyancySystem {
     public static double surfaceFor(UUID id) {
         Hull hull = HULLS.get(id);
         return hull == null ? Double.NEGATIVE_INFINITY : hull.surfaceY();
+    }
+
+    public static boolean afloat(UUID id) {
+        Double wet = WET.get(id);
+        return wet != null && wet > 0.0;
     }
 
     public static double keelLength(UUID id) {
@@ -201,14 +205,18 @@ public final class BoatBuoyancySystem {
         Pose3dc pose = sub.logicalPose();
         Quaterniond inverse = pose.orientation().conjugate(new Quaterniond());
 
-        Vector3d w = new Vector3d();
+        Vector3d point = new Vector3d();
         Vector3d centre = new Vector3d();
+        double base = pose.transformPosition(point.set(0.0, 0.0, 0.0)).y;
+        double ax = pose.transformPosition(point.set(1.0, 0.0, 0.0)).y - base;
+        double ay = pose.transformPosition(point.set(0.0, 1.0, 0.0)).y - base;
+        double az = pose.transformPosition(point.set(0.0, 0.0, 1.0)).y - base;
+        double waterline = hull.surfaceY() + 0.5 - base;
         double volume = 0.0;
         double[] cells = hull.cells();
         for (int i = 0, k = 0; i < hull.count(); i++, k += 3) {
             double x = cells[k], y = cells[k + 1], z = cells[k + 2];
-            pose.transformPosition(w.set(x, y, z));
-            double immersion = Mth.clamp(hull.surfaceY() - w.y + 0.5, 0.0, 1.0);
+            double immersion = Mth.clamp(waterline - (ax * x + ay * y + az * z), 0.0, 1.0);
             if (immersion <= 0.0) {
                 continue;
             }
@@ -254,6 +262,12 @@ public final class BoatBuoyancySystem {
             damp.mul(wet * dt);
             pose.orientation().transform(damp);
             handle.addLinearAndAngularVelocity(new Vector3d(), damp);
+        }
+
+        if (HighSeasConfig.boatSelfRighting > 0.0) {
+            Vector3d up = pose.orientation().transform(new Vector3d(0.0, 1.0, 0.0));
+            Vector3d spin = new Vector3d(-up.z, 0.0, up.x).mul(HighSeasConfig.boatSelfRighting * wet * dt);
+            handle.addLinearAndAngularVelocity(new Vector3d(), spin);
         }
     }
 

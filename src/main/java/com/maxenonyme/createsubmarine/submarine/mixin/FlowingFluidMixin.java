@@ -6,6 +6,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import com.maxenonyme.createsubmarine.submarine.block.entity.BallastVentBlockEntity;
+import com.maxenonyme.createsubmarine.submarine.block.entity.DecompressionChamberBlockEntity;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.Level;
@@ -17,7 +18,7 @@ public abstract class FlowingFluidMixin {
 
     @Inject(method = "tick", at = @At("HEAD"), cancellable = true)
     private void createsubmarine$preventVentFluidTick(Level level, BlockPos pos, FluidState state, CallbackInfo ci) {
-        if (com.maxenonyme.createsubmarine.submarine.block.entity.DecompressionChamberBlockEntity
+        if (DecompressionChamberBlockEntity
                 .isChamberPartialWater(level, pos)) {
             ci.cancel();
         }

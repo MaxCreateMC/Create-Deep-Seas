@@ -6,9 +6,7 @@ import net.minecraft.util.Mth;
 import net.neoforged.neoforge.client.event.RenderGuiEvent;
 import net.neoforged.neoforge.client.event.ViewportEvent;
 
-public final class SeaglideRushEffects {
-    private SeaglideRushEffects() {
-    }
+public class SeaglideRushEffects {
 
     private static final float SETTLED = 0.004f;
 

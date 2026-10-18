@@ -45,11 +45,11 @@ public class SteelCablePhysicsSystem {
             }
 
             UUID subId = SubLevelRegistry.findUUID(player.level());
-            SubLevelAccess sub = subId != null ? SubLevelRegistry.getAll().get(subId) : null;
-            if (sub != null && SubLevelRegistry.getLevel(subId) instanceof ServerLevel parent) {
+            SubLevelAccess subLevel = subId != null ? SubLevelRegistry.getAll().get(subId) : null;
+            if (subLevel != null && SubLevelRegistry.getLevel(subId) instanceof ServerLevel parent) {
                 Vector3d pPos = new Vector3d(player.getX(), player.getY() + player.getBbHeight() / 2.0, player.getZ());
-                sub.logicalPose().transformPosition(pPos);
-                collidePlayerWithCables(player, parent, pPos, sub);
+                subLevel.logicalPose().transformPosition(pPos);
+                collidePlayerWithCables(player, parent, pPos, subLevel);
             }
         }
 
@@ -82,7 +82,7 @@ public class SteelCablePhysicsSystem {
         }
     }
 
-    private static void collidePlayerWithCables(Player player, ServerLevel level, Vector3d pPos, SubLevelAccess sub) {
+    private static void collidePlayerWithCables(Player player, ServerLevel level, Vector3d pPos, SubLevelAccess subLevel) {
         ServerLevelRopeManager ropeManager = ServerLevelRopeManager.getOrCreate(level);
         if (ropeManager == null)
             return;
@@ -137,8 +137,8 @@ public class SteelCablePhysicsSystem {
                     double pushY = Math.max(0.0, targetWorldFeetY - worldFeetY);
 
                     Vector3d pushVec = new Vector3d(0, pushY, 0);
-                    if (sub != null) {
-                        sub.logicalPose().orientation().conjugate(new Quaterniond()).transform(pushVec);
+                    if (subLevel != null) {
+                        subLevel.logicalPose().orientation().conjugate(new Quaterniond()).transform(pushVec);
                     }
 
                     player.move(MoverType.SHULKER_BOX, new Vec3(pushVec.x, pushVec.y, pushVec.z));
@@ -147,8 +147,8 @@ public class SteelCablePhysicsSystem {
                     player.fallDistance = 0.0f;
 
                     pPos.set(player.getX(), player.getY() + player.getBbHeight() / 2.0, player.getZ());
-                    if (sub != null) {
-                        sub.logicalPose().transformPosition(pPos);
+                    if (subLevel != null) {
+                        subLevel.logicalPose().transformPosition(pPos);
                     }
                     continue;
                 }
@@ -171,8 +171,8 @@ public class SteelCablePhysicsSystem {
                     }
 
                     Vector3d pushVec = new Vector3d(push).mul(overlap);
-                    if (sub != null) {
-                        sub.logicalPose().orientation().conjugate(new Quaterniond()).transform(pushVec);
+                    if (subLevel != null) {
+                        subLevel.logicalPose().orientation().conjugate(new Quaterniond()).transform(pushVec);
                     }
 
                     player.move(MoverType.SHULKER_BOX, new Vec3(pushVec.x, pushVec.y, pushVec.z));
@@ -188,26 +188,26 @@ public class SteelCablePhysicsSystem {
                     player.hasImpulse = true;
 
                     pPos.set(player.getX(), player.getY() + player.getBbHeight() / 2.0, player.getZ());
-                    if (sub != null) {
-                        sub.logicalPose().transformPosition(pPos);
+                    if (subLevel != null) {
+                        subLevel.logicalPose().transformPosition(pPos);
                     }
                 }
             }
         }
     }
 
-    private static boolean buried(Level level, Vector3d c) {
-        BlockPos pos = BlockPos.containing(c.x, c.y, c.z);
+    private static boolean buried(Level level, Vector3d point) {
+        BlockPos pos = BlockPos.containing(point.x, point.y, point.z);
         if (!level.getBlockState(pos).getCollisionShape(level, pos).isEmpty())
             return true;
         SubLevelContainer container = SubLevelContainer.getContainer(level);
         if (container == null)
             return false;
-        for (SubLevel sub : container.getAllSubLevels()) {
-            if (sub.getPlot() == null || sub.getPlot().getBoundingBox() == null)
+        for (SubLevel subLevel : container.getAllSubLevels()) {
+            if (subLevel.getPlot() == null || subLevel.getPlot().getBoundingBox() == null)
                 continue;
-            BoundingBox3ic bb = sub.getPlot().getBoundingBox();
-            Vector3d local = sub.logicalPose().transformPositionInverse(new Vector3d(c));
+            BoundingBox3ic bb = subLevel.getPlot().getBoundingBox();
+            Vector3d local = subLevel.logicalPose().transformPositionInverse(new Vector3d(point));
             if (local.x < bb.minX() || local.x > bb.maxX() + 1 || local.y < bb.minY() || local.y > bb.maxY() + 1
                     || local.z < bb.minZ() || local.z > bb.maxZ() + 1)
                 continue;
@@ -292,9 +292,9 @@ public class SteelCablePhysicsSystem {
     }
 
 
-    public static Vector3d getClosestPointOnSegment(Vector3d a, Vector3d b, Vector3d p) {
+    public static Vector3d getClosestPointOnSegment(Vector3d a, Vector3d b, Vector3d vec) {
         Vector3d ab = new Vector3d(b).sub(a);
-        Vector3d ap = new Vector3d(p).sub(a);
+        Vector3d ap = new Vector3d(vec).sub(a);
         double abLenSq = ab.lengthSquared();
         if (abLenSq < 1e-6) {
             return new Vector3d(a);

@@ -39,5 +39,13 @@
         "volume": 1.0
       }
     ]
+  },
+  "heartbeat": {
+    "sounds": [
+      {
+        "name": "create_submarine:heartbeat",
+        "stream": false
+      }
+    ]
   }
 }

@@ -26,7 +26,8 @@ public record ElectrolyzerTogglePayload(BlockPos pos) implements CustomPacketPay
     public static void handle(final ElectrolyzerTogglePayload payload, final IPayloadContext context) {
         context.enqueueWork(() -> {
             var player = context.player();
-            if (player == null) return;
+            if (player == null)
+                return;
             if (player.containerMenu instanceof ElectrolyzerMenu menu && menu.pos.equals(payload.pos())) {
                 if (player.level().getBlockEntity(payload.pos()) instanceof ElectrolyzerBlockEntity be) {
                     be.toggleEnabled();

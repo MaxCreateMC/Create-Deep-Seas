@@ -17,6 +17,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import org.joml.Vector3d;
 
 import java.util.List;
+import com.maxenonyme.createsubmarine.submarine.compartment.CompartmentTracker;
 import com.maxenonyme.createsubmarine.submarine.system.CableElectrificationSystem;
 import com.maxenonyme.createsubmarine.submarine.util.WinchAnchorSignal;
 import com.maxenonyme.highseas.config.HighSeasConfig;
@@ -102,7 +103,7 @@ public class AnchorBlockEntity extends SmartBlockEntity implements RopeStrandHol
         boolean onFloor = false;
         for (double drop = FLOOR_PROBE_NEAR; drop <= FLOOR_PROBE_FAR; drop += 0.5) {
             BlockPos below = BlockPos.containing(center.x, center.y - drop, center.z);
-            BlockState ground = world.getBlockState(below);
+            BlockState ground = CompartmentTracker.realBlockState(world, below);
             if (!ground.isAir() && !ground.getCollisionShape(world, below).isEmpty()) {
                 onFloor = true;
                 break;

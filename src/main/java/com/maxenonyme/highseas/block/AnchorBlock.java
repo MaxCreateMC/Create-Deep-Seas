@@ -33,6 +33,7 @@ import com.maxenonyme.createsubmarine.CreateSubmarine;
 import com.maxenonyme.createsubmarine.submarine.block.SteelCableItem;
 import com.maxenonyme.createsubmarine.submarine.util.SablePhysicsHelper;
 import com.maxenonyme.createsubmarine.submarine.util.SteelCableHolderAccessor;
+import com.simibubi.create.foundation.blockEntity.SmartBlockEntity;
 import dev.ryanhcode.sable.api.SubLevelAssemblyHelper;
 import dev.ryanhcode.sable.companion.SableCompanion;
 import dev.ryanhcode.sable.companion.SubLevelAccess;
@@ -114,8 +115,10 @@ public class AnchorBlock extends HorizontalDirectionalBlock implements EntityBlo
 
     @Override
     public <T extends BlockEntity> BlockEntityTicker<T> getTicker(Level level, BlockState state, BlockEntityType<T> type) {
-        if (level.isClientSide) return null;
-        if (type != CreateHighSeas.ANCHOR_BE.get()) return null;
+        if (level.isClientSide)
+            return null;
+        if (type != CreateHighSeas.ANCHOR_BE.get())
+            return null;
         return (lvl, pos, st, be) -> ((AnchorBlockEntity) be).tick();
     }
 
@@ -203,7 +206,8 @@ public class AnchorBlock extends HorizontalDirectionalBlock implements EntityBlo
         RopeStrandHolderBehavior holderA = RopeItem.getRopeHolder(level, posA);
         RopeStrandHolderBehavior holderB = RopeItem.getRopeHolder(level, posB);
 
-        if (holderA == null || holderB == null) return false;
+        if (holderA == null || holderB == null)
+            return false;
 
         if (SteelCableItem.createSteelRope(holderA, holderB)) {
             if (level.getBlockState(posA).getBlock() instanceof AnchorBlock) {
@@ -254,7 +258,7 @@ public class AnchorBlock extends HorizontalDirectionalBlock implements EntityBlo
         }
         for (RopeAttachment attachment : strand.getAttachments()) {
             BlockEntity other = level.getBlockEntity(attachment.blockAttachment());
-            if (other instanceof com.simibubi.create.foundation.blockEntity.SmartBlockEntity smart) {
+            if (other instanceof SmartBlockEntity smart) {
                 RopeStrandHolderBehavior candidate = smart.getBehaviour(RopeStrandHolderBehavior.TYPE);
                 if (candidate != null && candidate != mine && candidate.ownsRope()) {
                     return candidate;

@@ -39,11 +39,14 @@ public record CommandSubPayload(BlockPos pos, int action, int value) implements 
     public static void handle(final CommandSubPayload payload, final IPayloadContext context) {
         context.enqueueWork(() -> {
             var player = context.player();
-            if (player == null) return;
+            if (player == null)
+                return;
             var level = player.level();
             BlockPos pos = payload.pos();
-            if (!level.isLoaded(pos)) return;
-            if (Sable.HELPER.distanceSquaredWithSubLevels(level, player.getEyePosition(), Vec3.atCenterOf(pos)) > 64) return;
+            if (!level.isLoaded(pos))
+                return;
+            if (Sable.HELPER.distanceSquaredWithSubLevels(level, player.getEyePosition(), Vec3.atCenterOf(pos)) > 64)
+                return;
             if (!(level.getBlockEntity(pos) instanceof CommandSubBlockEntity be))
                 return;
             if (payload.action() == DIAGNOSE) {

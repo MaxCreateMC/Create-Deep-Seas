@@ -3,18 +3,22 @@ package com.maxenonyme.createsubmarine.submarine.system;
 import com.maxenonyme.createsubmarine.CreateSubmarine;
 import com.maxenonyme.createsubmarine.submarine.compartment.CompartmentDetector;
 import com.maxenonyme.createsubmarine.submarine.compartment.CompartmentTracker;
+import com.maxenonyme.createsubmarine.submarine.config.SubmarineConfig;
 import com.maxenonyme.createsubmarine.submarine.util.SubLevelRegistry;
 import dev.ryanhcode.sable.companion.SubLevelAccess;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.particles.ParticleTypes;
 import com.maxenonyme.createsubmarine.submarine.network.CameraShakePayload;
+import com.maxenonyme.createsubmarine.submarine.util.SablePhysicsHelper;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
+import net.minecraft.tags.FluidTags;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import net.neoforged.neoforge.network.PacketDistributor;
@@ -98,7 +102,8 @@ public class SubmarineSinkingSystem {
     }
 
     public static void onCrashed(UUID id, SubLevelAccess sub, Level parentLevel, SubLevelRegistry.PlotBounds bounds) {
-        if (com.maxenonyme.createsubmarine.submarine.config.SubmarineConfig.DISABLE_IMPLOSION.get()) return;
+        if (SubmarineConfig.DISABLE_IMPLOSION.get())
+            return;
         if (!CRASHED.add(id))
             return;
         if (!(parentLevel instanceof ServerLevel serverLevel))
@@ -154,8 +159,10 @@ public class SubmarineSinkingSystem {
      */
     public static void implodeCompartment(UUID id, SubLevelAccess sub, Level parentLevel,
             CompartmentDetector.Component comp) {
-        if (com.maxenonyme.createsubmarine.submarine.config.SubmarineConfig.DISABLE_IMPLOSION.get()) return;
-        if (!(parentLevel instanceof ServerLevel serverLevel)) return;
+        if (SubmarineConfig.DISABLE_IMPLOSION.get())
+            return;
+        if (!(parentLevel instanceof ServerLevel serverLevel))
+            return;
 
         long baseTick = serverLevel.getServer().getTickCount();
 
@@ -175,7 +182,7 @@ public class SubmarineSinkingSystem {
         }
         // The water this chamber created vanishes as the pocket collapses.
         for (BlockPos p : comp.internal()) {
-            if (parentLevel.getFluidState(p).is(net.minecraft.tags.FluidTags.WATER)) {
+            if (parentLevel.getFluidState(p).is(FluidTags.WATER)) {
                 PENDING.offer(new ScheduledRemoval(parentLevel, p.immutable(), baseTick + RAND.nextInt(10)));
             }
         }
@@ -187,7 +194,8 @@ public class SubmarineSinkingSystem {
             center.add(p.getX() + 0.5, p.getY() + 0.5, p.getZ() + 0.5);
             n++;
         }
-        if (n == 0) return;
+        if (n == 0)
+            return;
         center.div(n);
         Vector3d worldCenter = new Vector3d(center);
         sub.logicalPose().transformPosition(worldCenter);
@@ -199,7 +207,14 @@ public class SubmarineSinkingSystem {
                 ImplosionSequence.inside(sub, comp.internal()));
         burst(serverLevel, sub, center.x, center.y, center.z, baseTick + 3, 1.0f);
         burst(serverLevel, sub, center.x, center.y, center.z, baseTick + 9, 0.7f);
+
+        int stride = Math.max(1, comp.internal().size() / 256);
+        int cell = 0;
+
         for (BlockPos p : comp.internal()) {
+            if (cell++ % stride != 0)
+                continue;
+
             Vector3d wp = new Vector3d(p.getX() + 0.5, p.getY() + 0.5, p.getZ() + 0.5);
             sub.logicalPose().transformPosition(wp);
             serverLevel.sendParticles(ParticleTypes.LARGE_SMOKE, wp.x, wp.y, wp.z, 1, 0.3, 0.3, 0.3, 0.02);
@@ -211,9 +226,9 @@ public class SubmarineSinkingSystem {
             for (int y = bounds.minY(); y <= bounds.maxY(); y++) {
                 for (int z = bounds.minZ(); z <= bounds.maxZ(); z++) {
                     BlockPos pos = new BlockPos(x, y, z);
-                    net.minecraft.world.level.block.state.BlockState s = level.getBlockState(pos);
-                    if (s.is(CreateSubmarine.CREATIVE_OXYGENATOR.get()) || s.is(CreateSubmarine.OXYGENE_DIFFUSER.get())
-                            || s.is(CreateSubmarine.BALLAST_TANK.get())) {
+                    BlockState state = level.getBlockState(pos);
+                    if (state.is(CreateSubmarine.CREATIVE_OXYGENATOR.get()) || state.is(CreateSubmarine.OXYGENE_DIFFUSER.get())
+                            || state.is(CreateSubmarine.BALLAST_TANK.get())) {
                         level.destroyBlock(pos, false);
                     }
                 }
@@ -266,41 +281,42 @@ public class SubmarineSinkingSystem {
                             base + 140 + RAND.nextInt(160)));
     }
 
-    private static void cutX(ServerLevel level, SubLevelAccess sub, SubLevelRegistry.PlotBounds b, int x, long tick,
+    private static void cutX(ServerLevel level, SubLevelAccess sub, SubLevelRegistry.PlotBounds plot, int x, long tick,
             double cy, double cz) {
-        for (int y = b.minY(); y <= b.maxY(); y++)
-            for (int z = b.minZ(); z <= b.maxZ(); z++)
+        for (int y = plot.minY(); y <= plot.maxY(); y++)
+            for (int z = plot.minZ(); z <= plot.maxZ(); z++)
                 PENDING.offer(new ScheduledRemoval(level, new BlockPos(x, y, z), tick));
         burst(level, sub, x + 0.5, cy, cz, tick, 1.0f);
     }
 
-    private static void cutZ(ServerLevel level, SubLevelAccess sub, SubLevelRegistry.PlotBounds b, int z, long tick,
+    private static void cutZ(ServerLevel level, SubLevelAccess sub, SubLevelRegistry.PlotBounds plot, int z, long tick,
             double cx, double cy) {
-        for (int y = b.minY(); y <= b.maxY(); y++)
-            for (int x = b.minX(); x <= b.maxX(); x++)
+        for (int y = plot.minY(); y <= plot.maxY(); y++)
+            for (int x = plot.minX(); x <= plot.maxX(); x++)
                 PENDING.offer(new ScheduledRemoval(level, new BlockPos(x, y, z), tick));
         burst(level, sub, cx, cy, z + 0.5, tick, 1.0f);
     }
 
-    private static void cutY(ServerLevel level, SubLevelAccess sub, SubLevelRegistry.PlotBounds b, int y, long tick,
+    private static void cutY(ServerLevel level, SubLevelAccess sub, SubLevelRegistry.PlotBounds plot, int y, long tick,
             double cx, double cz) {
-        for (int x = b.minX(); x <= b.maxX(); x++)
-            for (int z = b.minZ(); z <= b.maxZ(); z++)
+        for (int x = plot.minX(); x <= plot.maxX(); x++)
+            for (int z = plot.minZ(); z <= plot.maxZ(); z++)
                 PENDING.offer(new ScheduledRemoval(level, new BlockPos(x, y, z), tick));
         burst(level, sub, cx, y + 0.5, cz, tick, 1.2f);
     }
 
     private static void applySinkingForce(SubLevelAccess sub) {
-        Object handle = com.maxenonyme.createsubmarine.submarine.util.SablePhysicsHelper.getHandle(sub);
-        if (handle == null) return;
-        double mass = com.maxenonyme.createsubmarine.submarine.util.SablePhysicsHelper.readMass(sub);
+        Object handle = SablePhysicsHelper.getHandle(sub);
+        if (handle == null)
+            return;
+        double mass = SablePhysicsHelper.readMass(sub);
         double force = Math.max(mass * 18.0, 3000.0);
-        com.maxenonyme.createsubmarine.submarine.util.SablePhysicsHelper.applyLinearImpulse(handle, new Vector3d(
+        SablePhysicsHelper.applyLinearImpulse(handle, new Vector3d(
                 (RAND.nextDouble() - 0.5) * force * 0.6,
                 -force,
                 (RAND.nextDouble() - 0.5) * force * 0.6));
         double spin = mass * 8.0;
-        com.maxenonyme.createsubmarine.submarine.util.SablePhysicsHelper.applyAngularImpulse(handle, new Vector3d(
+        SablePhysicsHelper.applyAngularImpulse(handle, new Vector3d(
                 (RAND.nextDouble() - 0.5) * spin,
                 (RAND.nextDouble() - 0.5) * spin * 0.3,
                 (RAND.nextDouble() - 0.5) * spin));

@@ -4,10 +4,8 @@ import com.maxenonyme.createsubmarine.CreateSubmarine;
 import com.maxenonyme.createsubmarine.submarine.block.entity.renderer.SonarVisual;
 import dev.ryanhcode.sable.Sable;
 import dev.ryanhcode.sable.sublevel.SubLevel;
-import com.maxenonyme.createsubmarine.submarine.client.VeilLights;
-import foundry.veil.api.client.render.VeilRenderSystem;
-import foundry.veil.api.client.render.light.data.PointLightData;
-import foundry.veil.api.client.render.light.renderer.LightRenderHandle;
+import com.maxenonyme.vortexengine.light.PointLight;
+import com.maxenonyme.vortexengine.light.VortexLights;
 import net.createmod.catnip.animation.AnimationTickHolder;
 import net.createmod.ponder.api.level.PonderLevel;
 import net.minecraft.core.BlockPos;
@@ -48,13 +46,15 @@ public class SonarBlockEntity extends BlockEntity {
     public void tickClient() {
         if (level instanceof PonderLevel)
             return;
-        if (VeilLights.usable()) {
+
+        if (VortexLights.usable()) {
             float angle = SonarVisual.angle(level);
             greenLight = light(greenLight, angle, LIGHT_REACH, 0.2f, 1.0f, 0.55f);
             pinkLight = light(pinkLight, angle, -LIGHT_REACH, 1.0f, 0.45f, 0.75f);
         } else if (greenLight != null || pinkLight != null) {
             freeLights();
         }
+
         if (pingIn < 0)
             pingIn = PING_MIN + level.random.nextInt(PING_SPREAD);
         int half = AnimationTickHolder.getTicks(level) / HALF_TURN;
@@ -64,10 +64,12 @@ public class SonarBlockEntity extends BlockEntity {
             pingIn--;
         if (pingIn > 0 || !turned)
             return;
+
         pingIn = PING_MIN + level.random.nextInt(PING_SPREAD);
         SoundEvent ping = BuiltInRegistries.SOUND_EVENT.get(PING);
         if (ping == null)
             return;
+
         Vec3 world = Sable.HELPER.projectOutOfSubLevel(level, Vec3.atCenterOf(worldPosition));
         float pitch = 0.9f + level.random.nextFloat() * 0.7f;
         level.playLocalSound(world.x, world.y, world.z, ping, SoundSource.BLOCKS, 0.35f, pitch, false);
@@ -79,46 +81,51 @@ public class SonarBlockEntity extends BlockEntity {
                 .add(0, SonarVisual.PIVOT_Y - 0.5f, SonarVisual.PIVOT_Z - 0.5f);
         local.rotateX(SonarVisual.tilt(state));
         local.rotateY(SonarVisual.yaw(state));
-        Vec3 world = Sable.HELPER.projectOutOfSubLevel(level, Vec3.atCenterOf(worldPosition).add(local.x, local.y, local.z));
-        if (current instanceof LightRenderHandle<?> handle && handle.getLightData() instanceof PointLightData light) {
-            light.setPosition(world.x, world.y, world.z);
-            handle.markDirty();
-            return current;
-        }
-        PointLightData light = new PointLightData();
-        light.setPosition(world.x, world.y, world.z);
-        light.setBrightness(1.6f);
-        light.setColor(r, g, b);
-        light.setRadius(4.5f);
-        light.setOcclusionEnabled(false);
-        return VeilRenderSystem.renderer().getLightRenderer().addLight(light);
+        Vector3f beam = new Vector3f(0, Math.signum(reach), 0).rotateX(angle);
+        beam.rotateX(SonarVisual.tilt(state));
+        beam.rotateY(SonarVisual.yaw(state));
+
+        Vec3 origin = Vec3.atCenterOf(worldPosition).add(local.x, local.y, local.z);
+        Vec3 world = Sable.HELPER.projectOutOfSubLevel(level, origin);
+        Vec3 ahead = Sable.HELPER.projectOutOfSubLevel(level, origin.add(beam.x, beam.y, beam.z)).subtract(world);
+
+        PointLight light = current instanceof PointLight point ? point
+                : VortexLights.add(new PointLight().setIntensity(1.6f).setColor(r, g, b).setRadius(7));
+        light.setPosition(world.x, world.y, world.z).setBeam(ahead.x, ahead.y, ahead.z, 35);
+        return light;
     }
 
     private void freeLights() {
-        if (greenLight instanceof LightRenderHandle<?> handle)
-            handle.free();
-        if (pinkLight instanceof LightRenderHandle<?> handle)
-            handle.free();
+        VortexLights.remove(greenLight);
+        VortexLights.remove(pinkLight);
         greenLight = pinkLight = null;
     }
 
+    private void forget() {
+        if (level != null)
+            (level.isClientSide ? LOADED_ON_CLIENT : LOADED_ON_SERVER).remove(this);
+    }
+
     public static SonarBlockEntity onSameSub(BlockEntity console) {
-        SubLevel sub = Sable.HELPER.getContaining(console);
-        if (sub == null)
+        SubLevel subLevel = Sable.HELPER.getContaining(console);
+        if (subLevel == null)
             return null;
+
         SonarBlockEntity best = null;
         double bestDist = Double.MAX_VALUE;
         Set<SonarBlockEntity> loaded = console.getLevel() != null && console.getLevel().isClientSide ? LOADED_ON_CLIENT
                 : LOADED_ON_SERVER;
         for (SonarBlockEntity sonar : loaded) {
-            if (sonar.isRemoved() || sonar.getLevel() != console.getLevel() || Sable.HELPER.getContaining(sonar) != sub)
+            if (sonar.isRemoved() || sonar.getLevel() != console.getLevel() || Sable.HELPER.getContaining(sonar) != subLevel)
                 continue;
+
             double d = sonar.getBlockPos().distSqr(console.getBlockPos());
             if (d < bestDist) {
                 bestDist = d;
                 best = sonar;
             }
         }
+
         return best;
     }
 
@@ -132,8 +139,7 @@ public class SonarBlockEntity extends BlockEntity {
     @Override
     public void setRemoved() {
         super.setRemoved();
-        LOADED_ON_CLIENT.remove(this);
-        LOADED_ON_SERVER.remove(this);
+        forget();
         if (level != null && level.isClientSide)
             freeLights();
     }
@@ -141,8 +147,7 @@ public class SonarBlockEntity extends BlockEntity {
     @Override
     public void onChunkUnloaded() {
         super.onChunkUnloaded();
-        LOADED_ON_CLIENT.remove(this);
-        LOADED_ON_SERVER.remove(this);
+        forget();
         if (level != null && level.isClientSide)
             freeLights();
     }
