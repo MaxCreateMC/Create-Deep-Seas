@@ -1,0 +1,21 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "equipment",
+  "pattern": [
+    "PGP",
+    "P P",
+    "P P"
+  ],
+  "key": {
+    "P": {
+      "tag": "c:ingots/copper"
+    },
+    "G": {
+      "item": "create:andesite_alloy"
+    }
+  },
+  "result": {
+    "id": "create_submarine:diving_leggings",
+    "count": 1
+  }
+}

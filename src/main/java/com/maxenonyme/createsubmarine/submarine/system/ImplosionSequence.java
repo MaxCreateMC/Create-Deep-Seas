@@ -57,8 +57,10 @@ public class ImplosionSequence {
         return PENDING.containsKey(id);
     }
 
-    public static void buildUp(ServerLevel level, UUID id, Vec3 origin, BlockState state, Runnable burst) {
+    public static void buildUp(ServerLevel level, UUID id, Vec3 origin, BlockState state, boolean imploding, Runnable burst) {
         if (PENDING.putIfAbsent(id, new Pending(level, origin, state, level.getServer().getTickCount(), burst)) != null)
+            return;
+        if (!imploding)
             return;
         for (ServerPlayer player : level.players()) {
             double distance = Math.sqrt(player.distanceToSqr(origin));
@@ -130,12 +132,6 @@ public class ImplosionSequence {
         level.playSound(null, at.x, at.y, at.z, SoundEvents.GENERIC_EXPLODE.value(), SoundSource.BLOCKS, 1.4f, 1.5f);
         level.sendParticles(ParticleTypes.BUBBLE_COLUMN_UP, at.x, at.y, at.z, 40, 0.4, 0.4, 0.4, 0.4);
         level.sendParticles(ParticleTypes.SPLASH, at.x, at.y, at.z, 30, 0.5, 0.5, 0.5, 0.3);
-        for (ServerPlayer player : level.players()) {
-            double distance = Math.sqrt(player.distanceToSqr(at));
-            if (distance <= STRESS_REACH)
-                PacketDistributor.sendToPlayer(player, new ImplosionFxPayload(ImplosionFxPayload.BLAST,
-                        (float) (0.45 * (1 - distance / STRESS_REACH)), 0));
-        }
     }
 
     public static void blast(ServerLevel level, Vec3 center, Predicate<ServerPlayer> crushed) {

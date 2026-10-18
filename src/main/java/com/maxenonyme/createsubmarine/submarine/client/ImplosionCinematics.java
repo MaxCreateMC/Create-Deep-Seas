@@ -56,6 +56,7 @@ public class ImplosionCinematics {
     private static int jolt;
     private static float excess;
     private static int excessLeft;
+    private static int squeezeLeft;
     private static final Set<SoundInstance> DEATH_SOUNDS = new HashSet<>();
 
     public static void accept(ImplosionFxPayload payload) {
@@ -91,6 +92,8 @@ public class ImplosionCinematics {
                 excessLeft = payload.ticks();
                 excess = payload.strength();
             }
+            case ImplosionFxPayload.SQUEEZE -> squeezeLeft = payload.ticks();
+            case ImplosionFxPayload.THOUGHT, ImplosionFxPayload.DEPTH -> DiverHud.accept(payload);
             case ImplosionFxPayload.FATAL -> {
                 endStress();
                 die(Minecraft.getInstance());
@@ -146,6 +149,14 @@ public class ImplosionCinematics {
         return dread;
     }
 
+    public static float squeeze() {
+        return squeezeLeft > 0 ? 1f : 0f;
+    }
+
+    public static void dropSqueeze() {
+        squeezeLeft = 0;
+    }
+
     public static float greyness() {
         if (blackout >= 0 || lead > 0 || stressLeft > 0)
             return 1f;
@@ -196,6 +207,8 @@ public class ImplosionCinematics {
         }
         if (excessLeft > 0)
             excessLeft--;
+        if (squeezeLeft > 0)
+            squeezeLeft--;
         if (strainLeft > 0) {
             strainLeft--;
             if (jolt > 0)
@@ -232,7 +245,7 @@ public class ImplosionCinematics {
     @SubscribeEvent
     public static void onCameraAngles(ViewportEvent.ComputeCameraAngles event) {
         Minecraft mc = Minecraft.getInstance();
-        if (mc.player == null || mc.isPaused())
+        if (mc.player == null || mc.isPaused() || mc.player.isDeadOrDying())
             return;
         float partialTick = (float) event.getPartialTick();
         float progress = stressLeft > 0 ? Mth.clamp(1 - (stressLeft - partialTick) / stressTotal, 0f, 1f) : 0f;

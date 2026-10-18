@@ -11,6 +11,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.saveddata.SavedData;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.server.ServerStartedEvent;
+import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import net.neoforged.neoforge.network.PacketDistributor;
 
 import java.util.HashSet;
@@ -24,19 +25,31 @@ public class BreachLedger {
 
     private static final String NAME = "create_submarine_breaches";
     private static final Map<UUID, Set<BlockPos>> BREACHES = new ConcurrentHashMap<>();
+    private static final Set<UUID> UNSENT = ConcurrentHashMap.newKeySet();
     private static Data data;
 
     public static void changed(UUID id, Set<BlockPos> plugs) {
-        Set<BlockPos> next = Set.copyOf(plugs);
-        if (next.equals(BREACHES.getOrDefault(id, Set.of())))
+        if (plugs.equals(BREACHES.getOrDefault(id, Set.of())))
             return;
-        if (next.isEmpty())
+
+        if (plugs.isEmpty())
             BREACHES.remove(id);
         else
-            BREACHES.put(id, next);
+            BREACHES.put(id, Set.copyOf(plugs));
         if (data != null)
             data.setDirty();
-        PacketDistributor.sendToAllPlayers(new BreachSyncPayload(id, List.copyOf(next)));
+        UNSENT.add(id);
+    }
+
+    public static void onServerTick(ServerTickEvent.Post event) {
+        if (UNSENT.isEmpty())
+            return;
+
+        for (UUID id : UNSENT)
+            PacketDistributor.sendToAllPlayers(
+                    new BreachSyncPayload(id, List.copyOf(BREACHES.getOrDefault(id, Set.of()))));
+
+        UNSENT.clear();
     }
 
     public static void onServerStarted(ServerStartedEvent event) {

@@ -1,8 +1,8 @@
 package com.maxenonyme.createsubmarine.submarine.client;
 
 import com.maxenonyme.createsubmarine.CreateSubmarine;
-import foundry.veil.api.client.render.light.data.PointLightData;
-import foundry.veil.api.client.render.light.renderer.LightRenderHandle;
+import com.maxenonyme.vortexengine.light.PointLight;
+import com.maxenonyme.vortexengine.light.VortexLights;
 import net.minecraft.client.Minecraft;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundEvents;
@@ -17,8 +17,7 @@ public class SubmarineStaffClientHandler {
     private static boolean wasHolding = false;
     private static int ambientCooldown = 0;
 
-    private static LightRenderHandle<?> conduitLight;
-    private static PointLightData conduitLightData;
+    private static PointLight conduitLight;
 
     public static void onClientTick(ClientTickEvent.Post event) {
         Minecraft mc = Minecraft.getInstance();
@@ -73,10 +72,11 @@ public class SubmarineStaffClientHandler {
     }
 
     private static void updateLights(Player player, Minecraft mc) {
-        if (!VeilLights.usable()) {
+        if (!VortexLights.usable()) {
             freeLights();
             return;
         }
+
         Vec3 look = player.getLookAngle();
 
         float f = player.level().getGameTime() + mc.getTimer().getGameTimeDeltaTicks();
@@ -87,30 +87,16 @@ public class SubmarineStaffClientHandler {
         double conduitX = player.getX() + look.x * 0.5;
         double conduitY = player.getEyeY() - 0.2 + look.y * 0.5 + bobOffset;
         double conduitZ = player.getZ() + look.z * 0.5;
-        if (conduitLight == null || !conduitLight.isValid()) {
-            conduitLightData = createLight(0.3f, 0.6f, 1.0f, 0.8f, 5.0f);
-            conduitLightData.setPosition(conduitX, conduitY, conduitZ);
-            conduitLight = VeilLights.add(conduitLightData);
-        } else {
-            conduitLightData.setPosition(conduitX, conduitY, conduitZ);
-            conduitLight.markDirty();
-        }
-    }
+        if (conduitLight == null)
+            conduitLight = new PointLight().setColor(0.3f, 0.6f, 1.0f).setIntensity(0.8f).setRadius(5.0f);
 
-    private static PointLightData createLight(float r, float g, float b, float brightness, float radius) {
-        PointLightData light = new PointLightData();
-        light.setColor(r, g, b);
-        light.setBrightness(brightness);
-        light.setRadius(radius);
-        light.setOcclusionEnabled(false);
-        return light;
+        VortexLights.add(conduitLight).setPosition(conduitX, conduitY, conduitZ);
     }
 
     private static void freeLights() {
         if (conduitLight != null) {
-            VeilLights.free(conduitLight);
+            VortexLights.remove(conduitLight);
             conduitLight = null;
-            conduitLightData = null;
         }
     }
 }

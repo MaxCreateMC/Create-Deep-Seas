@@ -2,6 +2,7 @@ package com.maxenonyme.highseas.mixin;
 
 import com.maxenonyme.highseas.client.SailRenderTypes;
 import com.maxenonyme.highseas.client.SailShaderState;
+import com.maxenonyme.highseas.compat.iris.sail.IrisSailUniforms;
 import dev.ryanhcode.sable.companion.math.Pose3dc;
 import dev.ryanhcode.sable.sublevel.ClientSubLevel;
 import dev.ryanhcode.sable.sublevel.render.vanilla.VanillaChunkedSubLevelRenderData;
@@ -32,10 +33,25 @@ public class SailSubLevelRenderMixin {
                                              final double camY,
                                              final double camZ,
                                              final CallbackInfo ci) {
-        if (shader == null || layer != SailRenderTypes.sail()) {
+        if (shader == null)
             return;
-        }
+
         Pose3dc renderPose = this.subLevel.renderPose();
-        SailShaderState.prepareForSublevel(this.subLevel, shader, renderPose, camX, camY, camZ);
+        if (layer == SailRenderTypes.sail())
+            SailShaderState.prepareForSublevel(this.subLevel, SailShaderState.of(shader), renderPose, camX, camY, camZ);
+        else if (IrisSailUniforms.wanted(layer))
+            IrisSailUniforms.push(this.subLevel, shader, renderPose, camX, camY, camZ);
+    }
+
+    @Inject(method = "renderChunkedSubLevel", at = @At("RETURN"), remap = false, require = 0)
+    private void createhighseas$sailUniformsDone(final RenderType layer,
+                                                 final ShaderInstance shader,
+                                                 final Matrix4f modelView,
+                                                 final double camX,
+                                                 final double camY,
+                                                 final double camZ,
+                                                 final CallbackInfo ci) {
+        if (shader != null && IrisSailUniforms.wanted(layer))
+            IrisSailUniforms.reset(shader);
     }
 }

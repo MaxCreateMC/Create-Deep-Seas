@@ -103,20 +103,55 @@ public class SailShaderState {
         }
     }
 
-    public static void prepareForSublevel(ClientSubLevel sub, ShaderInstance shader, Pose3dc renderPose, double camX, double camY, double camZ) {
+    public interface Uniforms {
+
+        void set(String name, float x);
+
+        void set(String name, int x);
+
+        void set(String name, float x, float y, float z);
+
+        void set(String name, float x, float y, float z, float w);
+    }
+
+    public static Uniforms of(ShaderInstance shader) {
+        return new Uniforms() {
+            @Override
+            public void set(String name, float x) {
+                shader.safeGetUniform(name).set(x);
+            }
+
+            @Override
+            public void set(String name, int x) {
+                shader.safeGetUniform(name).set(x);
+            }
+
+            @Override
+            public void set(String name, float x, float y, float z) {
+                shader.safeGetUniform(name).set(x, y, z);
+            }
+
+            @Override
+            public void set(String name, float x, float y, float z, float w) {
+                shader.safeGetUniform(name).set(x, y, z, w);
+            }
+        };
+    }
+
+    public static void prepareForSublevel(ClientSubLevel sub, Uniforms shader, Pose3dc renderPose, double camX,
+            double camY, double camZ) {
         Quaterniondc rot = renderPose.orientation();
         Vector3d offset = new Vector3d(renderPose.position()).sub(camX, camY, camZ);
         rot.transformInverse(offset);
-        shader.safeGetUniform("offset").set((float) offset.x, (float) offset.y, (float) offset.z);
-        shader.safeGetUniform("time").set(time());
-        shader.safeGetUniform("tessLevel").set(
-                (float) HighSeasConfig.sailSubdivisions);
+        shader.set("offset", (float) offset.x, (float) offset.y, (float) offset.z);
+        shader.set("time", time());
+        shader.set("tessLevel", (float) HighSeasConfig.sailSubdivisions);
 
         Vector3dc rp = renderPose.rotationPoint();
         ClientLevel level = Minecraft.getInstance().level;
 
         if (!isBoat(sub, level)) {
-            shader.safeGetUniform("sailCount").set(0);
+            shader.set("sailCount", 0);
             return;
         }
 
@@ -124,7 +159,7 @@ public class SailShaderState {
         List<SailBox> activeSails = data.sails;
         List<DecayingSailBox> decayingSails = data.decaying;
         int totalSails = Math.min(MAX_SAILS, activeSails.size() + decayingSails.size());
-        shader.safeGetUniform("sailCount").set(totalSails);
+        shader.set("sailCount", totalSails);
 
         SubLevelContainer container = SubLevelContainer.getContainer(level);
         ClientSubLevel root = null;
@@ -174,22 +209,23 @@ public class SailShaderState {
         }
     }
 
-    private static void setUniformsForBox(ShaderInstance shader, SailBox b, int i, Vector3dc rp, Pose3dc renderPose, Quaterniondc rot, ClientLevel level, Vector3d keel, double decayFactor) {
-        shader.safeGetUniform(SAIL_MIN[i]).set(
+    private static void setUniformsForBox(Uniforms shader, SailBox b, int i, Vector3dc rp, Pose3dc renderPose,
+            Quaterniondc rot, ClientLevel level, Vector3d keel, double decayFactor) {
+        shader.set(SAIL_MIN[i],
                 (float) (b.minX - rp.x()),
                 (float) (b.minY - rp.y()),
                 (float) (b.minZ - rp.z()));
-        shader.safeGetUniform(SAIL_MAX[i]).set(
+        shader.set(SAIL_MAX[i],
                 (float) (b.maxX - rp.x()),
                 (float) (b.maxY - rp.y()),
                 (float) (b.maxZ - rp.z()));
-        shader.safeGetUniform(SAIL_AXIS[i]).set(b.axisX, b.axisY, b.axisZ);
-        shader.safeGetUniform(CUT[i]).set(b.cutX, b.cutY, b.cutZ, b.cutReach);
-        shader.safeGetUniform(SUPPORT_DIR[i]).set(
+        shader.set(SAIL_AXIS[i], b.axisX, b.axisY, b.axisZ);
+        shader.set(CUT[i], b.cutX, b.cutY, b.cutZ, b.cutReach);
+        shader.set(SUPPORT_DIR[i],
                 b.axisX * b.supportSign, b.axisY * b.supportSign, b.axisZ * b.supportSign);
 
         Vec3 bulge = windBulge(b, renderPose, rot, level, keel, decayFactor);
-        shader.safeGetUniform(BULGE[i]).set((float) bulge.x, (float) bulge.y, (float) bulge.z);
+        shader.set(BULGE[i], (float) bulge.x, (float) bulge.y, (float) bulge.z);
 
         long now = System.currentTimeMillis();
         if (b.furlLastMs == 0) {
@@ -205,7 +241,7 @@ public class SailShaderState {
             }
         }
         b.furlLastMs = now;
-        shader.safeGetUniform(FURL[i]).set((float) b.furlAmount);
+        shader.set(FURL[i], (float) b.furlAmount);
     }
 
     private static Vector3d sailDir(Quaterniondc rot, List<SailBox> sails) {

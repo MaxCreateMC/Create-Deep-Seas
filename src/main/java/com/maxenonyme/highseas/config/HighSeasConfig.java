@@ -38,6 +38,7 @@ public class HighSeasConfig {
     public static double boatSelfRighting = 4.0;
 
     public static int sailSubdivisions = 4;
+    public static boolean shaderpackSails = true;
     public static boolean seaglideScreenEffects = true;
 
     public static final ModConfigSpec SERVER_SPEC;
@@ -74,8 +75,9 @@ public class HighSeasConfig {
     private static final ModConfigSpec.DoubleValue ANCHOR_MASS;
     private static final ModConfigSpec.DoubleValue BOAT_SELF_RIGHTING;
 
-    private static final ModConfigSpec.IntValue SAIL_SUBDIVISIONS;
-    private static final ModConfigSpec.BooleanValue SEAGLIDE_SCREEN_EFFECTS;
+    public static final ModConfigSpec.IntValue SAIL_SUBDIVISIONS;
+    public static final ModConfigSpec.BooleanValue SHADERPACK_SAILS;
+    public static final ModConfigSpec.BooleanValue SEAGLIDE_SCREEN_EFFECTS;
 
     static {
         ModConfigSpec.Builder server = new ModConfigSpec.Builder();
@@ -202,6 +204,10 @@ public class HighSeasConfig {
                         "Purely aesthetic: GPU tessellation runs on the graphics card with negligible performance cost.",
                         "1 = flat faces (no subdivision), 8 = very smooth. Applies when you close the config screen.")
                 .defineInRange("sailSubdivisions", 4, 1, 8);
+        SHADERPACK_SAILS = client
+                .comment("Billowing sails while an Iris shader pack is in use.",
+                        "Turn off to draw them flat. Applies the next time the shader pack is loaded.")
+                .define("shaderpackSails", true);
         SEAGLIDE_SCREEN_EFFECTS = client
                 .comment("Camera shake and wind speed-lines at full seaglide speed.",
                         "Turn off if the motion bothers you; speed itself is unchanged.")
@@ -257,6 +263,7 @@ public class HighSeasConfig {
 
     private static void pullClient() {
         sailSubdivisions = SAIL_SUBDIVISIONS.get();
+        shaderpackSails = SHADERPACK_SAILS.get();
         seaglideScreenEffects = SEAGLIDE_SCREEN_EFFECTS.get();
     }
 }

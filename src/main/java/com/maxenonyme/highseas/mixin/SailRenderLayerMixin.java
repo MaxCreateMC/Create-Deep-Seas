@@ -1,6 +1,6 @@
 package com.maxenonyme.highseas.mixin;
 
-import com.maxenonyme.highseas.client.IrisCompat;
+import com.maxenonyme.highseas.compat.iris.IrisCompat;
 import com.maxenonyme.highseas.block.BoatSailBlock;
 import net.minecraft.client.renderer.ItemBlockRenderTypes;
 import net.minecraft.client.renderer.RenderType;

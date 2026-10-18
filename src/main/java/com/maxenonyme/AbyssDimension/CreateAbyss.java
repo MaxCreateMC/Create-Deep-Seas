@@ -2,6 +2,9 @@ package com.maxenonyme.AbyssDimension;
 
 import com.maxenonyme.AbyssDimension.client.MagmaFlowSpriteSource;
 import com.mojang.logging.LogUtils;
+
+import dev.worldgen.lithostitched.worldgen.processor.condition.True;
+
 import com.maxenonyme.AbyssDimension.entities.EntityRegistry;
 import com.maxenonyme.AbyssDimension.experimental.worldgen.ExperimentalWorldgen;
 import com.maxenonyme.AbyssDimension.network.StruggleSharkPayload;
@@ -41,7 +44,7 @@ public class CreateAbyss {
     public static final DeferredRegister<Item> ITEMS = DeferredRegister.create(BuiltInRegistries.ITEM, MOD_ID);
     public static final DeferredRegister<BlockEntityType<?>> BLOCK_ENTITIES = DeferredRegister
             .create(BuiltInRegistries.BLOCK_ENTITY_TYPE, MOD_ID);
-    public static final boolean DEV_ONLY = false;
+    public static final boolean DEV_ONLY = true;
 
     public static final Supplier<Item> MUSIC_DISC_SEAFOAM = musicDisc("seafoam");
     public static final Supplier<Item> MUSIC_DISC_SNELLS_WINDOW = musicDisc("snells_window");

@@ -28,9 +28,6 @@ public class WaterThrusterBlockEntity extends BlockEntity implements BlockEntity
         @Override
         protected void onContentsChanged() {
             setChanged();
-            if (level != null && !level.isClientSide) {
-                level.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), 3);
-            }
         }
     };
 

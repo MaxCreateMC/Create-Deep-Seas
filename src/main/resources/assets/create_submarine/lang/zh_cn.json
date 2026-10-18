@@ -228,6 +228,8 @@
   "create_submarine.command_sub.pump.fill": "正在注水 · %s 个水泵",
   "create_submarine.command_sub.pump.drain": "正在排水 · %s 个水泵",
   "create_submarine.command_sub.pump.hold": "保持 · %s 个水泵",
+  "create_submarine.command_sub.docked.lead": "已对接 · 主控",
+  "create_submarine.command_sub.docked.follow": "已对接 · 跟随",
   "create_submarine.command_sub.status.fill": "注水 · %s 米 → %s 米",
   "create_submarine.command_sub.status.drain": "排水 · %s 米 → %s 米",
   "create_submarine.command_sub.status.hold": "保持 · %s 米 → %s 米",

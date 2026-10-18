@@ -1,5 +1,7 @@
 package com.maxenonyme.createsubmarine.submarine.block.entity;
 
+import com.maxenonyme.createsubmarine.submarine.block.PumpControllerBlock;
+import com.maxenonyme.createsubmarine.submarine.system.SubmarinePressureSystem;
 import com.simibubi.create.content.fluids.FluidPropagator;
 import com.simibubi.create.content.fluids.FluidTransportBehaviour;
 import com.simibubi.create.content.fluids.pump.PumpBlockEntity;
@@ -11,6 +13,7 @@ import net.minecraft.core.Direction;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtUtils;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
@@ -59,6 +62,12 @@ public class PumpControllerBlockEntity extends PumpBlockEntity {
             wanted = brain.pumpCommand();
             wantedRate = brain.pumpRate();
             wantedBoost = brain.pumpBoost();
+        }
+
+        boolean doomed = subLevel != null && SubmarinePressureSystem.isDoomed(subLevel.getUniqueId());
+        if (getBlockState().getValue(PumpControllerBlock.SEIZED) != doomed) {
+            level.setBlock(worldPosition, getBlockState().setValue(PumpControllerBlock.SEIZED, doomed), Block.UPDATE_ALL);
+            updatePressureChange();
         }
 
         Direction side = ballastSide;
@@ -134,7 +143,17 @@ public class PumpControllerBlockEntity extends PumpBlockEntity {
     }
 
     @Override
+    public void setBlockState(BlockState state) {
+        boolean wasSeized = getBlockState().getValue(PumpControllerBlock.SEIZED);
+        super.setBlockState(state);
+        if (level != null && level.isClientSide && wasSeized != state.getValue(PumpControllerBlock.SEIZED))
+            VisualizationHelper.queueUpdate(this);
+    }
+
+    @Override
     public float getSpeed() {
+        if (getBlockState().getValue(PumpControllerBlock.SEIZED))
+            return 0;
         float speed = super.getSpeed();
         if (computer == null)
             return speed;

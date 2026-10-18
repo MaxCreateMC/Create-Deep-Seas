@@ -1,5 +1,6 @@
 package com.maxenonyme.highseas;
 
+import com.maxenonyme.createsubmarine.CreateSubmarine;
 import com.maxenonyme.highseas.block.BoatSailBlock;
 import com.maxenonyme.highseas.block.RudderBlock;
 import com.maxenonyme.highseas.block.WindVaneBlock;
@@ -125,7 +126,8 @@ public class CreateHighSeas {
                             .noSummon()
                             .fireImmune()
                             .clientTrackingRange(10)
-                            .updateInterval(20)
+                            .updateInterval(Integer.MAX_VALUE)
+                            .setShouldReceiveVelocityUpdates(false)
                             .build("helm_seat"));
 
     public static final Supplier<EntityType<BuoySeatEntity>> BUOY_SEAT =
@@ -365,6 +367,8 @@ public class CreateHighSeas {
             itemToSection.put(ResourceLocation.fromNamespaceAndPath(MOD_ID, "buoy"), highSeasSection);
             tabItems.add(SAIL_ITEM::get);
             itemToSection.put(ResourceLocation.fromNamespaceAndPath(MOD_ID, "white_sail"), highSeasSection);
+            tabItems.add(CreateSubmarine.FLOATER_ITEM::get);
+            itemToSection.put(ResourceLocation.fromNamespaceAndPath(CreateSubmarine.MOD_ID, "floater"), highSeasSection);
             tabItems.add(MUSIC_DISC_HIDDEN_BETWEEN_FLUENT_WATERS::get);
             itemToSection.put(ResourceLocation.fromNamespaceAndPath(MOD_ID, "music_disc_hidden_between_fluent_waters"), highSeasSection);
         } catch (ReflectiveOperationException | ClassCastException e) {

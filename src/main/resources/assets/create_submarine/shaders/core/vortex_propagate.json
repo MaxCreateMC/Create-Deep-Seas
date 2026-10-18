@@ -1,0 +1,15 @@
+{
+    "vertex": "create_submarine:vortex_composite",
+    "fragment": "create_submarine:vortex_propagate",
+    "samplers": [],
+    "uniforms": [
+        { "name": "ShadowGrid", "type": "int", "count": 1, "values": [ 5 ] },
+        { "name": "Previous", "type": "int", "count": 1, "values": [ 8 ] },
+        { "name": "Emission", "type": "int", "count": 1, "values": [ 9 ] },
+        { "name": "Slice", "type": "int", "count": 1, "values": [ 0 ] },
+        { "name": "Shift", "type": "int", "count": 3, "values": [ 0, 0, 0 ] },
+        { "name": "OriginWrap", "type": "float", "count": 3, "values": [ 0.0, 0.0, 0.0 ] },
+        { "name": "Mode", "type": "float", "count": 1, "values": [ 1.0 ] },
+        { "name": "GameTime", "type": "float", "count": 1, "values": [ 0.0 ] }
+    ]
+}

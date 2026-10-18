@@ -219,7 +219,7 @@ public class FloaterBlockEntity extends BlockEntity implements BlockEntitySubLev
         if (speed < 0.35)
             return;
 
-        BlockState parentState = parentLevel.getBlockState(parentPos);
+        BlockState parentState = CompartmentTracker.realBlockState(parentLevel, parentPos);
         if (parentState.isSolid() && !parentState.is(BlockTags.LEAVES)) {
             subLevel.destroyBlock(localPos, false);
             parentLevel.playSound(null, parentPos, SoundEvents.FIREWORK_ROCKET_BLAST,
