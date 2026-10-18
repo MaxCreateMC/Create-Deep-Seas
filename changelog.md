@@ -11,6 +11,7 @@
 - Fixed blocks near a sail bending with it under shader packs whose terrain programs have no texture coordinates
 - Closing a sonar screen no longer leaves its terrain scan running in the background
 - Fixed a removed ship's hull analysis being cached again when it finished after the ship was gone
+- Fixed the server freezing until the watchdog stopped it when a water, pressure or autopilot check hit a chunk that was still loading (#111, thanks @anenigmabeyondwords)
 
 ## [3.4.1]
 

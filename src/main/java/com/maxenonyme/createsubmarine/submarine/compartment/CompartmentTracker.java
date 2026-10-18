@@ -45,7 +45,6 @@ import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.chunk.LevelChunkSection;
-import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.fml.loading.FMLEnvironment;
@@ -993,9 +992,7 @@ public class CompartmentTracker {
         if (y < level.getMinBuildHeight() || y >= level.getMaxBuildHeight())
             return Fluids.EMPTY.defaultFluidState();
 
-        ChunkAccess chunk = level.getChunk(
-                pos.getX() >> 4, pos.getZ() >> 4,
-                ChunkStatus.FULL, false);
+        ChunkAccess chunk = level.getChunkSource().getChunkNow(pos.getX() >> 4, pos.getZ() >> 4);
         if (chunk == null)
             return Fluids.EMPTY.defaultFluidState();
 
@@ -1007,7 +1004,7 @@ public class CompartmentTracker {
         if (y < level.getMinBuildHeight() || y >= level.getMaxBuildHeight())
             return Blocks.AIR.defaultBlockState();
 
-        ChunkAccess chunk = level.getChunk(pos.getX() >> 4, pos.getZ() >> 4, ChunkStatus.FULL, false);
+        ChunkAccess chunk = level.getChunkSource().getChunkNow(pos.getX() >> 4, pos.getZ() >> 4);
         if (chunk == null)
             return Blocks.AIR.defaultBlockState();
 

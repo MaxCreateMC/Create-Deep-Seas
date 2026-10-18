@@ -21,7 +21,6 @@ import com.maxenonyme.createsubmarine.submarine.compartment.CompartmentTracker;
 import dev.ryanhcode.sable.companion.math.BoundingBox3ic;
 import dev.ryanhcode.sable.companion.math.Pose3dc;
 import net.minecraft.world.level.chunk.ChunkAccess;
-import net.minecraft.world.level.chunk.status.ChunkStatus;
 import org.joml.Quaterniond;
 import org.joml.Vector3d;
 import org.joml.Vector3dc;
@@ -207,7 +206,7 @@ public class CommandSubBlockEntity extends BlockEntity {
             for (int s = 0; s < 5; s++) {
                 int x = Mth.floor(xs[s] + dx * ahead);
                 int z = Mth.floor(zs[s] + dz * ahead);
-                ChunkAccess chunk = ocean.getChunk(x >> 4, z >> 4, ChunkStatus.FULL, false);
+                ChunkAccess chunk = ocean.getChunkSource().getChunkNow(x >> 4, z >> 4);
                 if (chunk == null)
                     continue;
 
