@@ -11,6 +11,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import dev.ryanhcode.sable.SableClient;
 
 @Mixin(LevelRenderer.class)
 public class LevelRendererMixin {
@@ -18,10 +19,11 @@ public class LevelRendererMixin {
     private void createsubmarine$preRenderTranslucent(DeltaTracker deltaTracker, boolean renderBlockOutline, Camera camera,
             GameRenderer gameRenderer, LightTexture lightTexture, Matrix4f modelView, Matrix4f projection,
             CallbackInfo ci) {
+
         if (!WaterOcclusionRenderer.isEnabled())
             return;
 
-        WaterOcclusionRenderer renderer = dev.ryanhcode.sable.SableClient.WATER_OCCLUSION_RENDERER;
+        WaterOcclusionRenderer renderer = SableClient.WATER_OCCLUSION_RENDERER;
 
         renderer.preRenderTranslucent(new Matrix4f(modelView), new Matrix4f(projection));
     }

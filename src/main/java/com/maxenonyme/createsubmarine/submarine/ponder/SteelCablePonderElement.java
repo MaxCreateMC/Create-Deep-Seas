@@ -18,6 +18,7 @@ import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.core.Direction;
 import net.minecraft.util.Mth;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.NotNull;
 import org.joml.Quaternionf;
@@ -39,9 +40,9 @@ public class SteelCablePonderElement extends RopeStrandElement {
     @Override
     protected void renderLast(PonderLevel world, MultiBufferSource buffer, GuiGraphics graphics, float fade, float pt) {
         final SuperByteBuffer middle = CachedBuffers.partialFacing(AllPartialModels.STEEL_CABLE,
-                net.minecraft.world.level.block.Blocks.AIR.defaultBlockState(), Direction.NORTH);
+                Blocks.AIR.defaultBlockState(), Direction.NORTH);
         final SuperByteBuffer knot = CachedBuffers.partialFacing(AllPartialModels.STEEL_CABLE_KNOT,
-                net.minecraft.world.level.block.Blocks.AIR.defaultBlockState(), Direction.NORTH);
+                Blocks.AIR.defaultBlockState(), Direction.NORTH);
         final VertexConsumer vb = buffer.getBuffer(RenderType.solid());
         final PoseStack ps = graphics.pose();
 
@@ -107,7 +108,8 @@ public class SteelCablePonderElement extends RopeStrandElement {
         while (points.size() >= 2 && points.getFirst().distanceSquared(points.get(1)) < 1e-6) {
             points.removeFirst();
         }
-        if (points.size() <= 1) return new ObjectArrayList<>();
+        if (points.size() <= 1)
+            return new ObjectArrayList<>();
 
         final Vector3dc pointZeroPosition = points.get(0);
         final Vector3dc pointOnePosition = points.get(1);

@@ -3,6 +3,7 @@ package com.maxenonyme.AbyssDimension;
 import com.maxenonyme.AbyssDimension.client.AbyssSpecialEffects;
 import net.minecraft.client.Minecraft;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.level.material.FogType;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -28,7 +29,7 @@ public class AbyssDimensionClient {
         public static void onRenderFog(ViewportEvent.RenderFog event) {
             Minecraft mc = Minecraft.getInstance();
             if (mc.level != null && mc.level.dimension().location().equals(ABYSS_DIM)) {
-                if (event.getCamera().getFluidInCamera() == net.minecraft.world.level.material.FogType.WATER) {
+                if (event.getCamera().getFluidInCamera() == FogType.WATER) {
                     event.setNearPlaneDistance(-4.0F);
                     event.setFarPlaneDistance(32.0F);
                     event.setCanceled(true);
@@ -44,7 +45,7 @@ public class AbyssDimensionClient {
         public static void onComputeFogColor(ViewportEvent.ComputeFogColor event) {
             Minecraft mc = Minecraft.getInstance();
             if (mc.level != null && mc.level.dimension().location().equals(ABYSS_DIM)) {
-                if (event.getCamera().getFluidInCamera() == net.minecraft.world.level.material.FogType.WATER) {
+                if (event.getCamera().getFluidInCamera() == FogType.WATER) {
                     event.setRed(0.0F);
                     event.setGreen(0.0627F);
                     event.setBlue(0.1882F);

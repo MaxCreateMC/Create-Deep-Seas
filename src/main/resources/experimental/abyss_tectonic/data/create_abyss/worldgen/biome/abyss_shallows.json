@@ -1,0 +1,41 @@
+{
+  "neoforge:conditions": [
+    {
+      "type": "create_submarine:config_enabled",
+      "config_key": "enableAbyssDimension"
+    }
+  ],
+  "has_precipitation": false,
+  "temperature": 0.2,
+  "downfall": 0.0,
+  "effects": {
+    "sky_color": 0,
+    "fog_color": 0,
+    "water_color": 12140,
+    "water_fog_color": 4144,
+    "grass_color": 0,
+    "foliage_color": 0,
+    "ambient_sound": "minecraft:ambient.underwater.loop"
+  },
+  "spawners": {
+    "water_ambient": [
+      {
+        "type": "create_abyss:amphistium",
+        "weight": 80,
+        "minCount": 4,
+        "maxCount": 6
+      }
+    ],
+    "water_creature": [
+      {
+        "type": "create_abyss:cookiecutter_shark",
+        "weight": 12,
+        "minCount": 1,
+        "maxCount": 1
+      }
+    ]
+  },
+  "spawn_costs": {},
+  "features": [],
+  "carvers": {}
+}

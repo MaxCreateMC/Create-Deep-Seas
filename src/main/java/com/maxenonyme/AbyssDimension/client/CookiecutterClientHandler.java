@@ -9,12 +9,13 @@ import net.neoforged.neoforge.network.PacketDistributor;
 
 import java.util.List;
 
-public final class CookiecutterClientHandler {
+public class CookiecutterClientHandler {
 
     @SubscribeEvent
     public static void onLeftClickEmpty(PlayerInteractEvent.LeftClickEmpty event) {
         Player player = event.getEntity();
-        if (player == null || !player.level().isClientSide) return;
+        if (player == null || !player.level().isClientSide)
+            return;
 
         List<CookiecutterSharkEntity> sharks = player.level().getEntitiesOfClass(
                 CookiecutterSharkEntity.class,

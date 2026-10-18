@@ -33,14 +33,18 @@ public abstract class SableSubLevelBEFogMixin {
             double cameraX, double cameraY, double cameraZ, CallbackInfo ci) {
         createsubmarine$savedFogColor = null;
         Minecraft mc = Minecraft.getInstance();
-        if (mc.level == null) return;
+        if (mc.level == null)
+            return;
         WaterOcclusionContainer<?> container = WaterOcclusionContainer.getContainer(mc.level);
-        if (container == null) return;
+        if (container == null)
+            return;
         WaterOcclusionRegion region = container.getOccludingRegion(mc.gameRenderer.getMainCamera().getPosition());
-        if (region == null) return;
+        if (region == null)
+            return;
         SubLevel cameraSub = Sable.HELPER.getContaining(mc.level, region.getVolume().getMinBlockPos());
         ClientSubLevel beSub = Sable.HELPER.getContainingClient(blockEntity);
-        if (cameraSub == null || cameraSub != beSub) return;
+        if (cameraSub == null || cameraSub != beSub)
+            return;
 
         this.renderBuffers.bufferSource().endBatch();
         float[] fog = RenderSystem.getShaderFogColor();
@@ -51,7 +55,8 @@ public abstract class SableSubLevelBEFogMixin {
     @Inject(method = "renderSingleBE", at = @At("TAIL"), remap = false)
     private void createsubmarine$defogEnd(BlockEntity blockEntity, PoseStack poseStack, float partialTick,
             double cameraX, double cameraY, double cameraZ, CallbackInfo ci) {
-        if (createsubmarine$savedFogColor == null) return;
+        if (createsubmarine$savedFogColor == null)
+            return;
         this.renderBuffers.bufferSource().endBatch();
         RenderSystem.setShaderFogColor(createsubmarine$savedFogColor[0], createsubmarine$savedFogColor[1],
                 createsubmarine$savedFogColor[2], createsubmarine$savedFogColor[3]);

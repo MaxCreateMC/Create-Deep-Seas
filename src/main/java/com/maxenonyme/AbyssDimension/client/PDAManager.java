@@ -8,6 +8,7 @@ import net.minecraft.client.resources.sounds.SoundInstance;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.util.RandomSource;
@@ -194,9 +195,9 @@ public class PDAManager {
             roarDelayTicks--;
             if (roarDelayTicks == 0) {
                 mc.level.playLocalSound(mc.player.getX(), mc.player.getY(), mc.player.getZ(),
-                        net.minecraft.sounds.SoundEvent.createVariableRangeEvent(
+                        SoundEvent.createVariableRangeEvent(
                                 ResourceLocation.fromNamespaceAndPath("create_abyss", "reaper_leviathan_roars")),
-                        net.minecraft.sounds.SoundSource.HOSTILE, 0.5F, 1.0F, false);
+                        SoundSource.HOSTILE, 0.5F, 1.0F, false);
             }
         }
 

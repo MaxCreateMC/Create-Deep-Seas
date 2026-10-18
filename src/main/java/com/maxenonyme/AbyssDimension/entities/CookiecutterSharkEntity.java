@@ -122,7 +122,8 @@ public class CookiecutterSharkEntity extends WaterAnimal {
     }
 
     public void latchOnto(Player player) {
-        if (isLatched()) return;
+        if (isLatched())
+            return;
         this.entityData.set(DATA_TARGET_ID, player.getId());
         float yaw = this.random.nextFloat() * Mth.TWO_PI;
         float height = 0.2F + this.random.nextFloat() * Math.max(0.1F, player.getBbHeight() - 0.4F);
@@ -139,7 +140,8 @@ public class CookiecutterSharkEntity extends WaterAnimal {
     }
 
     public void detach() {
-        if (!isLatched()) return;
+        if (!isLatched())
+            return;
         this.entityData.set(DATA_LATCHED, false);
         this.entityData.set(DATA_TARGET_ID, -1);
         this.struggleHits = 0;
@@ -152,7 +154,8 @@ public class CookiecutterSharkEntity extends WaterAnimal {
     }
 
     public void addStruggle() {
-        if (!isLatched()) return;
+        if (!isLatched())
+            return;
         this.struggleHits++;
         this.playSound(SoundEvents.COD_FLOP, 0.8F, 1.2F);
         if (this.struggleHits >= STRUGGLE_TO_DETACH) {
@@ -283,11 +286,15 @@ public class CookiecutterSharkEntity extends WaterAnimal {
 
         @Override
         public boolean canUse() {
-            if (shark.isLatched() || shark.getChargeCooldown() > 0) return false;
+            if (shark.isLatched() || shark.getChargeCooldown() > 0)
+                return false;
             Player player = shark.level().getNearestPlayer(shark, 16.0);
-            if (player == null || !player.isAlive() || player.isSpectator() || player.isCreative()) return false;
-            if (!player.isInWaterOrBubble()) return false;
-            if (shark.getRandom().nextInt(120) != 0) return false;
+            if (player == null || !player.isAlive() || player.isSpectator() || player.isCreative())
+                return false;
+            if (!player.isInWaterOrBubble())
+                return false;
+            if (shark.getRandom().nextInt(120) != 0)
+                return false;
             this.target = player;
             return true;
         }
@@ -307,7 +314,8 @@ public class CookiecutterSharkEntity extends WaterAnimal {
 
         @Override
         public void tick() {
-            if (target == null) return;
+            if (target == null)
+                return;
             shark.getLookControl().setLookAt(target, 30.0F, 30.0F);
             Vec3 aim = target.position().add(0.0, target.getBbHeight() * 0.5, 0.0);
             shark.getNavigation().moveTo(aim.x, aim.y, aim.z, 1.5);

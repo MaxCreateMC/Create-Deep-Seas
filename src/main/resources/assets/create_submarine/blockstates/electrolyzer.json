@@ -1,7 +1,19 @@
 {
   "variants": {
-    "": {
+    "facing=north": {
       "model": "create_submarine:block/electrolyzer"
+    },
+    "facing=east": {
+      "model": "create_submarine:block/electrolyzer",
+      "y": 90
+    },
+    "facing=south": {
+      "model": "create_submarine:block/electrolyzer",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "create_submarine:block/electrolyzer",
+      "y": 270
     }
   }
 }

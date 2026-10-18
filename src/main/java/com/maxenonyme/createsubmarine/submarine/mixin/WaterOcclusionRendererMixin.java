@@ -1,5 +1,6 @@
 package com.maxenonyme.createsubmarine.submarine.mixin;
 
+import com.maxenonyme.createsubmarine.CreateSubmarine;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.ModifyArg;
@@ -9,7 +10,7 @@ public class WaterOcclusionRendererMixin {
 
         @ModifyArg(method = "modify", at = @At(value = "INVOKE", target = "Lio/github/ocelot/glslprocessor/api/GlslParser;parseExpression(Ljava/lang/String;)Lio/github/ocelot/glslprocessor/api/node/GlslNode;", remap = false), index = 0, remap = false)
         private String createsubmarine$patchSurfaceWaterOcclusion(String src) {
-                if (com.maxenonyme.createsubmarine.CreateSubmarine.DISABLE_WATER_OCCLUSION)
+                if (CreateSubmarine.DISABLE_WATER_OCCLUSION)
                         return src;
 
                 return src.replace(

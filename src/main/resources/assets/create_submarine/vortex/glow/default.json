@@ -1,0 +1,15 @@
+{
+    "glows": [
+        { "block": "create_abyss:creepvine_seed", "color": "#FCC50F", "radius": 5.5, "intensity": 1.1, "pulse": 0.6 },
+        { "block": "create_abyss:submarine_liana", "color": "#5CE1E6", "radius": 4.5, "intensity": 0.9, "scale_with_light": true, "pulse": 0.4 },
+        { "block": "create_abyss:geothermal_vent", "color": "#FF8A2A", "radius": 4, "flicker": 0.4 },
+        { "block": "create_abyss:deepslate_geothermal_vent", "color": "#FF8A2A", "radius": 4, "flicker": 0.4 },
+        { "block": "create_abyss:foam_rock_geothermal_vent", "color": "#FF8A2A", "radius": 4, "flicker": 0.4 },
+        { "block": "minecraft:sea_pickle", "color": "#7CF5C9", "radius": 4, "intensity": 0.55, "scale_with_light": true, "pulse": 0.3 },
+        { "block": "minecraft:glow_lichen", "color": "#6FE8C8", "radius": 3, "intensity": 0.5, "pulse": 0.2 },
+        { "block": "minecraft:sea_lantern", "color": "#CFF7FF", "radius": 5, "intensity": 0.6 },
+        { "block": "minecraft:magma_block", "color": "#FF5A1F", "radius": 4.5, "intensity": 1.1, "flicker": 0.25 },
+        { "block": "minecraft:cave_vines", "color": "#FFC24A", "radius": 4, "intensity": 0.8, "scale_with_light": true, "pulse": 0.15 },
+        { "block": "minecraft:cave_vines_plant", "color": "#FFC24A", "radius": 4, "intensity": 0.8, "scale_with_light": true, "pulse": 0.15 }
+    ]
+}

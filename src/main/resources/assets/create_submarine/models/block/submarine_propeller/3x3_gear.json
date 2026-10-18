@@ -1,0 +1,10 @@
+{
+  "loader": "neoforge:obj",
+  "model": "create_submarine:models/block/submarine_propeller/3x3_gear.obj",
+  "flip_v": true,
+  "automatic_culling": false,
+  "textures": {
+    "texture": "create_submarine:block/submarine_propeller/3x3_propeller",
+    "particle": "create_submarine:block/submarine_propeller/3x3_propeller"
+  }
+}

@@ -27,9 +27,28 @@ import net.minecraft.world.phys.shapes.VoxelShape;
 import com.maxenonyme.createsubmarine.CreateSubmarine;
 import com.maxenonyme.createsubmarine.submarine.block.entity.IndustrialAlarmBlockEntity;
 import org.jetbrains.annotations.Nullable;
+import com.maxenonyme.createsubmarine.submarine.alarm.AlarmSounds;
+import com.maxenonyme.createsubmarine.submarine.network.AlarmOpenPayload;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.tags.FluidTags;
+import net.minecraft.util.RandomSource;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.phys.BlockHitResult;
+import net.neoforged.neoforge.network.PacketDistributor;
 import org.joml.Vector3f;
 
 public class IndustrialAlarmBlock extends DirectionalBlock implements SimpleWaterloggedBlock, EntityBlock {
+
+    @Override
+    protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player, BlockHitResult hit) {
+        if (!(level.getBlockEntity(pos) instanceof IndustrialAlarmBlockEntity alarm))
+            return InteractionResult.PASS;
+        if (player instanceof ServerPlayer server)
+            PacketDistributor.sendToPlayer(server, new AlarmOpenPayload(pos, alarm.settings, AlarmSounds.list()));
+        return InteractionResult.sidedSuccess(level.isClientSide);
+    }
+
 
     private static final DustParticleOptions PARTICLE = new DustParticleOptions(new Vector3f(1.0f, 0.0f, 0.0f), 0.3f);
 
@@ -55,7 +74,7 @@ public class IndustrialAlarmBlock extends DirectionalBlock implements SimpleWate
         return defaultBlockState()
                 .setValue(BlockStateProperties.FACING, ctx.getClickedFace())
                 .setValue(BlockStateProperties.LIT, false)
-                .setValue(BlockStateProperties.WATERLOGGED, fluidstate.getType() == Fluids.WATER);
+                .setValue(BlockStateProperties.WATERLOGGED, fluidstate.is(FluidTags.WATER));
     }
 
     @Override
@@ -84,10 +103,9 @@ public class IndustrialAlarmBlock extends DirectionalBlock implements SimpleWate
     }
 
     @Override
-    public void animateTick(BlockState state, Level level, BlockPos pos, net.minecraft.util.RandomSource random) {
-        if (state.getValue(BlockStateProperties.LIT) && (level.getGameTime() / 20L) % 2L == 0L) {
+    public void animateTick(BlockState state, Level level, BlockPos pos, RandomSource random) {
+        if (level.getBlockEntity(pos) instanceof IndustrialAlarmBlockEntity alarm && alarm.isShining(level.getGameTime()))
             makeParticle(state, level, pos);
-        }
     }
 
     private void makeParticle(BlockState state, LevelAccessor level, BlockPos pos) {
@@ -112,11 +130,14 @@ public class IndustrialAlarmBlock extends DirectionalBlock implements SimpleWate
     @Nullable
     @Override
     public <T extends BlockEntity> BlockEntityTicker<T> getTicker(Level level, BlockState state, BlockEntityType<T> type) {
-        if (!level.isClientSide) return null;
+        if (level.isClientSide)
+            return (lvl, pos, st, be) -> {
+                if (be instanceof IndustrialAlarmBlockEntity alarm)
+                    alarm.tickClient();
+            };
         return (lvl, pos, st, be) -> {
-            if (be instanceof IndustrialAlarmBlockEntity alarm) {
-                alarm.tickClient(lvl, pos, st);
-            }
+            if (be instanceof IndustrialAlarmBlockEntity alarm)
+                alarm.tickServer();
         };
     }
 

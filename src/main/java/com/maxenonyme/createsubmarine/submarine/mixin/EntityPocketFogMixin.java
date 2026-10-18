@@ -24,13 +24,18 @@ public class EntityPocketFogMixin {
             PoseStack poseStack, MultiBufferSource bufferSource, CallbackInfo ci) {
         createsubmarine$savedFogColor = null;
         Minecraft mc = Minecraft.getInstance();
-        if (mc.level == null) return;
+        if (mc.level == null)
+            return;
         WaterOcclusionContainer<?> container = WaterOcclusionContainer.getContainer(mc.level);
-        if (container == null) return;
-        if (container.getOccludingRegion(mc.gameRenderer.getMainCamera().getPosition()) == null) return;
-        if (!container.isOccluded(entity.position())) return;
+        if (container == null)
+            return;
+        if (container.getOccludingRegion(mc.gameRenderer.getMainCamera().getPosition()) == null)
+            return;
+        if (!container.isOccluded(entity.position()))
+            return;
 
-        if (bufferSource instanceof MultiBufferSource.BufferSource bs) bs.endBatch();
+        if (bufferSource instanceof MultiBufferSource.BufferSource buffers)
+            buffers.endBatch();
         float[] fog = RenderSystem.getShaderFogColor();
         createsubmarine$savedFogColor = new float[] { fog[0], fog[1], fog[2], fog[3] };
         RenderSystem.setShaderFogColor(fog[0], fog[1], fog[2], 0.0f);
@@ -39,8 +44,10 @@ public class EntityPocketFogMixin {
     @Inject(method = "renderEntity", at = @At("TAIL"))
     private void createsubmarine$defogEnd(Entity entity, double camX, double camY, double camZ, float partialTick,
             PoseStack poseStack, MultiBufferSource bufferSource, CallbackInfo ci) {
-        if (createsubmarine$savedFogColor == null) return;
-        if (bufferSource instanceof MultiBufferSource.BufferSource bs) bs.endBatch();
+        if (createsubmarine$savedFogColor == null)
+            return;
+        if (bufferSource instanceof MultiBufferSource.BufferSource buffers)
+            buffers.endBatch();
         RenderSystem.setShaderFogColor(createsubmarine$savedFogColor[0], createsubmarine$savedFogColor[1],
                 createsubmarine$savedFogColor[2], createsubmarine$savedFogColor[3]);
         createsubmarine$savedFogColor = null;

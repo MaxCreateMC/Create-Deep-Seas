@@ -16,7 +16,8 @@ public class FluidRenderHelperBuilderMixin {
     @Inject(method = "getFluidBuilder", at = @At("HEAD"), cancellable = true)
     private static void createsubmarine$forceEntityTranslucentBuilder(MultiBufferSource buffer,
             CallbackInfoReturnable<VertexConsumer> cir) {
-        if (!SubmarineWaterCullBuffer.isRenderingSubmarineFluid()) return;
+        if (!SubmarineWaterCullBuffer.isRenderingSubmarineFluid())
+            return;
         cir.setReturnValue(buffer.getBuffer(RenderType.entityTranslucent(InventoryMenu.BLOCK_ATLAS)));
     }
 }

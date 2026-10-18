@@ -1,0 +1,23 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "CPC",
+    "CSC",
+    "CPC"
+  ],
+  "key": {
+    "C": {
+      "item": "minecraft:copper_ingot"
+    },
+    "P": {
+      "item": "create:propeller"
+    },
+    "S": {
+      "item": "create:shaft"
+    }
+  },
+  "result": {
+    "id": "create_high_seas:seaglide",
+    "count": 1
+  }
+}

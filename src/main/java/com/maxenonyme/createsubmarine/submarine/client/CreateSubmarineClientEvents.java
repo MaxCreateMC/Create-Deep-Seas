@@ -6,14 +6,12 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.entity.player.ItemTooltipEvent;
 import com.maxenonyme.createsubmarine.CreateSubmarine;
 import com.maxenonyme.createsubmarine.submarine.config.HullStrengthConfig;
+import com.maxenonyme.createsubmarine.submarine.config.SubmarineConfig;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.network.chat.Component;
 import net.minecraft.ChatFormatting;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.client.Minecraft;
 import com.simibubi.create.content.equipment.goggles.GogglesItem;
 
 @EventBusSubscriber(modid = CreateSubmarine.MOD_ID, value = Dist.CLIENT)
@@ -23,8 +21,7 @@ public class CreateSubmarineClientEvents {
     public static void onTooltip(ItemTooltipEvent event) {
         if (event.getEntity() == null)
             return;
-        if (!(event.getEntity() instanceof Player player) || !GogglesItem.isWearingGoggles(player))
-            return;
+        if (!GogglesItem.isWearingGoggles(event.getEntity()))
             return;
 
         if (event.getItemStack().getItem() instanceof BlockItem blockItem) {
@@ -49,9 +46,12 @@ public class CreateSubmarineClientEvents {
                     tierKey = "create_submarine.gui.goggles.hull_tier.reinforced";
                 }
 
+                String label = SubmarineConfig.realisticPressure() || SubmarineConfig.hybridPressure()
+                        ? "create_submarine.gui.goggles.base_depth"
+                        : "create_submarine.gui.goggles.max_depth";
                 event.getToolTip()
                         .add(Component.literal(" ")
-                                .append(Component.translatable("create_submarine.gui.goggles.max_depth")
+                                .append(Component.translatable(label)
                                         .withStyle(ChatFormatting.DARK_GRAY))
                                 .append(Component.literal(": " + maxDepth).withStyle(color)));
             }

@@ -1,0 +1,25 @@
+{
+  "neoforge:conditions": [
+    {
+      "type": "create_submarine:config_enabled",
+      "config_key": "enableAbyssDimension"
+    }
+  ],
+  "type": "minecraft:block",
+  "pools": [
+    {
+      "rolls": 1.0,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "create_abyss:burning_sand"
+        }
+      ],
+      "conditions": [
+        {
+          "condition": "minecraft:survives_explosion"
+        }
+      ]
+    }
+  ]
+}

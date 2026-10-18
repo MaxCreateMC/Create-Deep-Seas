@@ -1,5 +1,16 @@
 {
   "variants": {
-    "": { "model": "create_submarine:block/ballast_tank" }
+    "bottom=false,top=false": {
+      "model": "create_submarine:block/ballast_tank/middle"
+    },
+    "bottom=true,top=false": {
+      "model": "create_submarine:block/ballast_tank/bottom"
+    },
+    "bottom=false,top=true": {
+      "model": "create_submarine:block/ballast_tank/top"
+    },
+    "bottom=true,top=true": {
+      "model": "create_submarine:block/ballast_tank/single"
+    }
   }
 }

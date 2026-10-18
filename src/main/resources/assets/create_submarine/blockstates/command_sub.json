@@ -1,0 +1,8 @@
+{
+  "variants": {
+    "facing=north": { "model": "create_submarine:block/command_sub_block" },
+    "facing=east": { "model": "create_submarine:block/command_sub_block", "y": 90 },
+    "facing=south": { "model": "create_submarine:block/command_sub_block", "y": 180 },
+    "facing=west": { "model": "create_submarine:block/command_sub_block", "y": 270 }
+  }
+}

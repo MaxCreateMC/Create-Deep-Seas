@@ -1,0 +1,26 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "ICI",
+    " N ",
+    " H "
+  ],
+  "key": {
+    "I": {
+      "item": "create:iron_sheet"
+    },
+    "C": {
+      "item": "create:andesite_casing"
+    },
+    "N": {
+      "item": "minecraft:chain"
+    },
+    "H": {
+      "item": "minecraft:tripwire_hook"
+    }
+  },
+  "result": {
+    "id": "create_submarine:arresting_hook",
+    "count": 1
+  }
+}

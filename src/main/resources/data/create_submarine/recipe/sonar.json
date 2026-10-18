@@ -1,0 +1,29 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "ATA",
+    "SMS",
+    "CCC"
+  ],
+  "key": {
+    "A": {
+      "item": "minecraft:amethyst_shard"
+    },
+    "T": {
+      "item": "create:transmitter"
+    },
+    "S": {
+      "item": "create:brass_sheet"
+    },
+    "M": {
+      "item": "create:precision_mechanism"
+    },
+    "C": {
+      "item": "create:copper_sheet"
+    }
+  },
+  "result": {
+    "id": "create_submarine:sonar",
+    "count": 1
+  }
+}

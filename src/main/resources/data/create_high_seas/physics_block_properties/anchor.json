@@ -1,0 +1,7 @@
+{
+  "selector": "create_high_seas:anchor",
+  "priority": 1001,
+  "properties": {
+    "sable:mass": 20.0
+  }
+}

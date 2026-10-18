@@ -1,0 +1,41 @@
+{
+	"loader": "neoforge:obj",
+	"model": "create_high_seas:models/block/anchor/anchor.obj",
+	"flip_v": true,
+	"textures": {
+		"particle": "create_high_seas:block/anchor/anchor",
+		"m_77183fd3-dae6-55c3-05b7-dba18b1d0d60": "create_high_seas:block/anchor/anchor"
+	},
+	"display": {
+		"thirdperson_righthand": {
+			"scale": [0.5, 0.5, 0.5]
+		},
+		"thirdperson_lefthand": {
+			"scale": [0.5, 0.5, 0.5]
+		},
+		"firstperson_righthand": {
+			"translation": [0, -2.75, 0],
+			"scale": [0.5, 0.5, 0.5]
+		},
+		"firstperson_lefthand": {
+			"translation": [0, -2.75, 0],
+			"scale": [0.5, 0.5, 0.5]
+		},
+		"ground": {
+			"translation": [0, -1, 0],
+			"scale": [0.5, 0.5, 0.5]
+		},
+		"gui": {
+			"rotation": [-3, -1, 0],
+			"translation": [0, -3, 0],
+			"scale": [0.58, 0.58, 0.58]
+		},
+		"fixed": {
+			"translation": [0, -5.5, 0],
+			"scale": [0.5, 0.5, 0.5]
+		},
+		"on_shelf": {
+			"translation": [0, 0.25, 0]
+		}
+	}
+}

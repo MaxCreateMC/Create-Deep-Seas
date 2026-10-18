@@ -1,0 +1,18 @@
+{
+  "sources": [
+    {
+      "type": "create_abyss:magma_flow",
+      "strip": "create_abyss:block/magma",
+      "prefix": "create_abyss:block/magma_flow_",
+      "tiles": 8,
+      "frametime": 20
+    },
+    {
+      "type": "create_abyss:magma_flow",
+      "strip": "create_abyss:block/magma_glow",
+      "prefix": "create_abyss:block/magma_glow_",
+      "tiles": 8,
+      "frametime": 20
+    }
+  ]
+}

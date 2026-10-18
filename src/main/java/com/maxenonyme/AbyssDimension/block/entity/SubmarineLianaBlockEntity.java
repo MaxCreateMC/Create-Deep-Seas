@@ -1,6 +1,7 @@
 package com.maxenonyme.AbyssDimension.block.entity;
 
 import com.maxenonyme.AbyssDimension.LianaRegistry;
+import com.maxenonyme.AbyssDimension.system.PlantPhysicsRegistry;
 import dev.ryanhcode.sable.api.block.BlockEntitySubLevelActor;
 import dev.ryanhcode.sable.api.physics.force.ForceTotal;
 import dev.ryanhcode.sable.api.physics.handle.RigidBodyHandle;
@@ -9,10 +10,6 @@ import dev.ryanhcode.sable.api.sublevel.SubLevelContainer;
 import dev.ryanhcode.sable.sublevel.ServerSubLevel;
 import dev.ryanhcode.sable.companion.math.JOMLConversion;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.HolderLookup;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
-import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import org.joml.Quaterniond;
@@ -20,15 +17,18 @@ import org.joml.Vector3d;
 import org.joml.Vector3dc;
 import dev.ryanhcode.sable.api.physics.constraint.ConstraintJointAxis;
 import dev.ryanhcode.sable.api.physics.constraint.PhysicsConstraintHandle;
-import dev.ryanhcode.sable.api.physics.constraint.generic.GenericConstraintConfiguration;
+import dev.ryanhcode.sable.api.physics.constraint.GenericConstraintConfiguration;
 import java.util.EnumSet;
+import java.util.List;
 import java.util.UUID;
+import dev.ryanhcode.sable.companion.math.BoundingBox3ic;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.phys.AABB;
 
 public class SubmarineLianaBlockEntity extends BlockEntity implements BlockEntitySubLevelActor {
     private UUID parentId;
     private UUID seedId;
     private boolean isController;
-    private int worldLightLevel = 10;
     private int segmentLen = 3;
     private Vector3d groundAnchor = null;
     private double seedLocalY = -1.0;
@@ -47,6 +47,11 @@ public class SubmarineLianaBlockEntity extends BlockEntity implements BlockEntit
 
     private transient Vector3d restPos = null;
     private transient Quaterniond restRot = null;
+
+    private static final int LOOKUP_COOLDOWN = 20;
+    private long retryLookupAt;
+    private long pushersTick = -1;
+    private List<LivingEntity> pushers = List.of();
 
     private final ForceTotal forceTotal = new ForceTotal();
     private final ForceTotal parentForceTotal = new ForceTotal();
@@ -154,40 +159,15 @@ public class SubmarineLianaBlockEntity extends BlockEntity implements BlockEntit
     }
 
     private ServerSubLevel findSubLevelByPlot(ServerSubLevelContainer container, int plotX, int plotZ) {
-        if (plotX == -1)
+        if (plotX == -1 || level == null || level.getGameTime() < retryLookupAt)
             return null;
-        for (ServerSubLevel sub : container.getAllSubLevels()) {
-            if (sub.getPlot() != null && sub.getPlot().plotPos.x == plotX && sub.getPlot().plotPos.z == plotZ) {
-                return sub;
+        for (ServerSubLevel segment : container.getAllSubLevels()) {
+            if (segment.getPlot() != null && segment.getPlot().plotPos.x == plotX && segment.getPlot().plotPos.z == plotZ) {
+                return segment;
             }
         }
+        retryLookupAt = level.getGameTime() + LOOKUP_COOLDOWN;
         return null;
-    }
-
-    public int getWorldLightLevel() {
-        return worldLightLevel;
-    }
-
-    public void setWorldLightLevel(int level) {
-        if (this.worldLightLevel != level) {
-            this.worldLightLevel = level;
-            this.setChanged();
-            if (this.level != null && !this.level.isClientSide) {
-                this.level.sendBlockUpdated(this.worldPosition, this.getBlockState(), this.getBlockState(), 3);
-            }
-        }
-    }
-
-    @Override
-    public ClientboundBlockEntityDataPacket getUpdatePacket() {
-        return ClientboundBlockEntityDataPacket.create(this);
-    }
-
-    @Override
-    public CompoundTag getUpdateTag(HolderLookup.Provider registries) {
-        CompoundTag tag = new CompoundTag();
-        tag.putInt("WorldLight", worldLightLevel);
-        return tag;
     }
 
     @Override
@@ -200,9 +180,9 @@ public class SubmarineLianaBlockEntity extends BlockEntity implements BlockEntit
         }
 
         if (this.parentPlotX == -1 && !this.isController && this.groundAnchor == null) {
-            com.maxenonyme.AbyssDimension.system.PlantPhysicsRegistry registry = com.maxenonyme.AbyssDimension.system.PlantPhysicsRegistry
+            PlantPhysicsRegistry registry = PlantPhysicsRegistry
                     .get(subLevel.getLevel());
-            com.maxenonyme.AbyssDimension.system.PlantPhysicsRegistry.SegmentData data = registry
+            PlantPhysicsRegistry.SegmentData data = registry
                     .getSegment(subLevel.getPlot().plotPos.x, subLevel.getPlot().plotPos.z);
             if (data != null) {
                 this.isController = data.root();
@@ -267,7 +247,7 @@ public class SubmarineLianaBlockEntity extends BlockEntity implements BlockEntit
                 if (parentSub != null && parentSub.getPlot() != null) {
                     BlockPos parentPlotAnchor = parentSub.getPlot().getCenterBlock();
                     BlockPos currentPlotAnchor = subLevel.getPlot().getCenterBlock();
-                    dev.ryanhcode.sable.companion.math.BoundingBox3ic parentBounds = parentSub.getPlot()
+                    BoundingBox3ic parentBounds = parentSub.getPlot()
                             .getBoundingBox();
                     int parentLenVal = parentBounds.maxY() - parentBounds.minY() + 1;
                     Vector3d localAnchorCurrent = new Vector3d(parentPlotAnchor.getX() + 0.5,
@@ -410,17 +390,24 @@ public class SubmarineLianaBlockEntity extends BlockEntity implements BlockEntit
         totalForce.add(waveSway, 0, 0);
 
         Vector3dc subPos = subLevel.logicalPose().position();
-        for (net.minecraft.world.entity.player.Player player : subLevel.getLevel().players()) {
-            double dx = subPos.x() - player.getX();
-            double dy = subPos.y() - (player.getY() + player.getEyeHeight() * 0.5);
-            double dz = subPos.z() - player.getZ();
+        long now = subLevel.getLevel().getGameTime();
+        if (now != pushersTick) {
+            pushersTick = now;
+            AABB reach = new AABB(subPos.x() - 1.8, subPos.y() - 1.8, subPos.z() - 1.8,
+                    subPos.x() + 1.8, subPos.y() + 1.8, subPos.z() + 1.8);
+            pushers = subLevel.getLevel().getEntitiesOfClass(LivingEntity.class, reach, e -> !e.isSpectator());
+        }
+        for (LivingEntity pusher : pushers) {
+            double dx = subPos.x() - pusher.getX();
+            double dy = subPos.y() - (pusher.getY() + pusher.getEyeHeight() * 0.5);
+            double dz = subPos.z() - pusher.getZ();
             double distSqr = dx * dx + dy * dy + dz * dz;
             if (distSqr < 3.0) {
                 double dist = Math.sqrt(distSqr);
                 if (dist > 0.01) {
                     double forceScale = (2.4 - dist) * 50.0;
-                    double playerSpeed = player.getDeltaMovement().length();
-                    double speedBonus = Math.min(playerSpeed * 100.0, 120.0);
+                    double pusherSpeed = pusher.getDeltaMovement().length();
+                    double speedBonus = Math.min(pusherSpeed * 100.0, 120.0);
                     tempVec.set(dx, dy, dz).normalize().mul((forceScale + speedBonus) * mass);
                     totalForce.add(tempVec);
                 }
@@ -488,21 +475,6 @@ public class SubmarineLianaBlockEntity extends BlockEntity implements BlockEntit
 
 
 
-
-
-
-    @Override
-    protected void saveAdditional(CompoundTag tag, HolderLookup.Provider registries) {
-        super.saveAdditional(tag, registries);
-        tag.putInt("WorldLight", worldLightLevel);
-    }
-
-    @Override
-    protected void loadAdditional(CompoundTag tag, HolderLookup.Provider registries) {
-        super.loadAdditional(tag, registries);
-        if (tag.contains("WorldLight"))
-            worldLightLevel = tag.getInt("WorldLight");
-    }
 
     public Vector3d getGroundAnchor() {
         return groundAnchor;
