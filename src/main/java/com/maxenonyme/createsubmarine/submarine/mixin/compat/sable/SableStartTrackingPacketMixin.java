@@ -29,8 +29,8 @@ public abstract class SableStartTrackingPacketMixin {
         if (!(container instanceof ClientSubLevelContainer cc))
             return;
 
-        SubLevel sub = cc.getSubLevel(ChunkPos.getX(plot), ChunkPos.getZ(plot));
-        if (sub instanceof ClientSubLevel csub) {
+        SubLevel subLevel = cc.getSubLevel(ChunkPos.getX(plot), ChunkPos.getZ(plot));
+        if (subLevel instanceof ClientSubLevel csub) {
             SableSnapshotQueue.drain(plot, cc, csub);
         }
     }

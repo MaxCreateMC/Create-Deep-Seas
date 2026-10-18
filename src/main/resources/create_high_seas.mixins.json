@@ -1,0 +1,26 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.maxenonyme.highseas.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "plugin": "com.maxenonyme.createsubmarine.submarine.CompatMixinPlugin",
+  "mixins": [
+    "RopeTrackingSubLevelMixin"
+  ],
+  "client": [
+    "ChunkRenderTypeSetAccessor",
+    "ContraptionSailBakeMixin",
+    "ContraptionVisualSailBakeMixin",
+    "HumanoidModelPoseMixin",
+    "compat.iris.IrisSailPhaseMixin",
+    "compat.iris.IrisSailVanillaMixin",
+    "PonderSailBakeMixin",
+    "SailRenderLayerMixin",
+    "compat.sodium.SailSodiumMaterialMixin",
+    "SailSubLevelRenderMixin",
+    "RopeDataSubLevelMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

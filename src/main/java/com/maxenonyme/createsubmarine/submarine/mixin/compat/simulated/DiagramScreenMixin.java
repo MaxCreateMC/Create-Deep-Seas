@@ -9,25 +9,31 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import com.llamalad7.mixinextras.sugar.Local;
 import com.llamalad7.mixinextras.sugar.ref.LocalDoubleRef;
+import dev.ryanhcode.sable.api.physics.force.ForceGroups;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.resources.ResourceLocation;
+import org.joml.Matrix4fc;
+import org.joml.Quaternionfc;
 import java.util.List;
 import java.util.Map;
 import java.util.ArrayList;
 import org.joml.Vector3d;
+import org.joml.Vector3dc;
 
 @Mixin(value = DiagramScreen.class, remap = false)
 public class DiagramScreenMixin {
 
     @Inject(method = "renderArrows", at = @At(value = "INVOKE", target = "Ljava/util/List;iterator()Ljava/util/Iterator;", ordinal = 1))
     private void createsubmarine$alwaysMergeBallast(
-            net.minecraft.client.gui.GuiGraphics graphics, int mouseX, int mouseY, int areaOriginX, int areaOriginY,
-            org.joml.Quaternionfc orientation, org.joml.Vector3dc cameraPos, org.joml.Matrix4fc projMatrix, int areaWidth, int areaHeight,
+            GuiGraphics graphics, int mouseX, int mouseY, int areaOriginX, int areaOriginY,
+            Quaternionfc orientation, Vector3dc cameraPos, Matrix4fc projMatrix, int areaWidth, int areaHeight,
             CallbackInfo ci,
             @Local Map<ForceGroup, List<ForceClusterFinder.Cluster>> clusters,
             @Local com.llamalad7.mixinextras.sugar.ref.LocalDoubleRef maxArrowLengthSquaredRef
     ) {
         ForceGroup ballastGroup = null;
         for (ForceGroup group : clusters.keySet()) {
-            net.minecraft.resources.ResourceLocation id = dev.ryanhcode.sable.api.physics.force.ForceGroups.REGISTRY.getKey(group);
+            ResourceLocation id = ForceGroups.REGISTRY.getKey(group);
             if (id != null && id.getNamespace().equals("create_submarine") && id.getPath().equals("ballast")) {
                 ballastGroup = group;
                 break;

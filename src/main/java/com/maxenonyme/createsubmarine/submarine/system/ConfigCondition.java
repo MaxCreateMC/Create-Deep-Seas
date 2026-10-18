@@ -1,5 +1,6 @@
 package com.maxenonyme.createsubmarine.submarine.system;
 
+import com.maxenonyme.AbyssDimension.CreateAbyss;
 import com.maxenonyme.createsubmarine.CreateSubmarine;
 import com.maxenonyme.createsubmarine.submarine.config.SubmarineConfig;
 import com.mojang.serialization.Codec;
@@ -30,10 +31,9 @@ public class ConfigCondition implements ICondition {
     @Override
     public boolean test(IContext context) {
         if (configKey.equalsIgnoreCase("enableAbyssDimension")) {
-            // Abyss still in development: no config switch, dev environment only
-            return !net.neoforged.fml.loading.FMLEnvironment.production;
+            return CreateAbyss.enabled();
         }
-        if (!SubmarineConfig.SPEC.isLoaded()) {
+        if (!SubmarineConfig.COMMON_SPEC.isLoaded()) {
             return false;
         }
         if (configKey.equalsIgnoreCase("enableDeeperOceans")) {

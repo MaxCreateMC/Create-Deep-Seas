@@ -26,7 +26,8 @@ public record StruggleSharkPayload(int sharkId) implements CustomPacketPayload {
     public static void handle(final StruggleSharkPayload payload, final IPayloadContext context) {
         context.enqueueWork(() -> {
             Player player = context.player();
-            if (player == null) return;
+            if (player == null)
+                return;
             Entity entity = player.level().getEntity(payload.sharkId());
             if (entity instanceof CookiecutterSharkEntity shark && shark.isLatchedTo(player)) {
                 shark.addStruggle();

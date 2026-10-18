@@ -1,24 +1,27 @@
 package com.maxenonyme.createsubmarine.submarine.block.entity;
 
 import com.maxenonyme.createsubmarine.CreateSubmarine;
+import com.maxenonyme.createsubmarine.submarine.compartment.CompartmentTracker;
+import com.maxenonyme.createsubmarine.submarine.config.SubmarineConfig;
+import com.maxenonyme.createsubmarine.submarine.network.CameraShakePayload;
 import com.maxenonyme.createsubmarine.submarine.system.MineOwnershipRegistry;
+import com.maxenonyme.createsubmarine.submarine.util.SablePhysicsHelper;
 import com.maxenonyme.createsubmarine.submarine.util.SubLevelRegistry;
-import com.maxenonyme.createsubmarine.submarine.util.WaterUtil;
-
 import dev.ryanhcode.sable.companion.SableCompanion;
 import dev.ryanhcode.sable.companion.SubLevelAccess;
-import dev.ryanhcode.sable.api.physics.force.QueuedForceGroup;
-import dev.ryanhcode.sable.api.physics.handle.RigidBodyHandle;
-import dev.ryanhcode.sable.sublevel.ServerSubLevel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.tags.FluidTags;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import org.joml.Vector3d;
+import org.joml.Vector3dc;
+import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -34,28 +37,34 @@ import net.neoforged.neoforge.network.PacketDistributor;
 import dev.ryanhcode.sable.api.sublevel.SubLevelContainer;
 import dev.ryanhcode.sable.sublevel.SubLevel;
 import dev.ryanhcode.sable.companion.math.BoundingBox3ic;
+import net.minecraft.core.HolderLookup;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.protocol.game.ClientboundSoundPacket;
+import net.minecraft.tags.BlockTags;
+import net.minecraft.world.entity.vehicle.Boat;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.material.FluidState;
+import net.minecraft.world.phys.Vec3;
+import org.joml.Quaterniond;
 
-public class UnderwaterMineBlockEntity extends BlockEntity
-        implements dev.ryanhcode.sable.api.block.BlockEntitySubLevelActor {
+public class UnderwaterMineBlockEntity extends BlockEntity {
     private static final int MAX_WATER_SCAN = 200;
 
     private static final Map<UUID, Set<BlockPos>> ACTIVE_MINES = new ConcurrentHashMap<>();
+    public static final Set<UnderwaterMineBlockEntity> LOADED_ON_CLIENT = Collections.newSetFromMap(new WeakHashMap<>());
     private boolean isExploded = false;
     public UUID ownerUUID;
     private UUID trackedSubId;
     private boolean exceedsLimitCached = false;
     private long lastLimitCheckTick = -1;
 
-    private volatile boolean cachedUnderwater;
-    private volatile double cachedSubmergedRatio;
-    private volatile double cachedDistanceToSurface;
-
     public UnderwaterMineBlockEntity(BlockPos pos, BlockState state) {
         super(CreateSubmarine.UNDERWATER_MINE_BE.get(), pos, state);
     }
 
     @Override
-    protected void saveAdditional(net.minecraft.nbt.CompoundTag tag, net.minecraft.core.HolderLookup.Provider registries) {
+    protected void saveAdditional(CompoundTag tag, HolderLookup.Provider registries) {
         super.saveAdditional(tag, registries);
         if (this.ownerUUID != null) {
             tag.putUUID("OwnerUUID", this.ownerUUID);
@@ -63,7 +72,7 @@ public class UnderwaterMineBlockEntity extends BlockEntity
     }
 
     @Override
-    protected void loadAdditional(net.minecraft.nbt.CompoundTag tag, net.minecraft.core.HolderLookup.Provider registries) {
+    protected void loadAdditional(CompoundTag tag, HolderLookup.Provider registries) {
         super.loadAdditional(tag, registries);
         if (tag.hasUUID("OwnerUUID")) {
             this.ownerUUID = tag.getUUID("OwnerUUID");
@@ -76,8 +85,22 @@ public class UnderwaterMineBlockEntity extends BlockEntity
     }
 
     @Override
+    public void onLoad() {
+        super.onLoad();
+        if (level != null && level.isClientSide)
+            LOADED_ON_CLIENT.add(this);
+    }
+
+    @Override
+    public void onChunkUnloaded() {
+        super.onChunkUnloaded();
+        LOADED_ON_CLIENT.remove(this);
+    }
+
+    @Override
     public void setRemoved() {
         super.setRemoved();
+        LOADED_ON_CLIENT.remove(this);
         if (trackedSubId != null) {
             Set<BlockPos> mines = ACTIVE_MINES.get(trackedSubId);
             if (mines != null) {
@@ -124,48 +147,41 @@ public class UnderwaterMineBlockEntity extends BlockEntity
             return;
 
         SubLevelAccess sub = SableCompanion.INSTANCE.getContaining(level, pos);
-        if (sub == null) {
-            be.clearCachedWaterState();
+        if (sub == null)
             return;
-        }
 
         UUID subId = sub.getUniqueId();
-        ACTIVE_MINES.computeIfAbsent(subId, ignored -> ConcurrentHashMap.newKeySet()).add(pos);
+        ACTIVE_MINES.computeIfAbsent(subId, k -> ConcurrentHashMap.newKeySet()).add(pos);
         be.trackedSubId = subId;
         MineOwnershipRegistry.tag(subId, be.ownerUUID);
 
-        Vector3d worldPos = new Vector3d(
-                pos.getX() + 0.5,
-                pos.getY() + 0.5,
-                pos.getZ() + 0.5);
+        Vector3d worldPos = new Vector3d(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5);
         sub.logicalPose().transformPosition(worldPos);
 
-        Level parentLevel = SubLevelRegistry.getLevel(subId);
-        if (parentLevel == null && sub instanceof SubLevel subLevel) {
-            parentLevel = subLevel.getLevel();
+        Level parentLevel = SubLevelRegistry.getLevel(sub.getUniqueId());
+        if (parentLevel == null && sub instanceof SubLevel sl) {
+            parentLevel = sl.getLevel();
         }
 
-        if (parentLevel == null) {
-            be.clearCachedWaterState();
+        if (parentLevel == null)
             return;
-        }
 
         if (parentLevel instanceof ServerLevel serverParentLevel) {
             AABB triggerBox = new AABB(
                     worldPos.x - 3.0, worldPos.y - 3.0, worldPos.z - 3.0,
                     worldPos.x + 3.0, worldPos.y + 3.0, worldPos.z + 3.0);
-
-            java.util.List<Entity> nearbyEntities = serverParentLevel.getEntitiesOfClass(
-                    Entity.class,
-                    triggerBox,
-                    entity -> {
-                        if (entity instanceof net.minecraft.world.entity.vehicle.Boat)
+            List<Entity> nearbyEntities = serverParentLevel.getEntitiesOfClass(
+                    Entity.class, triggerBox,
+                    e -> {
+                        if (e instanceof Boat) {
                             return true;
-
-                        if (entity instanceof Player || entity instanceof LivingEntity) {
-                            return be.ownerUUID == null || !entity.getUUID().equals(be.ownerUUID);
                         }
-
+                        if (e instanceof Player || e instanceof LivingEntity) {
+                            if (be.ownerUUID != null && e.getUUID().equals(be.ownerUUID)) {
+                                return false;
+                            }
+                            return true;
+                        }
                         return false;
                     });
 
@@ -174,138 +190,96 @@ public class UnderwaterMineBlockEntity extends BlockEntity
             if (container != null) {
                 for (SubLevel otherSub : container.getAllSubLevels()) {
                     UUID otherSubId = otherSub.getUniqueId();
-                    if (otherSubId.equals(subId))
-                        continue;
-
-                    if (be.ownerUUID != null
-                            && be.ownerUUID.equals(MineOwnershipRegistry.getOwner(otherSubId))) {
+                    if (sub != null && otherSubId.equals(sub.getUniqueId())) {
                         continue;
                     }
-
-                    Vector3d localInOther = new Vector3d(worldPos);
+                    if (be.ownerUUID != null && be.ownerUUID.equals(MineOwnershipRegistry.getOwner(otherSubId))) {
+                        continue;
+                    }
+                    Vector3d localInOther = new Vector3d(worldPos.x, worldPos.y, worldPos.z);
                     otherSub.logicalPose().transformPositionInverse(localInOther);
 
-                    if (otherSub.getPlot() == null || otherSub.getPlot().getBoundingBox() == null)
-                        continue;
-
-                    BoundingBox3ic otherBounds = otherSub.getPlot().getBoundingBox();
-                    double dx = Math.max(
-                            0.0,
-                            Math.max(
-                                    otherBounds.minX() - localInOther.x,
-                                    localInOther.x - otherBounds.maxX()));
-                    double dy = Math.max(
-                            0.0,
-                            Math.max(
-                                    otherBounds.minY() - localInOther.y,
-                                    localInOther.y - otherBounds.maxY()));
-                    double dz = Math.max(
-                            0.0,
-                            Math.max(
-                                    otherBounds.minZ() - localInOther.z,
-                                    localInOther.z - otherBounds.maxZ()));
-
-                    if (dx * dx + dy * dy + dz * dz <= 9.0) {
-                        otherSubNearby = true;
-                        break;
+                    if (otherSub.getPlot() != null && otherSub.getPlot().getBoundingBox() != null) {
+                        BoundingBox3ic otherBounds = otherSub.getPlot().getBoundingBox();
+                        double dx = Math.max(0.0, Math.max(otherBounds.minX() - localInOther.x, localInOther.x - otherBounds.maxX()));
+                        double dy = Math.max(0.0, Math.max(otherBounds.minY() - localInOther.y, localInOther.y - otherBounds.maxY()));
+                        double dz = Math.max(0.0, Math.max(otherBounds.minZ() - localInOther.z, localInOther.z - otherBounds.maxZ()));
+                        double distanceSq = dx * dx + dy * dy + dz * dz;
+                        if (distanceSq <= 9.0) {
+                            otherSubNearby = true;
+                            break;
+                        }
                     }
                 }
             }
 
             if (!nearbyEntities.isEmpty() || otherSubNearby) {
-                be.clearCachedWaterState();
                 be.explode(level, pos, serverParentLevel, worldPos, sub);
                 return;
             }
         }
 
+        if (sub == null)
+            return;
+
         if (level.getGameTime() - be.lastLimitCheckTick >= 20) {
             be.exceedsLimitCached = exceedsFloatBlockLimit(level, sub);
             be.lastLimitCheckTick = level.getGameTime();
         }
-
         if (be.exceedsLimitCached) {
-            be.clearCachedWaterState();
             return;
         }
 
+        Object handle = SablePhysicsHelper.getHandle(sub);
+        Vector3dc currentVel = SablePhysicsHelper.getVelocity(handle);
+        double currentVelY = (currentVel != null) ? currentVel.y() : 0;
+
         BlockPos parentPos = BlockPos.containing(worldPos.x, worldPos.y, worldPos.z);
-        double localWaterSurfaceY = WaterUtil.findWaterSurface(parentLevel, parentPos);
-        if (!Double.isFinite(localWaterSurfaceY)) {
-            be.clearCachedWaterState();
-            return;
+        double localWaterSurfaceY = -999.0;
+
+        FluidState fluidState = CompartmentTracker.realFluidState(parentLevel, parentPos);
+        if (fluidState.is(FluidTags.WATER)) {
+            float h = fluidState.getHeight(parentLevel, parentPos);
+            localWaterSurfaceY = parentPos.getY() + h + countWaterAbove(parentLevel, parentPos);
+        } else {
+            BlockPos belowPos = parentPos.below();
+            FluidState belowFluid = CompartmentTracker.realFluidState(parentLevel, belowPos);
+            if (belowFluid.is(FluidTags.WATER)) {
+                float h = belowFluid.getHeight(parentLevel, belowPos);
+                localWaterSurfaceY = belowPos.getY() + h + countWaterAbove(parentLevel, belowPos);
+            }
         }
 
         double depth = localWaterSurfaceY - (worldPos.y - 0.5);
-        if (depth <= 0.0) {
-            be.clearCachedWaterState();
+        boolean isUnderWater = (depth > 0.0);
+
+        if (!isUnderWater) {
             return;
         }
 
-        be.cachedUnderwater = true;
-        be.cachedSubmergedRatio = Math.clamp(depth, 0.0, 1.0);
-        be.cachedDistanceToSurface = localWaterSurfaceY - worldPos.y;
-    }
+        double submergedRatio = Math.max(0.0, Math.min(1.0, depth));
+        double distanceToSurface = localWaterSurfaceY - worldPos.y;
+        double targetVelY = Math.max(-0.1, Math.min(4.0, distanceToSurface * 3.0));
 
-    private void clearCachedWaterState() {
-        cachedUnderwater = false;
-        cachedSubmergedRatio = 0.0;
-        cachedDistanceToSurface = 0.0;
-    }
-
-    @Override
-    public void sable$physicsTick(ServerSubLevel sub, RigidBodyHandle handle, double timeStep) {
-        if (isExploded || !cachedUnderwater || exceedsLimitCached)
-            return;
-
-        if (handle == null || !handle.isValid())
-            return;
-
-        Vector3d currentVelocity = handle.getLinearVelocity(new Vector3d());
-        double currentVelY = currentVelocity.y();
-
-        double targetVelY = Math.clamp(cachedDistanceToSurface * 3.0, -0.1, 4.0);
         double perceivedVelY = Math.max(-0.5, currentVelY);
         double errorY = targetVelY - perceivedVelY;
+        double mass = SablePhysicsHelper.readMass(sub);
 
-        double mass = sub.getMassTracker().getMass();
-        double forceMultiplier =
-                com.maxenonyme.createsubmarine.submarine.config.SubmarineConfig
-                        .BALLAST_FORCE_MULTIPLIER.get();
+        double forceMult = SubmarineConfig.BALLAST_FORCE_MULTIPLIER.get();
+        int count = getMineCount(subId);
+        double forceToApply = ((errorY * mass * 0.8 * forceMult) * submergedRatio) / count;
 
-        int mineCount = getMineCount(sub.getUniqueId());
-        double forceY =
-                ((errorY * mass * 0.8 * forceMultiplier) * cachedSubmergedRatio)
-                        / mineCount;
+        double ballastMaxForce = (16000.0 * mass * forceMult) / count;
+        forceToApply = Math.max(-ballastMaxForce, Math.min(ballastMaxForce, forceToApply));
 
-        double maxForceY = (16000.0 * mass * forceMultiplier) / mineCount;
-        forceY = Math.clamp(forceY, -maxForceY, maxForceY);
-
-        if (!Double.isFinite(forceY))
-            return;
-
-        if (Math.abs(currentVelY) < 0.01 && forceY < 0.0) {
-            forceY *= 0.1;
+        if (Double.isFinite(forceToApply)) {
+            applyForce(sub, forceToApply);
         }
-
-        double impulseScale = 20.0 * timeStep;
-        Vector3d worldImpulse = new Vector3d(0.0, forceY * impulseScale, 0.0);
-        Vector3d localImpulse = WaterUtil.worldToLocal(sub, worldImpulse);
-
-        Vector3d localPoint = new Vector3d(
-                worldPosition.getX() + 0.5,
-                worldPosition.getY() + 0.5,
-                worldPosition.getZ() + 0.5);
-
-        // Mines use the floater force group because they implement the same buoyancy
-        // controller and this group is already registered
-        QueuedForceGroup forceGroup = sub.getOrCreateQueuedForceGroup(
-                CreateSubmarine.FLOATER_FORCE_GROUP.get());
-        forceGroup.applyAndRecordPointForce(localPoint, localImpulse);
     }
 
     private void explode(Level level, BlockPos pos, ServerLevel parentLevel, Vector3d worldPos, SubLevelAccess sub) {
-        if (this.isExploded) return;
+        if (this.isExploded)
+            return;
         this.isExploded = true;
 
         if (level.getBlockState(pos).is(CreateSubmarine.UNDERWATER_MINE.get())) {
@@ -330,14 +304,14 @@ public class UnderwaterMineBlockEntity extends BlockEntity
         parentLevel.sendParticles(ParticleTypes.FLASH, worldX, worldY, worldZ, 3, 0.5, 0.5, 0.5, 0.0);
 
         double maxDist = 40.0;
-        boolean mineInWater = com.maxenonyme.createsubmarine.submarine.compartment.CompartmentTracker.realFluidState(parentLevel, BlockPos.containing(worldX, worldY, worldZ)).is(FluidTags.WATER);
+        boolean mineInWater = CompartmentTracker.realFluidState(parentLevel, BlockPos.containing(worldX, worldY, worldZ)).is(FluidTags.WATER);
 
         for (ServerPlayer player : parentLevel.players()) {
             double dist = player.distanceToSqr(worldX, worldY, worldZ);
 
             if (mineInWater && player.isUnderWater() && dist < 160.0 * 160.0) {
-                player.connection.send(new net.minecraft.network.protocol.game.ClientboundSoundPacket(
-                        net.minecraft.core.registries.BuiltInRegistries.SOUND_EVENT.wrapAsHolder(CreateSubmarine.UNDERWATER_EXPLOSION_SOUND.get()),
+                player.connection.send(new ClientboundSoundPacket(
+                        BuiltInRegistries.SOUND_EVENT.wrapAsHolder(CreateSubmarine.UNDERWATER_EXPLOSION_SOUND.get()),
                         SoundSource.BLOCKS,
                         worldX, worldY, worldZ,
                         10.0f, 1.0f,
@@ -350,9 +324,10 @@ public class UnderwaterMineBlockEntity extends BlockEntity
                 float intensity = (float) (2.5 * (1.0 - (distance / maxDist)));
                 if (intensity > 0.05f) {
                     int ticks = (int) (60.0 * (1.0 - (distance / maxDist)));
-                    if (ticks < 10) ticks = 10;
+                    if (ticks < 10)
+                        ticks = 10;
                     PacketDistributor.sendToPlayer(player,
-                            new com.maxenonyme.createsubmarine.submarine.network.CameraShakePayload(intensity, ticks));
+                            new CameraShakePayload(intensity, ticks));
                 }
             }
         }
@@ -360,7 +335,7 @@ public class UnderwaterMineBlockEntity extends BlockEntity
         AABB damageBox = new AABB(
                 worldX - 10.0, worldY - 10.0, worldZ - 10.0,
                 worldX + 10.0, worldY + 10.0, worldZ + 10.0);
-        java.util.List<Entity> entitiesToDamage = parentLevel.getEntitiesOfClass(
+        List<Entity> entitiesToDamage = parentLevel.getEntitiesOfClass(
                 Entity.class, damageBox);
         for (Entity e : entitiesToDamage) {
             double dist = e.distanceToSqr(worldX, worldY, worldZ);
@@ -370,13 +345,13 @@ public class UnderwaterMineBlockEntity extends BlockEntity
                 if (damage > 1.0f) {
                     e.hurt(parentLevel.damageSources().explosion(null, null), damage);
                 }
-                if (e instanceof net.minecraft.world.entity.vehicle.Boat) {
+                if (e instanceof Boat) {
                     e.setRemainingFireTicks(300);
                 }
                 double pushForce = 2.0 * (1.0 - (distance / 10.0));
-                net.minecraft.world.phys.Vec3 dir = new net.minecraft.world.phys.Vec3(e.getX() - worldX, e.getY() - worldY, e.getZ() - worldZ);
+                Vec3 dir = new Vec3(e.getX() - worldX, e.getY() - worldY, e.getZ() - worldZ);
                 if (dir.lengthSqr() < 0.01) {
-                    dir = new net.minecraft.world.phys.Vec3(0, 1, 0);
+                    dir = new Vec3(0, 1, 0);
                 } else {
                     dir = dir.normalize();
                 }
@@ -450,18 +425,20 @@ public class UnderwaterMineBlockEntity extends BlockEntity
 
     private static boolean launchBlock(Level blockLevel, BlockPos blockPos, ServerLevel parentLevel, Vector3d worldBlockPos, Vector3d explosionSource, boolean spawnEntity) {
         BlockState state = blockLevel.getBlockState(blockPos);
-        if (state.isAir()) return false;
-        if (state.getDestroySpeed(blockLevel, blockPos) < 0) return false;
+        if (state.isAir())
+            return false;
+        if (state.getDestroySpeed(blockLevel, blockPos) < 0)
+            return false;
 
-        boolean isWood = state.is(net.minecraft.tags.BlockTags.PLANKS)
-                || state.is(net.minecraft.tags.BlockTags.LOGS)
-                || state.is(net.minecraft.tags.BlockTags.WOODEN_FENCES)
-                || state.is(net.minecraft.tags.BlockTags.WOODEN_SLABS);
+        boolean isWood = state.is(BlockTags.PLANKS)
+                || state.is(BlockTags.LOGS)
+                || state.is(BlockTags.WOODEN_FENCES)
+                || state.is(BlockTags.WOODEN_SLABS);
 
         blockLevel.removeBlock(blockPos, false);
 
         if (isWood && blockLevel.getFluidState(blockPos).isEmpty()) {
-            blockLevel.setBlock(blockPos, net.minecraft.world.level.block.Blocks.FIRE.defaultBlockState(), 3);
+            blockLevel.setBlock(blockPos, Blocks.FIRE.defaultBlockState(), 3);
         }
 
         if (spawnEntity) {
@@ -484,7 +461,7 @@ public class UnderwaterMineBlockEntity extends BlockEntity
             double vy = Math.abs(direction.y * force) + 0.6 + parentLevel.random.nextFloat() * 0.4;
             double vz = direction.z * force + (parentLevel.random.nextFloat() - 0.5f) * 0.3;
 
-            fallingBlock.setDeltaMovement(new net.minecraft.world.phys.Vec3(vx, vy, vz));
+            fallingBlock.setDeltaMovement(new Vec3(vx, vy, vz));
             fallingBlock.hurtMarked = true;
             parentLevel.addFreshEntity(fallingBlock);
             return true;
@@ -492,4 +469,36 @@ public class UnderwaterMineBlockEntity extends BlockEntity
         return false;
     }
 
+    private static int countWaterAbove(Level level, BlockPos pos) {
+        int depth = 0;
+        BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
+        for (int y = pos.getY() + 1; y < pos.getY() + 1 + MAX_WATER_SCAN; y++) {
+            cursor.set(pos.getX(), y, pos.getZ());
+            if (CompartmentTracker.realFluidState(level, cursor).is(FluidTags.WATER)) {
+                depth++;
+            } else {
+                break;
+            }
+        }
+        return depth;
+    }
+
+    private static void applyForce(SubLevelAccess sub, double forceY) {
+        Object handle = SablePhysicsHelper.getHandle(sub);
+        if (handle == null)
+            return;
+        SablePhysicsHelper.wakeUp(handle);
+
+        double velY = 0;
+        Vector3dc vel = SablePhysicsHelper.getVelocity(handle);
+        if (vel != null)
+            velY = vel.y();
+
+        double finalForce = (Math.abs(velY) < 0.01 && forceY < 0) ? forceY * 0.1 : forceY;
+
+        Vector3d forceVec = new Vector3d(0, finalForce, 0);
+        sub.logicalPose().orientation().conjugate(new Quaterniond()).transform(forceVec);
+
+        SablePhysicsHelper.applyLinearImpulse(handle, forceVec);
+    }
 }

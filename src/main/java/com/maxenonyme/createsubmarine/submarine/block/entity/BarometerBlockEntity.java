@@ -1,6 +1,8 @@
 package com.maxenonyme.createsubmarine.submarine.block.entity;
 
 import com.maxenonyme.createsubmarine.CreateSubmarine;
+import com.maxenonyme.createsubmarine.submarine.system.SubmarinePressureSystem;
+import com.maxenonyme.createsubmarine.submarine.util.SubLevelRegistry;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.animal.Pufferfish;
@@ -57,7 +59,7 @@ public class BarometerBlockEntity extends BlockEntity implements IHaveHoveringIn
                     this.pufferfish.setCustomName(this.customName);
                     this.pufferfish.setCustomNameVisible(true);
                 }
-            } catch (Throwable t) {
+            } catch (RuntimeException e) {
                 this.pufferfishFailed = true;
                 this.pufferfish = null;
             }
@@ -101,22 +103,23 @@ public class BarometerBlockEntity extends BlockEntity implements IHaveHoveringIn
         if (cachedWeakestPressure != -1 && time - lastHullScan < 40) {
             return cachedWeakestPressure;
         }
-        cachedWeakestPressure = com.maxenonyme.createsubmarine.submarine.system.SubmarinePressureSystem
+        cachedWeakestPressure = SubmarinePressureSystem
             .getWeakestHullDepth(subId, level);
         lastHullScan = time;
         return cachedWeakestPressure;
     }
 
     public void tick() {
-        if (level == null || level.isClientSide) return;
+        if (level == null || level.isClientSide)
+            return;
 
         if (tickCount++ % 10 == 0) {
-            UUID subId = com.maxenonyme.createsubmarine.submarine.util.SubLevelRegistry.findUUID(level, getBlockPos());
+            UUID subId = SubLevelRegistry.findUUID(level, getBlockPos());
             int newDepth = 0;
             int newWeakest = -1;
 
             if (subId != null) {
-                newDepth = com.maxenonyme.createsubmarine.submarine.system.SubmarinePressureSystem.getCachedDepth(subId);
+                newDepth = SubmarinePressureSystem.getCachedDepth(subId);
                 newWeakest = getWeakestHullPressure(subId);
             }
 
@@ -142,8 +145,10 @@ public class BarometerBlockEntity extends BlockEntity implements IHaveHoveringIn
     @Override
     protected void loadAdditional(CompoundTag tag, HolderLookup.Provider registries) {
         super.loadAdditional(tag, registries);
-        if (tag.contains("SyncedDepth")) this.syncedDepth = tag.getInt("SyncedDepth");
-        if (tag.contains("SyncedWeakest")) this.syncedWeakest = tag.getInt("SyncedWeakest");
+        if (tag.contains("SyncedDepth"))
+            this.syncedDepth = tag.getInt("SyncedDepth");
+        if (tag.contains("SyncedWeakest"))
+            this.syncedWeakest = tag.getInt("SyncedWeakest");
         if (tag.contains("CustomName", 8)) {
             try {
                 this.customName = Component.Serializer.fromJson(tag.getString("CustomName"), registries);
@@ -151,7 +156,8 @@ public class BarometerBlockEntity extends BlockEntity implements IHaveHoveringIn
                     this.pufferfish.setCustomName(this.customName);
                     this.pufferfish.setCustomNameVisible(true);
                 }
-            } catch (Exception e) {}
+            } catch (RuntimeException e) {
+            }
         }
     }
 

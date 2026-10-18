@@ -20,7 +20,8 @@ public class FluidRenderHelperMixin {
 
     @ModifyVariable(method = {"renderFluidBox", "renderFluidStack"}, at = @At("HEAD"), argsOnly = true)
     private static MultiBufferSource createsubmarine$forceEntityTranslucent(MultiBufferSource buffer) {
-        if (!SubmarineWaterCullBuffer.isRenderingSubmarineFluid()) return buffer;
+        if (!SubmarineWaterCullBuffer.isRenderingSubmarineFluid())
+            return buffer;
         return type -> {
             String typeStr = type.toString();
             if (typeStr.contains("translucent") && !typeStr.contains("entity")) {
@@ -32,7 +33,8 @@ public class FluidRenderHelperMixin {
 
     @Inject(method = "putVertex", at = @At("HEAD"), cancellable = true)
     private static void createsubmarine$injectOverlay(VertexConsumer vc, PoseStack ms, float x, float y, float z, int color, float u, float v, Direction face, int light, CallbackInfo ci) {
-        if (!SubmarineWaterCullBuffer.isRenderingSubmarineFluid()) return;
+        if (!SubmarineWaterCullBuffer.isRenderingSubmarineFluid())
+            return;
         vc.addVertex(ms.last().pose(), x, y, z)
           .setColor(color)
           .setUv(u, v)

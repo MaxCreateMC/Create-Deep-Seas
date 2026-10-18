@@ -10,7 +10,8 @@ public class WatermarkOverlay {
     public static void register(RegisterGuiLayersEvent event) {
         event.registerAbove(VanillaGuiLayers.HOTBAR, ResourceLocation.fromNamespaceAndPath("create_submarine", "watermark"), (guiGraphics, partialTick) -> {
             Minecraft mc = Minecraft.getInstance();
-            if (mc.options.hideGui || FMLEnvironment.production) return;
+            if (mc.options.hideGui || FMLEnvironment.production)
+                return;
 
             String text = "[Create Deep Seas: In development]";
             int x = 10;

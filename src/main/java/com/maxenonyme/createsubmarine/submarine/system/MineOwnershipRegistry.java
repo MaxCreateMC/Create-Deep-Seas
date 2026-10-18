@@ -4,11 +4,8 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-public final class MineOwnershipRegistry {
+public class MineOwnershipRegistry {
     private static final Map<UUID, UUID> OWNERS = new ConcurrentHashMap<>();
-
-    private MineOwnershipRegistry() {
-    }
 
     public static void tag(UUID subLevelId, UUID owner) {
         if (subLevelId != null && owner != null) {

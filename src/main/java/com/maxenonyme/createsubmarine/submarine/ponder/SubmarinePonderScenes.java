@@ -1,6 +1,7 @@
 package com.maxenonyme.createsubmarine.submarine.ponder;
 
 import com.maxenonyme.createsubmarine.CreateSubmarine;
+import com.maxenonyme.createsubmarine.submarine.block.entity.CommandSubBlockEntity;
 import com.simibubi.create.foundation.ponder.CreateSceneBuilder;
 import net.createmod.ponder.api.scene.SceneBuilder;
 import net.createmod.ponder.api.scene.SceneBuildingUtil;
@@ -13,7 +14,32 @@ import net.minecraft.core.Direction;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.EntityType;
-import net.minecraft.world.level.block.entity.BlockEntity;
+import com.maxenonyme.createsubmarine.submarine.block.ArrestingHookBlock;
+import com.maxenonyme.createsubmarine.submarine.block.ElectrolyzerBlock;
+import com.maxenonyme.createsubmarine.submarine.block.PulleyBlock;
+import com.maxenonyme.createsubmarine.submarine.block.SonarBlock;
+import net.minecraft.world.level.block.state.properties.AttachFace;
+import com.maxenonyme.createsubmarine.submarine.block.entity.PulleyBlockEntity;
+import com.simibubi.create.content.fluids.pump.PumpBlock;
+import com.simibubi.create.content.fluids.tank.FluidTankBlockEntity;
+import dev.simulated_team.simulated.ponder.instructions.CreateRopeStrandInstruction;
+import java.util.ArrayList;
+import java.util.List;
+import net.createmod.catnip.math.Pointing;
+import net.createmod.ponder.api.PonderPalette;
+import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.entity.npc.Villager;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.DoorBlock;
+import net.minecraft.world.level.block.LeverBlock;
+import net.minecraft.world.level.block.state.properties.BlockStateProperties;
+import net.minecraft.world.level.material.Fluids;
+import net.minecraft.world.phys.Vec3;
+import net.neoforged.neoforge.fluids.FluidStack;
+import net.neoforged.neoforge.fluids.capability.IFluidHandler;
 
 public class SubmarinePonderScenes {
 
@@ -26,6 +52,10 @@ public class SubmarinePonderScenes {
 
                 helper.forComponents(ResourceLocation.fromNamespaceAndPath(CreateSubmarine.MOD_ID, "electrolyzer"))
                                 .addStoryBoard("electrolyzer", SubmarinePonderScenes::electrolyzer);
+
+                helper.forComponents(ResourceLocation.fromNamespaceAndPath(CreateSubmarine.MOD_ID, "command_sub"),
+                                ResourceLocation.fromNamespaceAndPath(CreateSubmarine.MOD_ID, "pump_controller"))
+                                .addStoryBoard("onboard_computer", SubmarinePonderScenes::onboardComputer);
 
                 helper.forComponents(ResourceLocation.fromNamespaceAndPath(CreateSubmarine.MOD_ID, "water_thruster"))
                                 .addStoryBoard("water_thruster", SubmarinePonderScenes::waterThruster);
@@ -40,86 +70,92 @@ public class SubmarinePonderScenes {
                 helper.forComponents(ResourceLocation.fromNamespaceAndPath(CreateSubmarine.MOD_ID, "barometer"))
                                 .addStoryBoard("barometre1", SubmarinePonderScenes::barometer)
                                 .addStoryBoard("barometre2", SubmarinePonderScenes::barometerDisplayLink);
+
+                helper.forComponents(ResourceLocation.fromNamespaceAndPath(CreateSubmarine.MOD_ID, "sonar"))
+                                .addStoryBoard("sonar", SubmarinePonderScenes::sonar);
+
+                helper.forComponents(ResourceLocation.fromNamespaceAndPath(CreateSubmarine.MOD_ID, "arresting_hook"))
+                                .addStoryBoard("arresting_hook", SubmarinePonderScenes::arrestingHook);
+
+                helper.forComponents(ResourceLocation.fromNamespaceAndPath(CreateSubmarine.MOD_ID, "decompression_chamber"))
+                                .addStoryBoard("decompression_chamber", SubmarinePonderScenes::decompressionChamber);
         }
 
         public static void ballastVent(SceneBuilder builder, SceneBuildingUtil util) {
                 CreateSceneBuilder scene = new CreateSceneBuilder(builder);
 
-                scene.title("ballast_vent", "Ballast Vent Usage");
-                scene.configureBasePlate(0, 0, 7);
-                scene.scaleSceneView(0.8f);
+                scene.title("ballast_vent", "Letting the Sea In and Out");
+                scene.configureBasePlate(0, 0, 5);
+                scene.scaleSceneView(0.9f);
+
+                BlockPos vent = util.grid().at(1, 1, 2);
+                BlockPos pump = util.grid().at(2, 1, 2);
+                BlockPos upperTank = util.grid().at(4, 2, 2);
+                Selection sea = util.select().fromTo(0, 1, 0, 0, 2, 4);
+                Selection tanks = util.select().fromTo(4, 1, 2, 4, 2, 2);
+                Selection line = util.select().fromTo(2, 1, 2, 3, 2, 2);
+                Selection kinetics = util.select().position(pump).add(util.select().fromTo(2, 2, 2, 3, 2, 2));
 
                 scene.world().showSection(util.select().layer(0), Direction.UP);
-                scene.idle(15);
-
-                scene.world().showSection(util.select().fromTo(2, 1, 5, 4, 1, 5), Direction.DOWN);
+                scene.idle(10);
+                scene.world().showSection(sea, Direction.DOWN);
+                scene.idle(10);
+                scene.world().showSection(util.select().position(vent), Direction.DOWN);
                 scene.idle(20);
 
-                scene.addKeyframe();
-                scene.overlay().showText(60)
+                scene.overlay().showText(80)
                                 .text("create_submarine.ponder.ballast_vent.text_1")
-                                .pointAt(util.vector().centerOf(6, 1, 6))
+                                .pointAt(util.vector().topOf(vent))
+                                .placeNearTarget()
                                 .attachKeyFrame();
-
-                scene.world().showSection(util.select().fromTo(5, 1, 6, 6, 2, 6).add(util.select().position(6, 2, 5)),
-                                Direction.DOWN);
-                scene.idle(15);
-                scene.world().showSection(util.select().fromTo(4, 3, 4, 6, 3, 4), Direction.WEST);
-                scene.idle(55);
-
-                scene.addKeyframe();
-                scene.overlay().showText(60)
-                                .text("create_submarine.ponder.ballast_vent.text_2")
-                                .pointAt(util.vector().centerOf(3, 1, 4))
-                                .placeNearTarget();
-
-                scene.world().showSection(util.select().fromTo(3, 1, 4, 3, 2, 4), Direction.DOWN);
-                scene.idle(65);
-
-                scene.addKeyframe();
-                BlockPos ventPos = util.grid().at(3, 3, 4);
-                BlockPos leverPos = util.grid().at(3, 3, 3);
-
-                scene.world().showSection(util.select().position(ventPos), Direction.SOUTH);
-                scene.idle(15);
-                scene.world().showSection(util.select().position(leverPos), Direction.SOUTH);
-                scene.idle(15);
-
-                scene.overlay().showText(80)
-                                .text("create_submarine.ponder.ballast_vent.text_3")
-                                .pointAt(util.vector().topOf(ventPos))
-                                .placeNearTarget();
-
-                for (int i = 0; i <= 15; i++) {
-                        final int value = i;
-                        scene.world().modifyBlockEntityNBT(util.select().position(leverPos), BlockEntity.class, nbt -> {
-                                nbt.putInt("State", value);
-                        });
-                        scene.idle(2);
-                }
-
-                scene.idle(60);
-
-                scene.addKeyframe();
-                scene.overlay().showText(80)
-                                .text("create_submarine.ponder.ballast_vent.text_4")
-                                .pointAt(util.vector().blockSurface(ventPos, Direction.NORTH))
-                                .placeNearTarget();
                 scene.idle(90);
 
-                scene.world().setKineticSpeed(util.select().everywhere(), 64);
+                scene.overlay().showText(80)
+                                .text("create_submarine.ponder.ballast_vent.text_2")
+                                .colored(PonderPalette.RED)
+                                .pointAt(util.vector().blockSurface(vent, Direction.WEST))
+                                .placeNearTarget()
+                                .attachKeyFrame();
+                scene.idle(90);
 
-                scene.idle(40);
-
-                scene.addKeyframe();
-                scene.world().modifyKineticSpeed(util.select().everywhere(), f -> -f);
+                scene.world().showSection(tanks, Direction.DOWN);
+                scene.idle(10);
+                scene.world().showSection(line, Direction.DOWN);
+                scene.idle(20);
 
                 scene.overlay().showText(90)
-                                .text("create_submarine.ponder.ballast_vent.text_5")
-                                .pointAt(util.vector().blockSurface(ventPos, Direction.NORTH))
-                                .placeNearTarget();
-
+                                .text("create_submarine.ponder.ballast_vent.text_3")
+                                .pointAt(util.vector().topOf(pump))
+                                .placeNearTarget()
+                                .attachKeyFrame();
                 scene.idle(100);
+
+                scene.world().setKineticSpeed(kinetics, 32);
+                scene.overlay().showOutline(PonderPalette.BLUE, new Object(), tanks, 90);
+                scene.overlay().showText(90)
+                                .text("create_submarine.ponder.ballast_vent.text_4")
+                                .pointAt(util.vector().topOf(upperTank))
+                                .placeNearTarget()
+                                .attachKeyFrame();
+                scene.idle(100);
+
+                scene.world().modifyBlock(pump, s -> s.setValue(PumpBlock.FACING, Direction.WEST), true);
+                scene.overlay().showOutline(PonderPalette.BLUE, new Object(), sea, 90);
+                scene.overlay().showText(90)
+                                .text("create_submarine.ponder.ballast_vent.text_5")
+                                .pointAt(util.vector().blockSurface(vent, Direction.WEST))
+                                .placeNearTarget()
+                                .attachKeyFrame();
+                scene.idle(100);
+
+                scene.world().setKineticSpeed(kinetics, 0);
+                scene.overlay().showText(90)
+                                .text("create_submarine.ponder.ballast_vent.text_6")
+                                .pointAt(util.vector().topOf(pump))
+                                .placeNearTarget()
+                                .attachKeyFrame();
+                scene.idle(100);
+
                 scene.markAsFinished();
         }
 
@@ -136,16 +172,16 @@ public class SubmarinePonderScenes {
                 scene.world().showSection(util.select().fromTo(3, 1, 4, 3, 3, 4), Direction.DOWN);
 
                 scene.world().modifyBlockEntityNBT(util.select().fromTo(3, 1, 4, 3, 3, 4),
-                                com.simibubi.create.content.fluids.tank.FluidTankBlockEntity.class, nbt -> {
+                                FluidTankBlockEntity.class, nbt -> {
                                         nbt.putBoolean("Window", true);
                                 });
 
                 scene.world().modifyBlockEntity(util.grid().at(3, 1, 4),
-                                com.simibubi.create.content.fluids.tank.FluidTankBlockEntity.class, be -> {
+                                FluidTankBlockEntity.class, be -> {
                                         be.getTankInventory().fill(
-                                                        new net.neoforged.neoforge.fluids.FluidStack(
+                                                        new FluidStack(
                                                                         CreateSubmarine.OXYGEN.get(), 16000),
-                                                        net.neoforged.neoforge.fluids.capability.IFluidHandler.FluidAction.EXECUTE);
+                                                        IFluidHandler.FluidAction.EXECUTE);
                                 });
 
                 scene.idle(15);
@@ -193,8 +229,8 @@ public class SubmarinePonderScenes {
                         scene.effects().emitParticles(
                                         util.vector().topOf(3, 1, 1).add(0, 0.2, 0),
                                         scene.effects().simpleParticleEmitter(
-                                                        net.minecraft.core.particles.ParticleTypes.BUBBLE,
-                                                        new net.minecraft.world.phys.Vec3(0, 0.1, 0)),
+                                                        ParticleTypes.BUBBLE,
+                                                        new Vec3(0, 0.1, 0)),
                                         1.0f,
                                         5);
                         scene.idle(2);
@@ -216,16 +252,16 @@ public class SubmarinePonderScenes {
                 scene.world().showSection(util.select().fromTo(1, 1, 4, 1, 2, 4), Direction.DOWN);
 
                 scene.world().modifyBlockEntityNBT(util.select().fromTo(1, 1, 4, 1, 2, 4),
-                                com.simibubi.create.content.fluids.tank.FluidTankBlockEntity.class, nbt -> {
+                                FluidTankBlockEntity.class, nbt -> {
                                         nbt.putBoolean("Window", true);
                                 });
                 scene.world().modifyBlockEntity(util.grid().at(1, 1, 4),
-                                com.simibubi.create.content.fluids.tank.FluidTankBlockEntity.class, be -> {
+                                FluidTankBlockEntity.class, be -> {
                                         be.getTankInventory()
-                                                        .fill(new net.neoforged.neoforge.fluids.FluidStack(
-                                                                        net.minecraft.world.level.material.Fluids.WATER,
+                                                        .fill(new FluidStack(
+                                                                        Fluids.WATER,
                                                                         16000),
-                                                                        net.neoforged.neoforge.fluids.capability.IFluidHandler.FluidAction.EXECUTE);
+                                                                        IFluidHandler.FluidAction.EXECUTE);
                                 });
 
                 scene.idle(10);
@@ -253,20 +289,20 @@ public class SubmarinePonderScenes {
 
                 scene.world().showSection(util.select().fromTo(7, 1, 4, 7, 2, 4), Direction.DOWN);
                 scene.world().modifyBlockEntityNBT(util.select().fromTo(7, 1, 4, 7, 2, 4),
-                                com.simibubi.create.content.fluids.tank.FluidTankBlockEntity.class, nbt -> {
+                                FluidTankBlockEntity.class, nbt -> {
                                         nbt.putBoolean("Window", true);
                                 });
 
                 scene.world().modifyBlockEntity(util.grid().at(7, 1, 4),
-                                com.simibubi.create.content.fluids.tank.FluidTankBlockEntity.class, be -> {
+                                FluidTankBlockEntity.class, be -> {
                                         be.getTankInventory().drain(16000,
-                                                        net.neoforged.neoforge.fluids.capability.IFluidHandler.FluidAction.EXECUTE);
+                                                        IFluidHandler.FluidAction.EXECUTE);
                                 });
                 scene.idle(15);
 
                 scene.addKeyframe();
 
-                net.createmod.ponder.api.scene.Selection machinesZ4 = util.select().fromTo(1, 1, 4, 7, 2, 4);
+                Selection machinesZ4 = util.select().fromTo(1, 1, 4, 7, 2, 4);
                 scene.world().showSection(util.select().layersFrom(1).substract(machinesZ4), Direction.NORTH);
                 scene.idle(10);
 
@@ -293,7 +329,7 @@ public class SubmarinePonderScenes {
 
                 scene.world().modifyBlock(
                                 util.grid().at(4, 1, 4), state -> state
-                                                .setValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.POWERED,
+                                                .setValue(BlockStateProperties.POWERED,
                                                                 true),
                                 false);
                 scene.idle(10);
@@ -302,18 +338,18 @@ public class SubmarinePonderScenes {
 
                 for (int i = 0; i < 40; i++) {
                         scene.world().modifyBlockEntity(util.grid().at(1, 1, 4),
-                                        com.simibubi.create.content.fluids.tank.FluidTankBlockEntity.class, be -> {
+                                        FluidTankBlockEntity.class, be -> {
                                                 be.getTankInventory().drain(200,
-                                                                net.neoforged.neoforge.fluids.capability.IFluidHandler.FluidAction.EXECUTE);
+                                                                IFluidHandler.FluidAction.EXECUTE);
                                         });
                         scene.world().modifyBlockEntity(util.grid().at(7, 1, 4),
-                                        com.simibubi.create.content.fluids.tank.FluidTankBlockEntity.class, be -> {
+                                        FluidTankBlockEntity.class, be -> {
                                                 be.getTankInventory()
-                                                                .fill(new net.neoforged.neoforge.fluids.FluidStack(
-                                                                                com.maxenonyme.createsubmarine.CreateSubmarine.OXYGEN
+                                                                .fill(new FluidStack(
+                                                                                CreateSubmarine.OXYGEN
                                                                                                 .get(),
                                                                                 200),
-                                                                                net.neoforged.neoforge.fluids.capability.IFluidHandler.FluidAction.EXECUTE);
+                                                                                IFluidHandler.FluidAction.EXECUTE);
                                         });
                         scene.idle(2);
                 }
@@ -324,6 +360,184 @@ public class SubmarinePonderScenes {
                                 .pointAt(util.vector().blockSurface(util.grid().at(7, 2, 4), Direction.WEST))
                                 .placeNearTarget();
                 scene.idle(90);
+
+                BlockPos electrolyzer = util.grid().at(4, 1, 4);
+                BlockPos shaftPos = util.grid().at(4, 1, 3);
+                BlockPos motorPos = util.grid().at(4, 1, 2);
+
+                scene.addKeyframe();
+                scene.overlay().showControls(util.vector().topOf(electrolyzer), Pointing.DOWN, 60)
+                                .withItem(new ItemStack(
+                                                BuiltInRegistries.ITEM.get(
+                                                                ResourceLocation.fromNamespaceAndPath("create", "shaft"))));
+                scene.idle(10);
+                scene.world().modifyBlock(electrolyzer,
+                                state -> state.setValue(ElectrolyzerBlock.ALTERNATOR, true),
+                                false);
+                scene.overlay().showText(80)
+                                .text("create_submarine.ponder.electrolyzer.text_5")
+                                .pointAt(util.vector().blockSurface(electrolyzer, Direction.NORTH))
+                                .placeNearTarget()
+                                .attachKeyFrame();
+                scene.idle(90);
+
+                scene.world().setBlock(shaftPos,
+                                BuiltInRegistries.BLOCK
+                                                .get(ResourceLocation.fromNamespaceAndPath("create", "shaft"))
+                                                .defaultBlockState()
+                                                .setValue(BlockStateProperties.AXIS,
+                                                                Direction.Axis.Z),
+                                true);
+                scene.world().setBlock(motorPos,
+                                BuiltInRegistries.BLOCK
+                                                .get(ResourceLocation.fromNamespaceAndPath("create", "creative_motor"))
+                                                .defaultBlockState()
+                                                .setValue(BlockStateProperties.FACING,
+                                                                Direction.SOUTH),
+                                true);
+                scene.world().setKineticSpeed(util.select().fromTo(4, 1, 2, 4, 1, 4), 64);
+                scene.idle(15);
+
+                scene.overlay().showText(90)
+                                .text("create_submarine.ponder.electrolyzer.text_6")
+                                .pointAt(util.vector().topOf(shaftPos))
+                                .placeNearTarget()
+                                .attachKeyFrame();
+                scene.idle(100);
+
+                scene.markAsFinished();
+        }
+
+        public static void onboardComputer(SceneBuilder builder, SceneBuildingUtil util) {
+                CreateSceneBuilder scene = new CreateSceneBuilder(builder);
+
+                scene.title("onboard_computer", "Diving with the Onboard Computer");
+                scene.configureBasePlate(-3, 0, 10);
+                scene.scaleSceneView(0.7f);
+
+                BlockPos computer = util.grid().at(2, 2, 1);
+                BlockPos vent = util.grid().at(2, 1, 3);
+                BlockPos pump = util.grid().at(2, 2, 4);
+                Selection kinetics = util.select().fromTo(2, 2, 4, 3, 2, 5);
+
+                scene.world().modifyBlockEntity(computer, CommandSubBlockEntity.class, be -> {
+                        be.targetDepth = 0;
+                        be.surfaceY = 2;
+                        be.syncedFill = -1;
+                        be.syncedPumps = 0;
+                        be.syncedStatus = 1;
+                });
+                scene.world().setKineticSpeed(kinetics, 0);
+
+                scene.world().showSection(util.select().layer(0), Direction.UP);
+                scene.idle(10);
+                for (int z = 0; z <= 9; z++) {
+                        scene.world().showSection(util.select().fromTo(0, 1, z, 3, 1, z), Direction.UP);
+                        scene.idle(2);
+                }
+                scene.idle(10);
+                scene.world().showSection(util.select().position(computer), Direction.DOWN);
+                scene.idle(15);
+                for (int depth = 2; depth <= 20; depth += 2) {
+                        final int shown = depth;
+                        scene.world().modifyBlockEntity(computer, CommandSubBlockEntity.class, be -> be.targetDepth = shown);
+                        scene.idle(2);
+                }
+
+                scene.overlay().showText(80)
+                                .text("create_submarine.ponder.onboard_computer.text_1")
+                                .pointAt(util.vector().blockSurface(computer, Direction.WEST))
+                                .placeNearTarget()
+                                .attachKeyFrame();
+                scene.idle(90);
+
+                for (int z = 6; z <= 9; z++) {
+                        scene.world().showSection(util.select().fromTo(1, 2, z, 2, 2, z), Direction.DOWN);
+                        scene.idle(4);
+                }
+                scene.world().modifyBlockEntity(computer, CommandSubBlockEntity.class, be -> be.syncedFill = 50);
+                scene.idle(10);
+
+                scene.overlay().showText(60)
+                                .text("create_submarine.ponder.onboard_computer.text_7")
+                                .pointAt(util.vector().topOf(1, 2, 7))
+                                .placeNearTarget();
+                scene.idle(70);
+
+                scene.world().showSection(util.select().position(2, 2, 3), Direction.DOWN);
+                scene.idle(5);
+                scene.world().showSection(util.select().position(pump), Direction.DOWN);
+                scene.idle(5);
+                scene.world().showSection(util.select().position(2, 2, 5), Direction.DOWN);
+                scene.idle(5);
+                scene.world().showSection(util.select().fromTo(3, 2, 4, 3, 2, 5), Direction.DOWN);
+                scene.idle(10);
+
+                scene.overlay().showText(80)
+                                .text("create_submarine.ponder.onboard_computer.text_2")
+                                .pointAt(util.vector().topOf(pump))
+                                .placeNearTarget()
+                                .attachKeyFrame();
+                scene.idle(90);
+
+                scene.overlay().showText(90)
+                                .text("create_submarine.ponder.onboard_computer.text_3")
+                                .pointAt(util.vector().topOf(vent))
+                                .placeNearTarget()
+                                .attachKeyFrame();
+                scene.idle(100);
+
+                scene.world().setKineticSpeed(kinetics, 32);
+                scene.world().setKineticSpeed(util.select().position(pump), -32);
+                scene.world().modifyBlockEntity(computer, CommandSubBlockEntity.class, be -> be.syncedPumps = 1);
+                scene.idle(10);
+
+                scene.overlay().showText(80)
+                                .text("create_submarine.ponder.onboard_computer.text_4")
+                                .pointAt(util.vector().blockSurface(computer, Direction.WEST))
+                                .placeNearTarget()
+                                .attachKeyFrame();
+                scene.idle(20);
+
+                for (int i = 1; i <= 40; i++) {
+                        final int step = i;
+                        scene.world().modifyBlockEntity(computer, CommandSubBlockEntity.class, be -> {
+                                be.surfaceY = 2 + step / 2;
+                                if (step <= 15) {
+                                        be.syncedStatus = 2;
+                                        be.syncedFill = 50 + step;
+                                } else if (step <= 30) {
+                                        be.syncedStatus = 0;
+                                        be.syncedFill = 65 - (step - 15);
+                                } else {
+                                        be.syncedStatus = 1;
+                                        be.syncedFill = 50;
+                                }
+                        });
+                        scene.idle(3);
+                }
+                scene.idle(20);
+
+                scene.overlay().showText(90)
+                                .text("create_submarine.ponder.onboard_computer.text_5")
+                                .pointAt(util.vector().blockSurface(computer, Direction.WEST))
+                                .placeNearTarget()
+                                .attachKeyFrame();
+                scene.idle(100);
+
+                scene.overlay().showText(80)
+                                .text("create_submarine.ponder.onboard_computer.text_6")
+                                .pointAt(util.vector().topOf(pump))
+                                .placeNearTarget()
+                                .attachKeyFrame();
+                scene.idle(90);
+
+                scene.overlay().showText(140)
+                                .text("create_submarine.ponder.onboard_computer.text_8")
+                                .pointAt(util.vector().blockSurface(computer, Direction.WEST))
+                                .placeNearTarget()
+                                .attachKeyFrame();
+                scene.idle(150);
 
                 scene.markAsFinished();
         }
@@ -337,11 +551,11 @@ public class SubmarinePonderScenes {
 
                 Selection iceFloor = util.select().fromTo(0, 0, 0, 4, 0, 4);
 
-                java.util.List<ElementLink<WorldSectionElement>> iceSegments = new java.util.ArrayList<>();
+                List<ElementLink<WorldSectionElement>> iceSegments = new ArrayList<>();
                 for (int i = -9; i <= 3; i++) {
                         ElementLink<WorldSectionElement> segment = scene.world().showIndependentSection(iceFloor,
                                         Direction.UP);
-                        scene.world().moveSection(segment, new net.minecraft.world.phys.Vec3(i * 5, 0, 1), 0);
+                        scene.world().moveSection(segment, new Vec3(i * 5, 0, 1), 0);
                         iceSegments.add(segment);
                 }
 
@@ -377,7 +591,7 @@ public class SubmarinePonderScenes {
 
                 int totalTicks = 120;
                 for (ElementLink<WorldSectionElement> segment : iceSegments) {
-                        scene.world().moveSection(segment, new net.minecraft.world.phys.Vec3(35, 0, 0), totalTicks);
+                        scene.world().moveSection(segment, new Vec3(35, 0, 0), totalTicks);
                 }
 
                 scene.idle(totalTicks + 20);
@@ -401,17 +615,17 @@ public class SubmarinePonderScenes {
                 scene.world().showSection(util.select().everywhere(), Direction.UP);
                 scene.idle(20);
 
-                net.minecraft.world.phys.Vec3 from = new net.minecraft.world.phys.Vec3(0.5, 4.0, 2.5);
-                net.minecraft.world.phys.Vec3 to = new net.minecraft.world.phys.Vec3(12.5, 4.0, 2.5);
+                Vec3 from = new Vec3(0.5, 4.0, 2.5);
+                Vec3 to = new Vec3(12.5, 4.0, 2.5);
                 SteelCablePonderElement rope = new SteelCablePonderElement(from, to, 12.0, 0.3, 1.0f);
                 scene.addInstruction(
-                                new dev.simulated_team.simulated.ponder.instructions.CreateRopeStrandInstruction(rope));
+                                new CreateRopeStrandInstruction(rope));
 
                 scene.idle(10);
                 scene.addKeyframe();
 
                 ElementLink<EntityElement> villager = scene.world().createEntity(level -> {
-                        net.minecraft.world.entity.npc.Villager v = new net.minecraft.world.entity.npc.Villager(
+                        Villager v = new Villager(
                                         EntityType.VILLAGER, level);
                         v.setPos(1.5, 4.1, 2.5);
                         v.setYRot(-90f);
@@ -444,11 +658,11 @@ public class SubmarinePonderScenes {
                 scene.world().showSection(util.select().everywhere(), Direction.UP);
                 scene.idle(20);
 
-                net.minecraft.world.phys.Vec3 from = new net.minecraft.world.phys.Vec3(0.5, 4.0, 2.5);
-                net.minecraft.world.phys.Vec3 to = new net.minecraft.world.phys.Vec3(12.5, 4.0, 2.5);
+                Vec3 from = new Vec3(0.5, 4.0, 2.5);
+                Vec3 to = new Vec3(12.5, 4.0, 2.5);
                 SteelCablePonderElement rope = new SteelCablePonderElement(from, to, 12.0, 0.3, 1.0f);
                 scene.addInstruction(
-                                new dev.simulated_team.simulated.ponder.instructions.CreateRopeStrandInstruction(rope));
+                                new CreateRopeStrandInstruction(rope));
 
                 scene.idle(10);
                 scene.addKeyframe();
@@ -464,7 +678,7 @@ public class SubmarinePonderScenes {
                         final double sx = 0.5 + t * 12.0;
                         scene.addInstruction(ponderScene -> {
                                 ponderScene.getWorld().addParticle(
-                                                net.minecraft.core.particles.ParticleTypes.ELECTRIC_SPARK,
+                                                ParticleTypes.ELECTRIC_SPARK,
                                                 sx, 4.0, 2.5, 0, 0.05, 0);
                         });
                         scene.idle(1);
@@ -491,24 +705,24 @@ public class SubmarinePonderScenes {
                 scene.idle(20);
 
 
-                net.minecraft.world.phys.Vec3 from = new net.minecraft.world.phys.Vec3(0.5, 4.0, 2.5);
-                net.minecraft.world.phys.Vec3 to   = new net.minecraft.world.phys.Vec3(12.5, 4.0, 2.5);
+                Vec3 from = new Vec3(0.5, 4.0, 2.5);
+                Vec3 to   = new Vec3(12.5, 4.0, 2.5);
                 SteelCablePonderElement rope = new SteelCablePonderElement(from, to, 12.0, 0.3, 1.0f);
                 scene.addInstruction(
-                        new dev.simulated_team.simulated.ponder.instructions.CreateRopeStrandInstruction(rope));
+                        new CreateRopeStrandInstruction(rope));
 
                 scene.idle(10);
 
 
-                net.minecraft.core.BlockPos posA = util.grid().at(1, 3, 2);
-                net.minecraft.core.BlockPos posB = util.grid().at(3, 3, 2);
+                BlockPos posA = util.grid().at(1, 3, 2);
+                BlockPos posB = util.grid().at(3, 3, 2);
                 scene.world().setBlock(posA,
                         CreateSubmarine.PULLEY.get().defaultBlockState()
-                                .setValue(com.maxenonyme.createsubmarine.submarine.block.PulleyBlock.FACING, Direction.NORTH),
+                                .setValue(PulleyBlock.FACING, Direction.NORTH),
                         false);
                 scene.world().setBlock(posB,
                         CreateSubmarine.PULLEY.get().defaultBlockState()
-                                .setValue(com.maxenonyme.createsubmarine.submarine.block.PulleyBlock.FACING, Direction.SOUTH),
+                                .setValue(PulleyBlock.FACING, Direction.SOUTH),
                         false);
 
                 ElementLink<WorldSectionElement> pulleySection = scene.world().showIndependentSection(
@@ -530,13 +744,13 @@ public class SubmarinePonderScenes {
 
 
                 final float anglePerTick = (float)(0.08 / 0.6875);
-                scene.world().moveSection(pulleySection, new net.minecraft.world.phys.Vec3(8, 0, 0), 100);
+                scene.world().moveSection(pulleySection, new Vec3(8, 0, 0), 100);
                 for (int i = 0; i < 100; i++) {
                         scene.world().modifyBlockEntity(posA,
-                                com.maxenonyme.createsubmarine.submarine.block.entity.PulleyBlockEntity.class,
+                                PulleyBlockEntity.class,
                                 be -> be.clientWheelAngle += anglePerTick);
                         scene.world().modifyBlockEntity(posB,
-                                com.maxenonyme.createsubmarine.submarine.block.entity.PulleyBlockEntity.class,
+                                PulleyBlockEntity.class,
                                 be -> be.clientWheelAngle += anglePerTick);
                         scene.idle(1);
                 }
@@ -630,7 +844,7 @@ public class SubmarinePonderScenes {
                 scene.world().showSection(util.select().fromTo(3, 1, 0, 3, 2, 2), Direction.SOUTH);
                 scene.idle(20);
 
-                scene.overlay().showOutline(net.createmod.ponder.api.PonderPalette.GREEN, new Object(), util.select().fromTo(3, 1, 0, 3, 2, 2), 80);
+                scene.overlay().showOutline(PonderPalette.GREEN, new Object(), util.select().fromTo(3, 1, 0, 3, 2, 2), 80);
                 scene.overlay().showText(80)
                                 .text("create_submarine.ponder.barometer_display_link.text_2")
                                 .pointAt(util.vector().centerOf(3, 2, 1))
@@ -644,10 +858,271 @@ public class SubmarinePonderScenes {
 
                 for (int y = 1; y <= 2; y++) {
                     for (int z = 0; z <= 2; z++) {
-                        scene.world().setDisplayBoardText(util.grid().at(3, y, z), 1, net.minecraft.network.chat.Component.translatable("create_submarine.ponder.barometer_display_link.text_3"));
+                        scene.world().setDisplayBoardText(util.grid().at(3, y, z), 1, Component.translatable("create_submarine.ponder.barometer_display_link.text_3"));
                     }
                 }
                 scene.idle(90);
+
+                scene.markAsFinished();
+        }
+
+        public static void sonar(SceneBuilder builder, SceneBuildingUtil util) {
+                CreateSceneBuilder scene = new CreateSceneBuilder(builder);
+
+                scene.title("sonar", "Scanning the Sea Floor with the Sonar");
+                scene.configureBasePlate(-1, 0, 5);
+                scene.scaleSceneView(0.9f);
+
+                BlockPos sonar = util.grid().at(1, 0, 4);
+                BlockPos computer = util.grid().at(1, 1, 1);
+                BlockPos floorSonar = util.grid().at(0, 1, 3);
+
+                scene.world().showSection(util.select().fromTo(0, 0, 0, 1, 0, 3), Direction.UP);
+                scene.idle(15);
+                scene.world().showSection(util.select().position(sonar), Direction.NORTH);
+                scene.idle(25);
+
+                scene.overlay().showText(80)
+                                .text("create_submarine.ponder.sonar.text_1")
+                                .pointAt(util.vector().blockSurface(sonar, Direction.SOUTH))
+                                .placeNearTarget()
+                                .attachKeyFrame();
+                scene.idle(90);
+
+                scene.rotateCameraY(-60);
+                scene.idle(30);
+
+                scene.world().setBlock(floorSonar, CreateSubmarine.SONAR.get().defaultBlockState()
+                                .setValue(SonarBlock.FACE, AttachFace.FLOOR)
+                                .setValue(SonarBlock.FACING, Direction.WEST), false);
+                scene.world().showSection(util.select().position(floorSonar), Direction.DOWN);
+                scene.idle(15);
+
+                scene.overlay().showText(80)
+                                .text("create_submarine.ponder.sonar.text_2")
+                                .pointAt(util.vector().topOf(floorSonar))
+                                .placeNearTarget()
+                                .attachKeyFrame();
+                scene.idle(90);
+
+                scene.world().hideSection(util.select().position(floorSonar), Direction.UP);
+                scene.idle(15);
+                scene.rotateCameraY(60);
+                scene.idle(30);
+
+                scene.world().showSection(util.select().position(computer), Direction.DOWN);
+                scene.idle(20);
+
+                scene.overlay().showText(90)
+                                .text("create_submarine.ponder.sonar.text_3")
+                                .pointAt(util.vector().blockSurface(computer, Direction.WEST))
+                                .placeNearTarget()
+                                .attachKeyFrame();
+                scene.idle(100);
+
+                scene.overlay().showText(100)
+                                .text("create_submarine.ponder.sonar.text_4")
+                                .pointAt(util.vector().blockSurface(computer, Direction.WEST))
+                                .placeNearTarget()
+                                .attachKeyFrame();
+                scene.idle(110);
+
+                scene.overlay().showText(90)
+                                .text("create_submarine.ponder.sonar.text_5")
+                                .pointAt(util.vector().blockSurface(computer, Direction.WEST))
+                                .placeNearTarget()
+                                .attachKeyFrame();
+                scene.idle(100);
+
+                scene.markAsFinished();
+        }
+
+        public static void decompressionChamber(SceneBuilder builder, SceneBuildingUtil util) {
+                CreateSceneBuilder scene = new CreateSceneBuilder(builder);
+
+                scene.title("decompression_chamber", "Building an Airlock");
+                scene.configureBasePlate(0, 0, 7);
+                scene.scaleSceneView(0.75f);
+
+                BlockPos roomChamber = util.grid().at(3, 3, 2);
+                BlockPos seaChamber = util.grid().at(1, 4, 2);
+                BlockPos pump = util.grid().at(2, 5, 2);
+                BlockPos outerDoor = util.grid().at(2, 1, 2);
+                BlockPos innerDoor = util.grid().at(5, 1, 2);
+                Selection outer = util.select().fromTo(2, 1, 2, 2, 2, 2);
+                Selection inner = util.select().fromTo(5, 1, 2, 5, 2, 2);
+                Selection sea = util.select().fromTo(0, 1, 0, 1, 3, 4);
+                Selection hull = util.select().fromTo(2, 1, 0, 5, 3, 4).substract(util.select().position(roomChamber));
+                Selection line = util.select().position(1, 5, 2).add(util.select().position(pump))
+                                .add(util.select().fromTo(3, 4, 2, 3, 5, 2));
+                Selection pumpOnly = util.select().position(pump);
+                Selection floorWater = util.select().fromTo(3, 1, 1, 4, 1, 3);
+                Selection topWater = util.select().fromTo(3, 2, 1, 4, 2, 3);
+
+                scene.world().showSection(util.select().layer(0), Direction.UP);
+                scene.idle(10);
+                scene.world().showSection(sea, Direction.DOWN);
+                scene.idle(10);
+                scene.world().showSection(hull, Direction.DOWN);
+                scene.idle(20);
+
+                scene.overlay().showText(90)
+                                .text("create_submarine.ponder.decompression_chamber.text_1")
+                                .pointAt(util.vector().centerOf(3, 2, 2))
+                                .placeNearTarget()
+                                .attachKeyFrame();
+                scene.idle(100);
+
+                scene.world().showSection(util.select().position(roomChamber), Direction.DOWN);
+                scene.idle(15);
+                scene.overlay().showText(90)
+                                .text("create_submarine.ponder.decompression_chamber.text_2")
+                                .pointAt(util.vector().blockSurface(roomChamber, Direction.NORTH))
+                                .placeNearTarget()
+                                .attachKeyFrame();
+                scene.idle(100);
+
+                scene.world().showSection(util.select().position(seaChamber), Direction.DOWN);
+                scene.idle(15);
+                scene.overlay().showText(90)
+                                .text("create_submarine.ponder.decompression_chamber.text_3")
+                                .pointAt(util.vector().blockSurface(seaChamber, Direction.WEST))
+                                .placeNearTarget()
+                                .attachKeyFrame();
+                scene.idle(100);
+
+                scene.world().showSection(line, Direction.DOWN);
+                scene.idle(15);
+                scene.overlay().showText(80)
+                                .text("create_submarine.ponder.decompression_chamber.text_4")
+                                .pointAt(util.vector().topOf(pump))
+                                .placeNearTarget()
+                                .attachKeyFrame();
+                scene.idle(90);
+
+                scene.world().setKineticSpeed(pumpOnly, 32);
+                scene.overlay().showText(90)
+                                .text("create_submarine.ponder.decompression_chamber.text_5")
+                                .pointAt(util.vector().centerOf(4, 1, 2))
+                                .placeNearTarget()
+                                .attachKeyFrame();
+                scene.idle(25);
+                scene.world().setBlocks(floorWater, Blocks.WATER.defaultBlockState(), false);
+                scene.idle(35);
+                scene.world().setBlocks(topWater, Blocks.WATER.defaultBlockState(), false);
+                scene.idle(40);
+                scene.world().setKineticSpeed(pumpOnly, 0);
+                scene.idle(10);
+
+                scene.world().modifyBlocks(outer, state -> state.setValue(DoorBlock.OPEN, true), false);
+                scene.overlay().showText(90)
+                                .text("create_submarine.ponder.decompression_chamber.text_6")
+                                .pointAt(util.vector().blockSurface(outerDoor, Direction.WEST))
+                                .placeNearTarget()
+                                .attachKeyFrame();
+                scene.idle(100);
+
+                scene.world().modifyBlocks(outer, state -> state.setValue(DoorBlock.OPEN, false), false);
+                scene.idle(10);
+                scene.world().setKineticSpeed(pumpOnly, -32);
+                scene.overlay().showText(90)
+                                .text("create_submarine.ponder.decompression_chamber.text_7")
+                                .pointAt(util.vector().topOf(pump))
+                                .placeNearTarget()
+                                .attachKeyFrame();
+                scene.idle(25);
+                scene.world().setBlocks(topWater, Blocks.AIR.defaultBlockState(), false);
+                scene.idle(35);
+                scene.world().setBlocks(floorWater, Blocks.AIR.defaultBlockState(), false);
+                scene.idle(40);
+                scene.world().setKineticSpeed(pumpOnly, 0);
+                scene.idle(10);
+
+                scene.world().modifyBlocks(inner, state -> state.setValue(DoorBlock.OPEN, true), false);
+                scene.overlay().showText(70)
+                                .text("create_submarine.ponder.decompression_chamber.text_8")
+                                .pointAt(util.vector().blockSurface(innerDoor, Direction.EAST))
+                                .placeNearTarget();
+                scene.idle(80);
+                scene.world().modifyBlocks(inner, state -> state.setValue(DoorBlock.OPEN, false), false);
+                scene.idle(10);
+
+                scene.overlay().showText(110)
+                                .text("create_submarine.ponder.decompression_chamber.text_9")
+                                .colored(PonderPalette.RED)
+                                .pointAt(util.vector().blockSurface(outerDoor, Direction.WEST))
+                                .placeNearTarget()
+                                .attachKeyFrame();
+                scene.idle(120);
+
+                scene.markAsFinished();
+        }
+
+        public static void arrestingHook(SceneBuilder builder, SceneBuildingUtil util) {
+                CreateSceneBuilder scene = new CreateSceneBuilder(builder);
+
+                scene.title("arresting_hook", "Catching a Steel Cable");
+                scene.configureBasePlate(0, 0, 7);
+                scene.scaleSceneView(0.8f);
+
+                BlockPos hook = util.grid().at(3, 3, 5);
+                BlockPos lever = util.grid().at(3, 5, 6);
+                Selection posts = util.select().fromTo(0, 1, 3, 0, 2, 3).add(util.select().fromTo(6, 1, 3, 6, 2, 3));
+                Selection ship = util.select().fromTo(2, 3, 5, 4, 5, 6);
+
+                scene.world().showSection(util.select().layer(0), Direction.UP);
+                scene.idle(10);
+                scene.world().showSection(posts, Direction.DOWN);
+                scene.idle(10);
+                scene.addInstruction(new CreateRopeStrandInstruction(
+                                new SteelCablePonderElement(new Vec3(0.5, 3.0, 3.5), new Vec3(6.5, 3.0, 3.5), 6.0, 0.3, 1.0f)));
+                scene.idle(15);
+                ElementLink<WorldSectionElement> shipLink = scene.world().showIndependentSection(ship, Direction.DOWN);
+                scene.idle(20);
+
+                scene.overlay().showText(80)
+                                .text("create_submarine.ponder.arresting_hook.text_1")
+                                .pointAt(util.vector().blockSurface(hook, Direction.DOWN))
+                                .placeNearTarget()
+                                .attachKeyFrame();
+                scene.idle(90);
+
+                scene.world().modifyBlock(lever, s -> s.setValue(LeverBlock.POWERED, true), false);
+                scene.world().modifyBlock(hook, s -> s.setValue(ArrestingHookBlock.POWERED, true), false);
+                scene.overlay().showText(70)
+                                .text("create_submarine.ponder.arresting_hook.text_2")
+                                .pointAt(util.vector().topOf(lever))
+                                .placeNearTarget()
+                                .attachKeyFrame();
+                scene.idle(80);
+
+                scene.world().moveSection(shipLink, util.vector().of(0, 0, -4.25), 40);
+                scene.idle(40);
+                scene.world().moveSection(shipLink, util.vector().of(0, 0, 0.25), 6);
+                scene.idle(10);
+                scene.overlay().showText(90)
+                                .text("create_submarine.ponder.arresting_hook.text_3")
+                                .pointAt(util.vector().of(3.5, 3.0, 3.5))
+                                .placeNearTarget()
+                                .attachKeyFrame();
+                scene.idle(100);
+
+                scene.world().modifyBlock(lever, s -> s.setValue(LeverBlock.POWERED, false), false);
+                scene.world().modifyBlock(hook, s -> s.setValue(ArrestingHookBlock.POWERED, false), false);
+                scene.overlay().showText(70)
+                                .text("create_submarine.ponder.arresting_hook.text_4")
+                                .pointAt(util.vector().of(3.5, 3.5, 3.5))
+                                .placeNearTarget()
+                                .attachKeyFrame();
+                scene.idle(80);
+
+                scene.overlay().showText(90)
+                                .text("create_submarine.ponder.arresting_hook.text_5")
+                                .colored(PonderPalette.BLUE)
+                                .pointAt(util.vector().of(3.5, 3.0, 3.5))
+                                .placeNearTarget()
+                                .attachKeyFrame();
+                scene.idle(100);
 
                 scene.markAsFinished();
         }

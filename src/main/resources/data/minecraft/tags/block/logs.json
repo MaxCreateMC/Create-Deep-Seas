@@ -1,0 +1,9 @@
+{
+  "replace": false,
+  "values": [
+    {
+      "id": "create_abyss:burning_wood",
+      "required": false
+    }
+  ]
+}

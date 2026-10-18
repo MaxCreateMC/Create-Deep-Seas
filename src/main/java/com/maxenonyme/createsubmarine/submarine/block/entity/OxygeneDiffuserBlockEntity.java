@@ -1,5 +1,6 @@
 package com.maxenonyme.createsubmarine.submarine.block.entity;
 
+import com.maxenonyme.createsubmarine.submarine.system.DiffuserZoneProtection;
 import com.maxenonyme.createsubmarine.CreateSubmarine;
 import com.maxenonyme.createsubmarine.submarine.compartment.CompartmentTracker;
 import com.maxenonyme.createsubmarine.submarine.system.SubmarineDriverRegistry;
@@ -31,6 +32,11 @@ import org.joml.Vector3d;
 import javax.annotation.ParametersAreNonnullByDefault;
 import java.util.List;
 import java.util.UUID;
+import com.maxenonyme.createsubmarine.submarine.system.SubmarineHullManager;
+import com.maxenonyme.createsubmarine.submarine.system.SubmarinePressureSystem;
+import net.minecraft.network.protocol.Packet;
+import net.minecraft.network.protocol.game.ClientGamePacketListener;
+import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
 
 @ParametersAreNonnullByDefault
 public class OxygeneDiffuserBlockEntity extends BlockEntity implements IHaveGoggleInformation {
@@ -38,18 +44,17 @@ public class OxygeneDiffuserBlockEntity extends BlockEntity implements IHaveGogg
     private static final int TANK_CAPACITY  = 1000;
     private static final int CONSUME_EVERY  = 20;
     private static final int CONSUME_AMOUNT = 50;
-    private static final int SCAN_BUDGET    = 1500;
     private static final int STARTUP_TICKS  = 100;
 
     public final FluidTank oxygenTank = new FluidTank(TANK_CAPACITY,
-            fluid -> fluid.getFluid().isSame(CreateSubmarine.OXYGEN.get())) {
+            fluid -> fluid.getFluid().is(CreateSubmarine.OXYGEN_TAG)) {
         @Override
         protected void onContentsChanged() {
             setChanged();
-            if (level != null && !level.isClientSide)
-                level.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), 2);
+            syncPending = true;
         }
     };
+    private boolean syncPending;
 
     private UUID currentSubLevelId = null;
     private boolean subLevelRegistered = false;
@@ -65,7 +70,7 @@ public class OxygeneDiffuserBlockEntity extends BlockEntity implements IHaveGogg
         LangBuilder mb = CreateLang.translate("generic.unit.millibuckets");
         CreateLang.translate("gui.goggles.fluid_container").forGoggles(tooltip);
 
-        FluidStack dummy = new FluidStack(CreateSubmarine.OXYGEN.get(), 1);
+        FluidStack dummy = oxygenTank.isEmpty() ? new FluidStack(CreateSubmarine.OXYGEN.get(), 1) : oxygenTank.getFluid();
         CreateLang.fluidName(dummy).style(ChatFormatting.GRAY).forGoggles(tooltip, 1);
 
         CreateLang.builder()
@@ -78,26 +83,34 @@ public class OxygeneDiffuserBlockEntity extends BlockEntity implements IHaveGogg
     }
 
     public static void tick(Level level, BlockPos pos, BlockState state, OxygeneDiffuserBlockEntity be) {
-        if (level == null) return;
+        if (level == null || DiffuserZoneProtection.evict(level, pos))
+            return;
+
+        if (!level.isClientSide && be.syncPending && level.getGameTime() % 10 == 0) {
+            be.syncPending = false;
+            level.sendBlockUpdated(pos, state, state, 2);
+        }
 
         boolean canRun = level.hasNeighborSignal(pos) && be.oxygenTank.getFluidAmount() > 0;
 
         SubLevelAccess subAccess = SableCompanion.INSTANCE.getContaining(level, pos);
 
-        if (subAccess instanceof SubLevel sub && canRun) {
-            be.currentSubLevelId = sub.getUniqueId();
+        if (subAccess instanceof SubLevel subLevel && canRun) {
+            be.currentSubLevelId = subLevel.getUniqueId();
             long gameTick = level.getGameTime();
 
             boolean owner = SubmarineDriverRegistry.claim(be.currentSubLevelId, pos, SubmarineDriverRegistry.OXYGEN_DIFFUSER, gameTick);
             be.activeTicks++;
+
             if (!owner) {
                 return;
             }
 
+            CompartmentTracker.claimSubmarine(be.currentSubLevelId, gameTick);
+
             if (!level.isClientSide) {
                 if (gameTick % CONSUME_EVERY == 0) {
-                    be.oxygenTank.drain(new FluidStack(CreateSubmarine.OXYGEN.get(), CONSUME_AMOUNT),
-                            IFluidHandler.FluidAction.EXECUTE);
+                    be.oxygenTank.drain(CONSUME_AMOUNT, IFluidHandler.FluidAction.EXECUTE);
                     be.setChanged();
                 }
             }
@@ -108,40 +121,48 @@ public class OxygeneDiffuserBlockEntity extends BlockEntity implements IHaveGogg
                             pos.getX() + 0.5, pos.getY() + 1.2, pos.getZ() + 0.5,
                             15, 0.2, 0.2, 0.2, 0.05);
                 }
+
                 return;
             }
 
-            if (!CompartmentTracker.isScanActive(be.currentSubLevelId)
-                    && gameTick - CompartmentTracker.lastUpdateTick(be.currentSubLevelId) >= 20) {
-                CompartmentTracker.beginScanIfIdle(be.currentSubLevelId, sub);
+            long lastUpdate = CompartmentTracker.lastUpdateTick(be.currentSubLevelId);
+            long sinceUpdate = gameTick - lastUpdate;
+            boolean scanDue = lastUpdate == 0
+                    || CompartmentTracker.isStructureDirty(be.currentSubLevelId)
+                    || sinceUpdate >= 200;
+            if (!CompartmentTracker.isScanActive(be.currentSubLevelId) && scanDue && sinceUpdate >= 20) {
+                CompartmentTracker.beginScanIfIdle(be.currentSubLevelId, subLevel);
             }
+
             if (CompartmentTracker.isScanActive(be.currentSubLevelId)) {
-                boolean done = CompartmentTracker.stepScan(be.currentSubLevelId, sub, SCAN_BUDGET, gameTick);
+                boolean done = CompartmentTracker.stepScan(be.currentSubLevelId, subLevel, gameTick);
                 if (done && !level.isClientSide) {
-                    com.maxenonyme.createsubmarine.submarine.system.SubmarinePressureSystem.setSealedCompartments(
+                    SubmarinePressureSystem.setSealedCompartments(
                         be.currentSubLevelId, CompartmentTracker.getCompartments(be.currentSubLevelId));
                 }
             }
 
-            LevelPlot plot = sub.getPlot();
+            LevelPlot plot = subLevel.getPlot();
             if (plot != null) {
                 BoundingBox3ic bounds = plot.getBoundingBox();
                 Vector3d dimensions = CompartmentTracker.getOrComputeDimensions(be.currentSubLevelId, bounds);
-                Pose3dc pose = sub.logicalPose();
+                Pose3dc pose = subLevel.logicalPose();
                 if (CompartmentTracker.poseMovedEnough(be.currentSubLevelId, pose, 0.01, 1e-6)) {
-                    com.maxenonyme.createsubmarine.submarine.system.SubmarineHullManager.updateHull(be.currentSubLevelId, pose.position(), dimensions, pose.orientation());
+                    SubmarineHullManager.updateHull(be.currentSubLevelId, pose.position(), dimensions, pose.orientation());
                     CompartmentTracker.updateAABB(be.currentSubLevelId, pose.position(), dimensions);
                     CompartmentTracker.recordPose(be.currentSubLevelId, pose);
                 }
+
                 if (!be.subLevelRegistered) {
                     if (!level.isClientSide) {
                         SubLevelRegistry.register(
-                                be.currentSubLevelId, sub, level,
+                                be.currentSubLevelId, subLevel, level,
                                 new SubLevelRegistry.PlotBounds(
                                         bounds.minX(), bounds.maxX(),
                                         bounds.minY(), bounds.maxY(),
                                         bounds.minZ(), bounds.maxZ()));
                     }
+
                     be.subLevelRegistered = true;
                 }
             }
@@ -156,14 +177,17 @@ public class OxygeneDiffuserBlockEntity extends BlockEntity implements IHaveGogg
         if (currentSubLevelId != null) {
             long tick = level != null ? level.getGameTime() : 0L;
             if (SubmarineDriverRegistry.release(currentSubLevelId, worldPosition, tick)) {
-                com.maxenonyme.createsubmarine.submarine.system.SubmarineHullManager.removeHull(currentSubLevelId);
+                SubmarineHullManager.removeHull(currentSubLevelId);
+
                 if (level != null && !level.isClientSide) {
                     SubLevelRegistry.unregister(currentSubLevelId);
-                    com.maxenonyme.createsubmarine.submarine.system.SubmarinePressureSystem.clearSubmarine(currentSubLevelId);
+                    SubmarinePressureSystem.clearSubmarine(currentSubLevelId);
                 }
+
                 CompartmentTracker.remove(currentSubLevelId);
             }
         }
+
         currentSubLevelId = null;
         subLevelRegistered = false;
         activeTicks = 0;
@@ -176,8 +200,8 @@ public class OxygeneDiffuserBlockEntity extends BlockEntity implements IHaveGogg
     }
 
     @Override
-    public net.minecraft.network.protocol.Packet<net.minecraft.network.protocol.game.ClientGamePacketListener> getUpdatePacket() {
-        return net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket.create(this);
+    public Packet<ClientGamePacketListener> getUpdatePacket() {
+        return ClientboundBlockEntityDataPacket.create(this);
     }
 
     @Override
@@ -196,6 +220,7 @@ public class OxygeneDiffuserBlockEntity extends BlockEntity implements IHaveGogg
     protected void loadAdditional(CompoundTag tag, HolderLookup.Provider registries) {
         super.loadAdditional(tag, registries);
         oxygenTank.readFromNBT(registries, tag.getCompound("OxygenTank"));
+
         if (tag.contains("ActiveTicks")) {
             activeTicks = tag.getInt("ActiveTicks");
         }

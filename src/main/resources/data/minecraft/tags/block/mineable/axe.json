@@ -1,0 +1,10 @@
+{
+  "replace": false,
+  "values": [
+    "#create_high_seas:sails",
+    {
+      "id": "create_abyss:burning_wood",
+      "required": false
+    }
+  ]
+}

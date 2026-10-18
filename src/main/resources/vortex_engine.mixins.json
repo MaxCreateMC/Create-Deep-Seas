@@ -1,0 +1,12 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.maxenonyme.vortexengine.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "client": [
+    "LevelChunkGlowMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

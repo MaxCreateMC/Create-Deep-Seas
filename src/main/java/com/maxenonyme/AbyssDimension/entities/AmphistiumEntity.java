@@ -16,6 +16,10 @@ import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.AnimationState;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundEvents;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.entity.player.Player;
 
 public class AmphistiumEntity extends AbstractSchoolingFish {
     public final AnimationState swimAnimationState = new AnimationState();
@@ -51,8 +55,8 @@ public class AmphistiumEntity extends AbstractSchoolingFish {
     }
 
     @Override
-    public net.minecraft.world.InteractionResult mobInteract(net.minecraft.world.entity.player.Player player, net.minecraft.world.InteractionHand hand) {
-        return net.minecraft.world.InteractionResult.PASS;
+    public InteractionResult mobInteract(Player player, InteractionHand hand) {
+        return InteractionResult.PASS;
     }
 
     @Override
@@ -66,7 +70,7 @@ public class AmphistiumEntity extends AbstractSchoolingFish {
     }
 
     @Override
-    protected SoundEvent getHurtSound(net.minecraft.world.damagesource.DamageSource damageSource) {
+    protected SoundEvent getHurtSound(DamageSource damageSource) {
         return SoundEvents.COD_HURT;
     }
 

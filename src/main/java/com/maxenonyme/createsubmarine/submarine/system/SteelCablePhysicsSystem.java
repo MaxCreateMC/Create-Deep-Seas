@@ -1,5 +1,7 @@
 package com.maxenonyme.createsubmarine.submarine.system;
 
+import com.maxenonyme.createsubmarine.submarine.math.OrientedBoundingBox3d;
+import com.maxenonyme.createsubmarine.submarine.util.SablePhysicsHelper;
 import com.maxenonyme.createsubmarine.submarine.util.SubLevelRegistry;
 import dev.ryanhcode.sable.companion.SubLevelAccess;
 import dev.simulated_team.simulated.content.blocks.rope.strand.server.ServerLevelRopeManager;
@@ -7,6 +9,7 @@ import dev.simulated_team.simulated.content.blocks.rope.strand.server.ServerRope
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import org.joml.Quaterniond;
@@ -20,7 +23,14 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import com.simibubi.create.foundation.blockEntity.SmartBlockEntity;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import dev.ryanhcode.sable.api.sublevel.SubLevelContainer;
+import dev.ryanhcode.sable.companion.math.BoundingBox3ic;
+import dev.ryanhcode.sable.sublevel.SubLevel;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.entity.MoverType;
+import net.minecraft.world.phys.Vec3;
 
 public class SteelCablePhysicsSystem {
 
@@ -35,11 +45,11 @@ public class SteelCablePhysicsSystem {
             }
 
             UUID subId = SubLevelRegistry.findUUID(player.level());
-            SubLevelAccess sub = subId != null ? SubLevelRegistry.getAll().get(subId) : null;
-            if (sub != null && SubLevelRegistry.getLevel(subId) instanceof ServerLevel parent) {
+            SubLevelAccess subLevel = subId != null ? SubLevelRegistry.getAll().get(subId) : null;
+            if (subLevel != null && SubLevelRegistry.getLevel(subId) instanceof ServerLevel parent) {
                 Vector3d pPos = new Vector3d(player.getX(), player.getY() + player.getBbHeight() / 2.0, player.getZ());
-                sub.logicalPose().transformPosition(pPos);
-                collidePlayerWithCables(player, parent, pPos, sub);
+                subLevel.logicalPose().transformPosition(pPos);
+                collidePlayerWithCables(player, parent, pPos, subLevel);
             }
         }
 
@@ -72,7 +82,7 @@ public class SteelCablePhysicsSystem {
         }
     }
 
-    private static void collidePlayerWithCables(Player player, ServerLevel level, Vector3d pPos, SubLevelAccess sub) {
+    private static void collidePlayerWithCables(Player player, ServerLevel level, Vector3d pPos, SubLevelAccess subLevel) {
         ServerLevelRopeManager ropeManager = ServerLevelRopeManager.getOrCreate(level);
         if (ropeManager == null)
             return;
@@ -122,29 +132,29 @@ public class SteelCablePhysicsSystem {
                 double vertDiff = worldFeetY - cFeet.y;
 
                 if (horizontalDist < 0.4 && vertDiff >= -0.15 && vertDiff <= 0.45
-                        && player.getDeltaMovement().y <= 0.05) {
+                        && player.getDeltaMovement().y <= 0.05 && !buried(level, cFeet)) {
                     double targetWorldFeetY = cFeet.y + 0.1;
-                    double pushY = targetWorldFeetY - worldFeetY;
+                    double pushY = Math.max(0.0, targetWorldFeetY - worldFeetY);
 
                     Vector3d pushVec = new Vector3d(0, pushY, 0);
-                    if (sub != null) {
-                        sub.logicalPose().orientation().conjugate(new Quaterniond()).transform(pushVec);
+                    if (subLevel != null) {
+                        subLevel.logicalPose().orientation().conjugate(new Quaterniond()).transform(pushVec);
                     }
 
-                    player.setPos(player.getX() + pushVec.x, player.getY() + pushVec.y, player.getZ() + pushVec.z);
+                    player.move(MoverType.SHULKER_BOX, new Vec3(pushVec.x, pushVec.y, pushVec.z));
                     player.setDeltaMovement(player.getDeltaMovement().x, 0.0, player.getDeltaMovement().z);
                     player.setOnGround(true);
                     player.fallDistance = 0.0f;
 
                     pPos.set(player.getX(), player.getY() + player.getBbHeight() / 2.0, player.getZ());
-                    if (sub != null) {
-                        sub.logicalPose().transformPosition(pPos);
+                    if (subLevel != null) {
+                        subLevel.logicalPose().transformPosition(pPos);
                     }
                     continue;
                 }
 
                 double collisionLimit = 0.4;
-                if (bestD < collisionLimit) {
+                if (bestD < collisionLimit && !buried(level, bestC)) {
                     Vector3d push = new Vector3d(bestP).sub(bestC);
                     double dist = push.length();
                     if (dist < 1e-6) {
@@ -153,31 +163,59 @@ public class SteelCablePhysicsSystem {
                     }
                     double overlap = collisionLimit - dist;
                     push.normalize();
-
-                    Vector3d pushVec = new Vector3d(push).mul(overlap);
-                    if (sub != null) {
-                        sub.logicalPose().orientation().conjugate(new Quaterniond()).transform(pushVec);
+                    if (player.onGround() && push.y < 0) {
+                        push.y = 0;
+                        if (push.lengthSquared() < 1e-6)
+                            continue;
+                        push.normalize();
                     }
 
-                    player.setPos(player.getX() + pushVec.x, player.getY() + pushVec.y, player.getZ() + pushVec.z);
+                    Vector3d pushVec = new Vector3d(push).mul(overlap);
+                    if (subLevel != null) {
+                        subLevel.logicalPose().orientation().conjugate(new Quaterniond()).transform(pushVec);
+                    }
 
-                    net.minecraft.world.phys.Vec3 velocity = player.getDeltaMovement();
+                    player.move(MoverType.SHULKER_BOX, new Vec3(pushVec.x, pushVec.y, pushVec.z));
+
+                    Vec3 velocity = player.getDeltaMovement();
                     Vector3d vel = new Vector3d(velocity.x, velocity.y, velocity.z);
                     double dot = vel.dot(push);
                     if (dot < 0) {
                         vel.sub(new Vector3d(push).mul(dot));
                     }
                     vel.add(new Vector3d(push).mul(overlap * 0.8));
-                    player.setDeltaMovement(new net.minecraft.world.phys.Vec3(vel.x, vel.y, vel.z));
+                    player.setDeltaMovement(new Vec3(vel.x, vel.y, vel.z));
                     player.hasImpulse = true;
 
                     pPos.set(player.getX(), player.getY() + player.getBbHeight() / 2.0, player.getZ());
-                    if (sub != null) {
-                        sub.logicalPose().transformPosition(pPos);
+                    if (subLevel != null) {
+                        subLevel.logicalPose().transformPosition(pPos);
                     }
                 }
             }
         }
+    }
+
+    private static boolean buried(Level level, Vector3d point) {
+        BlockPos pos = BlockPos.containing(point.x, point.y, point.z);
+        if (!level.getBlockState(pos).getCollisionShape(level, pos).isEmpty())
+            return true;
+        SubLevelContainer container = SubLevelContainer.getContainer(level);
+        if (container == null)
+            return false;
+        for (SubLevel subLevel : container.getAllSubLevels()) {
+            if (subLevel.getPlot() == null || subLevel.getPlot().getBoundingBox() == null)
+                continue;
+            BoundingBox3ic bb = subLevel.getPlot().getBoundingBox();
+            Vector3d local = subLevel.logicalPose().transformPositionInverse(new Vector3d(point));
+            if (local.x < bb.minX() || local.x > bb.maxX() + 1 || local.y < bb.minY() || local.y > bb.maxY() + 1
+                    || local.z < bb.minZ() || local.z > bb.maxZ() + 1)
+                continue;
+            BlockPos inPlot = BlockPos.containing(local.x, local.y, local.z);
+            if (!level.getBlockState(inPlot).getCollisionShape(level, inPlot).isEmpty())
+                return true;
+        }
+        return false;
     }
 
     private static void collideEntityWithCableSegment(Entity entity, Vector3d a, Vector3d b) {
@@ -214,8 +252,9 @@ public class SteelCablePhysicsSystem {
         double horizontalDist = Math.sqrt((entity.getX() - cFeet.x) * (entity.getX() - cFeet.x) + (entity.getZ() - cFeet.z) * (entity.getZ() - cFeet.z));
         double vertDiff = entity.getY() - cFeet.y;
 
-        if (horizontalDist < 0.4 && vertDiff >= -0.15 && vertDiff <= 0.45 && entity.getDeltaMovement().y <= 0.05) {
-            entity.setPos(entity.getX(), cFeet.y + 0.1, entity.getZ());
+        if (horizontalDist < 0.4 && vertDiff >= -0.15 && vertDiff <= 0.45 && entity.getDeltaMovement().y <= 0.05
+                && !buried(entity.level(), cFeet)) {
+            entity.move(MoverType.SHULKER_BOX, new Vec3(0.0, Math.max(0.0, cFeet.y + 0.1 - entity.getY()), 0.0));
             entity.setDeltaMovement(entity.getDeltaMovement().x, 0.0, entity.getDeltaMovement().z);
             entity.setOnGround(true);
             entity.fallDistance = 0.0f;
@@ -223,7 +262,7 @@ public class SteelCablePhysicsSystem {
         }
 
         double collisionLimit = 0.4;
-        if (bestD < collisionLimit) {
+        if (bestD < collisionLimit && !buried(entity.level(), bestC)) {
             Vector3d push = new Vector3d(bestP).sub(bestC);
             double dist = push.length();
             if (dist < 1e-6) {
@@ -232,25 +271,30 @@ public class SteelCablePhysicsSystem {
             }
             double overlap = collisionLimit - dist;
             push.normalize();
+            if (entity.onGround() && push.y < 0) {
+                push.y = 0;
+                if (push.lengthSquared() < 1e-6)
+                    return;
+                push.normalize();
+            }
 
-            entity.setPos(entity.getX() + push.x * overlap, entity.getY() + push.y * overlap,
-                    entity.getZ() + push.z * overlap);
+            entity.move(MoverType.SHULKER_BOX, new Vec3(push.x * overlap, push.y * overlap, push.z * overlap));
 
-            net.minecraft.world.phys.Vec3 velocity = entity.getDeltaMovement();
+            Vec3 velocity = entity.getDeltaMovement();
             Vector3d vel = new Vector3d(velocity.x, velocity.y, velocity.z);
             double dot = vel.dot(push);
             if (dot < 0)
                 vel.sub(new Vector3d(push).mul(dot));
             vel.add(new Vector3d(push).mul(overlap * 0.8));
-            entity.setDeltaMovement(new net.minecraft.world.phys.Vec3(vel.x, vel.y, vel.z));
+            entity.setDeltaMovement(new Vec3(vel.x, vel.y, vel.z));
             entity.hasImpulse = true;
         }
     }
 
 
-    public static Vector3d getClosestPointOnSegment(Vector3d a, Vector3d b, Vector3d p) {
+    public static Vector3d getClosestPointOnSegment(Vector3d a, Vector3d b, Vector3d vec) {
         Vector3d ab = new Vector3d(b).sub(a);
-        Vector3d ap = new Vector3d(p).sub(a);
+        Vector3d ap = new Vector3d(vec).sub(a);
         double abLenSq = ab.lengthSquared();
         if (abLenSq < 1e-6) {
             return new Vector3d(a);
@@ -268,17 +312,6 @@ public class SteelCablePhysicsSystem {
         if (startAttachment != null) {
             ServerLevel startLevel = CableElectrificationSystem.getLevelForAttachment(level, startAttachment);
             BlockEntity be = startLevel.getBlockEntity(startAttachment.blockAttachment());
-            if (be instanceof SmartBlockEntity smartBe) {
-                RopeStrandHolderBehavior behavior = smartBe.getBehaviour(RopeStrandHolderBehavior.TYPE);
-                if (behavior instanceof SteelCableHolderAccessor accessor && accessor.createsubmarine$isSteelCable()) {
-                    return true;
-                }
-            }
-        }
-        RopeAttachment endAttachment = strand.getAttachment(RopeAttachmentPoint.END);
-        if (endAttachment != null) {
-            ServerLevel endLevel = CableElectrificationSystem.getLevelForAttachment(level, endAttachment);
-            BlockEntity be = endLevel.getBlockEntity(endAttachment.blockAttachment());
             if (be instanceof SmartBlockEntity smartBe) {
                 RopeStrandHolderBehavior behavior = smartBe.getBehaviour(RopeStrandHolderBehavior.TYPE);
                 if (behavior instanceof SteelCableHolderAccessor accessor && accessor.createsubmarine$isSteelCable()) {

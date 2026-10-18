@@ -16,11 +16,13 @@ import net.minecraft.core.Direction;
 import net.minecraft.world.inventory.InventoryMenu;
 import net.minecraft.world.level.block.state.BlockState;
 import org.joml.Quaternionf;
+import net.minecraft.world.phys.AABB;
+import org.joml.Vector3d;
 
 public class PulleyBlockEntityRenderer implements BlockEntityRenderer<PulleyBlockEntity> {
-    private static final float PIVOT_X = 0.875f;
-    private static final float PIVOT_Y = 1.125f;
-    private static final float PIVOT_Z = 0.506f;
+    private static final float PIVOT_X = 0.8125f;
+    private static final float PIVOT_Y = 1.21875f;
+    private static final float PIVOT_Z = 0.5f;
     private static final double WHEEL_RADIUS = 0.6875;
     private static final double MAX_FRAME_SECONDS = 0.1;
 
@@ -28,18 +30,21 @@ public class PulleyBlockEntityRenderer implements BlockEntityRenderer<PulleyBloc
     }
 
     @Override
-    public void render(PulleyBlockEntity be, float partialTicks, PoseStack ms, MultiBufferSource buffer, int light, int overlay) {
+    public void render(PulleyBlockEntity be, float partialTicks, PoseStack ms, MultiBufferSource buffer, int light,
+            int overlay) {
         BlockState state = be.getBlockState();
-        if (!state.hasProperty(PulleyBlock.FACING)) return;
+        if (!state.hasProperty(PulleyBlock.FACING))
+            return;
 
         advanceWheel(be);
 
         ms.pushPose();
         ms.translate(0.5, 0.5, 0.5);
-        ms.mulPose(facingRotation(state.getValue(PulleyBlock.FACING)));
+        boolean inverted = state.getValue(PulleyBlock.INVERTED);
+        ms.mulPose(facingRotation(state.getValue(PulleyBlock.FACING), inverted));
         ms.translate(-0.5, -0.5, -0.5);
         ms.translate(PIVOT_X, PIVOT_Y, PIVOT_Z);
-        ms.mulPose(Axis.ZP.rotation(be.clientWheelAngle));
+        ms.mulPose(Axis.ZP.rotation(inverted ? -be.clientWheelAngle : be.clientWheelAngle));
         ms.translate(-PIVOT_X, -PIVOT_Y, -PIVOT_Z);
 
         float heat = be.getHeat();
@@ -57,8 +62,8 @@ public class PulleyBlockEntityRenderer implements BlockEntityRenderer<PulleyBloc
     }
 
     @Override
-    public net.minecraft.world.phys.AABB getRenderBoundingBox(PulleyBlockEntity be) {
-        return new net.minecraft.world.phys.AABB(be.getBlockPos()).inflate(1.0);
+    public AABB getRenderBoundingBox(PulleyBlockEntity be) {
+        return new AABB(be.getBlockPos()).inflate(1.0);
     }
 
     private void advanceWheel(PulleyBlockEntity be) {
@@ -67,24 +72,26 @@ public class PulleyBlockEntityRenderer implements BlockEntityRenderer<PulleyBloc
         be.clientLastNanos = now;
 
         BlockState state = be.getBlockState();
-        if (!state.hasProperty(PulleyBlock.CONNECTED) || !state.getValue(PulleyBlock.CONNECTED)) return;
+        if (!state.hasProperty(PulleyBlock.CONNECTED) || !state.getValue(PulleyBlock.CONNECTED))
+            return;
 
-        SubLevelAccess sub = SableCompanion.INSTANCE.getContaining(be);
-        if (sub == null || last == 0L) return;
+        SubLevelAccess subLevel = SableCompanion.INSTANCE.getContaining(be);
+        if (subLevel == null || last == 0L)
+            return;
 
-        double dx = sub.logicalPose().position().x() - sub.lastPose().position().x();
-        double dy = sub.logicalPose().position().y() - sub.lastPose().position().y();
-        double dz = sub.logicalPose().position().z() - sub.lastPose().position().z();
+        double dx = subLevel.logicalPose().position().x() - subLevel.lastPose().position().x();
+        double dy = subLevel.logicalPose().position().y() - subLevel.lastPose().position().y();
+        double dz = subLevel.logicalPose().position().z() - subLevel.lastPose().position().z();
 
-        org.joml.Vector3d localUp = new org.joml.Vector3d(0, 1, 0);
-        sub.logicalPose().orientation().transform(localUp);
+        Vector3d localUp = new Vector3d(0, 1, 0);
+        subLevel.logicalPose().orientation().transform(localUp);
         double signedSlide = dx * localUp.x + dy * localUp.y + dz * localUp.z;
 
         double frameSeconds = Math.min((now - last) / 1_000_000_000.0, MAX_FRAME_SECONDS);
         be.clientWheelAngle -= (float) (signedSlide * 20.0 / WHEEL_RADIUS * frameSeconds);
     }
 
-    private static Quaternionf facingRotation(Direction facing) {
+    private static Quaternionf facingRotation(Direction facing, boolean inverted) {
         int x = 0;
         int y = 0;
         switch (facing) {
@@ -92,8 +99,11 @@ public class PulleyBlockEntityRenderer implements BlockEntityRenderer<PulleyBloc
             case EAST -> y = 90;
             case WEST -> y = 270;
             case DOWN -> x = 180;
-            default -> { }
+            default -> {
+            }
         }
+        if (inverted)
+            x += 180;
         return new Quaternionf().rotateYXZ((float) Math.toRadians(-y), (float) Math.toRadians(-x), 0f);
     }
 }

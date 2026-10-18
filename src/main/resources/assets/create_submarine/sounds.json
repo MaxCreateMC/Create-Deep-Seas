@@ -1,26 +1,51 @@
 {
-    "implosion": {
-        "sounds": [
-            {
-                "name": "create_submarine:implosion",
-                "stream": false
-            }
-        ]
-    },
-    "explosionunderwater": {
-        "sounds": [
-            {
-                "name": "create_submarine:explosionunderwater",
-                "stream": false
-            }
-        ]
-    },
-    "impact_explosion_03": {
-        "sounds": [
-            {
-                "name": "create_submarine:impact_explosion_03",
-                "stream": false
-            }
-        ]
-    }
+  "implosion": {
+    "sounds": [
+      {
+        "name": "create_submarine:implosion",
+        "stream": false
+      }
+    ]
+  },
+  "explosionunderwater": {
+    "sounds": [
+      {
+        "name": "create_submarine:explosionunderwater",
+        "stream": false
+      }
+    ]
+  },
+  "impact_explosion_03": {
+    "sounds": [
+      {
+        "name": "create_submarine:impact_explosion_03",
+        "stream": false
+      }
+    ]
+  },
+  "acouphene": {
+    "sounds": [
+      {
+        "name": "create_submarine:acouphene",
+        "stream": false
+      }
+    ]
+  },
+  "industrial_alarm": {
+    "subtitle": "subtitles.create_submarine.industrial_alarm",
+    "sounds": [
+      {
+        "name": "minecraft:note/bit",
+        "volume": 1.0
+      }
+    ]
+  },
+  "heartbeat": {
+    "sounds": [
+      {
+        "name": "create_submarine:heartbeat",
+        "stream": false
+      }
+    ]
+  }
 }

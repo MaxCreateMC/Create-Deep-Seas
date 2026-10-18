@@ -1,6 +1,7 @@
 package com.maxenonyme.createsubmarine.submarine.block;
 
 import net.minecraft.ChatFormatting;
+import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.ItemStack;
@@ -16,9 +17,24 @@ public class ArrestingHookItem extends BlockItem {
 
     @Override
     public void appendHoverText(ItemStack stack, TooltipContext context, List<Component> tooltipComponents, TooltipFlag tooltipFlag) {
-        tooltipComponents.add(Component.literal("⚠ ")
-                .append(Component.translatable("item.create_submarine.arresting_hook.tooltip.wip"))
-                .withStyle(ChatFormatting.RED));
+        if (Screen.hasShiftDown()) {
+            tooltipComponents.add(Component.empty());
+            BallastTankItem.addTranslatableLines(tooltipComponents,
+                    "item.create_submarine.arresting_hook.tooltip.summary", 0xEBC255);
+            tooltipComponents.add(Component.empty());
+            BallastTankItem.addTranslatableLines(tooltipComponents,
+                    "item.create_submarine.arresting_hook.tooltip.condition1", ChatFormatting.GRAY.getColor());
+            BallastTankItem.addTranslatableLines(tooltipComponents,
+                    "item.create_submarine.arresting_hook.tooltip.behaviour1", 0xEBC255);
+            BallastTankItem.addTranslatableLines(tooltipComponents,
+                    "item.create_submarine.arresting_hook.tooltip.condition2", ChatFormatting.GRAY.getColor());
+            BallastTankItem.addTranslatableLines(tooltipComponents,
+                    "item.create_submarine.arresting_hook.tooltip.behaviour2", 0xEBC255);
+        } else {
+            tooltipComponents.add(Component.translatable("create_submarine.tooltip.holdForInfo",
+                    Component.translatable("create_submarine.tooltip.keyShift").withStyle(ChatFormatting.GRAY))
+                    .withStyle(ChatFormatting.DARK_GRAY));
+        }
         super.appendHoverText(stack, context, tooltipComponents, tooltipFlag);
     }
 }
