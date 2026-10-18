@@ -1,5 +1,13 @@
 # Changelog
 
+## [3.4.2]
+
+### Changes
+- The billowing sails under Iris shader packs can be switched off in the video settings (High Seas page)
+
+### Bug Fixes
+- Fixed Iris turning off heavy shader packs such as IterationRP on GPUs with few texture units since 3.4.0: the hull culling now only takes texture units in the programs that use it, and steps aside when the pack needs them all (#119)
+
 ## [3.4.1]
 
 ### New Content

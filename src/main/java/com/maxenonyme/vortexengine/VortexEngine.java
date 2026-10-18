@@ -7,7 +7,7 @@ import net.neoforged.fml.loading.FMLEnvironment;
 
 public class VortexEngine {
 
-    public static final boolean DEV_ONLY = true;
+    public static final boolean DEV_ONLY = false;
 
     public static boolean installed() {
         return !DEV_ONLY || !FMLEnvironment.production;

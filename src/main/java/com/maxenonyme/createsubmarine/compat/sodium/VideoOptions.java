@@ -19,6 +19,7 @@ import net.neoforged.fml.ModList;
 import net.neoforged.neoforge.common.ModConfigSpec;
 
 import java.util.Locale;
+import java.util.function.Consumer;
 import java.util.function.IntConsumer;
 
 @ConfigEntryPointForge(CreateSubmarine.MOD_ID)
@@ -117,19 +118,20 @@ public class VideoOptions implements ConfigEntryPoint {
                 HighSeasConfig.SAIL_SUBDIVISIONS, "sail_subdivisions", 1, 8, 1, OptionImpact.LOW, "count");
         follow(subdivisions, HighSeasConfig.SAIL_SUBDIVISIONS, value -> HighSeasConfig.sailSubdivisions = value);
 
+        BooleanOptionBuilder shaderpack = toggle(builder, HighSeasConfig.CLIENT_SPEC,
+                HighSeasConfig.SHADERPACK_SAILS, "shaderpack_sails", OptionImpact.LOW);
+        follow(shaderpack, HighSeasConfig.SHADERPACK_SAILS, value -> HighSeasConfig.shaderpackSails = value);
+
         BooleanOptionBuilder seaglide = toggle(builder, HighSeasConfig.CLIENT_SPEC,
                 HighSeasConfig.SEAGLIDE_SCREEN_EFFECTS, "seaglide_screen_effects", OptionImpact.LOW);
-        seaglide.setBinding(value -> {
-            if (HighSeasConfig.CLIENT_SPEC.isLoaded())
-                HighSeasConfig.SEAGLIDE_SCREEN_EFFECTS.set(value);
-            HighSeasConfig.seaglideScreenEffects = value;
-        }, () -> read(HighSeasConfig.CLIENT_SPEC, HighSeasConfig.SEAGLIDE_SCREEN_EFFECTS));
+        follow(seaglide, HighSeasConfig.SEAGLIDE_SCREEN_EFFECTS, value -> HighSeasConfig.seaglideScreenEffects = value);
 
         return builder.createOptionPage()
                 .setName(Component.translatable(KEY + "page.visuals"))
                 .addOptionGroup(builder.createOptionGroup()
                         .setName(Component.translatable(KEY + "group.sea"))
                         .addOption(subdivisions)
+                        .addOption(shaderpack)
                         .addOption(seaglide));
     }
 
@@ -171,6 +173,13 @@ public class VideoOptions implements ConfigEntryPoint {
     }
 
     private static void follow(IntegerOptionBuilder option, ModConfigSpec.IntValue value, IntConsumer cache) {
+        option.setBinding(next -> {
+            write(HighSeasConfig.CLIENT_SPEC, value, next);
+            cache.accept(next);
+        }, () -> read(HighSeasConfig.CLIENT_SPEC, value));
+    }
+
+    private static void follow(BooleanOptionBuilder option, ModConfigSpec.BooleanValue value, Consumer<Boolean> cache) {
         option.setBinding(next -> {
             write(HighSeasConfig.CLIENT_SPEC, value, next);
             cache.accept(next);

@@ -1,5 +1,7 @@
 package com.maxenonyme.createsubmarine.submarine.compat.sodium;
 
+import com.maxenonyme.createsubmarine.CreateSubmarine;
+import com.maxenonyme.createsubmarine.submarine.compat.iris.ShaderpackSupport;
 import com.maxenonyme.createsubmarine.submarine.mixin.compat.sable.WaterOcclusionRendererAccessor;
 import com.maxenonyme.createsubmarine.submarine.client.renderer.SubmarineWaterCullBuffer;
 import com.mojang.blaze3d.systems.RenderSystem;
@@ -7,11 +9,16 @@ import dev.ryanhcode.sable.SableClient;
 import dev.ryanhcode.sable.render.water_occlusion.WaterOcclusionRenderer;
 import foundry.veil.api.client.render.framebuffer.AdvancedFbo;
 import foundry.veil.api.client.render.framebuffer.AdvancedFboTextureAttachment;
+import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL13;
 import org.lwjgl.opengl.GL20;
+import org.lwjgl.opengl.GL41;
+import org.lwjgl.system.MemoryStack;
 
 import java.lang.reflect.Method;
+import java.nio.IntBuffer;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -26,6 +33,8 @@ public class SodiumWaterOcclusionBridge {
     private static final String UNIFORM_FAR_SAMPLER = "SableFarSampler";
 
     private static final Map<Integer, ProgramUniforms> UNIFORM_CACHE = new HashMap<>();
+    private static final Set<Integer> STARVED = ConcurrentHashMap.newKeySet();
+    private static int maxTextureUnits;
 
     private static Object irisApi;
     private static Method shadowPass;
@@ -45,12 +54,77 @@ public class SodiumWaterOcclusionBridge {
         if (cached != null)
             return cached;
 
-        ProgramUniforms u = new ProgramUniforms(
-                GL20.glGetUniformLocation(programHandle, UNIFORM_ENABLED),
-                GL20.glGetUniformLocation(programHandle, UNIFORM_CLOSE_SAMPLER),
-                GL20.glGetUniformLocation(programHandle, UNIFORM_FAR_SAMPLER));
+        ProgramUniforms u = new ProgramUniforms(-1, -1, -1);
+        if (!STARVED.contains(programHandle))
+            u = new ProgramUniforms(
+                    GL20.glGetUniformLocation(programHandle, UNIFORM_ENABLED),
+                    GL20.glGetUniformLocation(programHandle, UNIFORM_CLOSE_SAMPLER),
+                    GL20.glGetUniformLocation(programHandle, UNIFORM_FAR_SAMPLER));
+
         UNIFORM_CACHE.put(programHandle, u);
         return u;
+    }
+
+    public static Set<Integer> reserveUnits(int program, Set<Integer> reserved) {
+        UNIFORM_CACHE.remove(program);
+        STARVED.remove(program);
+
+        int close = GL20.glGetUniformLocation(program, UNIFORM_CLOSE_SAMPLER);
+        int far = GL20.glGetUniformLocation(program, UNIFORM_FAR_SAMPLER);
+        int hull = GL20.glGetUniformLocation(program, ShaderpackSupport.HULL_SAMPLER);
+        if (close < 0 && far < 0 && hull < 0)
+            return reserved;
+
+        Set<Integer> units = new HashSet<>(reserved);
+        if (close >= 0)
+            units.add(CLOSE_TEXTURE_UNIT);
+        if (far >= 0 || hull >= 0)
+            units.add(FAR_TEXTURE_UNIT);
+
+        int ours = 0;
+        for (int location : new int[]{close, far, hull})
+            if (location >= 0)
+                ours++;
+
+        if (samplerUnits(program) - ours + units.size() > maxTextureUnits()) {
+            STARVED.add(program);
+            CreateSubmarine.LOGGER.warn("Shader program {} uses too many textures to fit the hull culling on this "
+                    + "GPU ({} units), leaving it out", program, maxTextureUnits());
+            return reserved;
+        }
+
+        if (hull >= 0)
+            GL41.glProgramUniform1i(program, hull, FAR_TEXTURE_UNIT);
+        return units;
+    }
+
+    private static int samplerUnits(int program) {
+        int count = 0;
+        int uniforms = GL20.glGetProgrami(program, GL20.GL_ACTIVE_UNIFORMS);
+
+        try (MemoryStack stack = MemoryStack.stackPush()) {
+            IntBuffer size = stack.mallocInt(1);
+            IntBuffer type = stack.mallocInt(1);
+            for (int i = 0; i < uniforms; i++) {
+                GL20.glGetActiveUniform(program, i, size, type);
+                if (sampler(type.get(0)))
+                    count += size.get(0);
+            }
+        }
+
+        return count;
+    }
+
+    private static boolean sampler(int type) {
+        return type >= 0x8B5D && type <= 0x8B64 || type >= 0x8DC0 && type <= 0x8DC5
+                || type >= 0x8DC9 && type <= 0x8DD8 || type >= 0x900C && type <= 0x900F
+                || type >= 0x9108 && type <= 0x910D;
+    }
+
+    private static int maxTextureUnits() {
+        if (maxTextureUnits == 0)
+            maxTextureUnits = GL11.glGetInteger(GL20.GL_MAX_TEXTURE_IMAGE_UNITS);
+        return maxTextureUnits;
     }
 
     public static void applyToProgram(int programHandle, boolean translucentPass) {

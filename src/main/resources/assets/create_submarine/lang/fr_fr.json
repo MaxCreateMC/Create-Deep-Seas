@@ -494,6 +494,8 @@
     "create_submarine.options.photosensitive_mode.tooltip":  "Pour les joueurs photosensibles ou épileptiques : l'Alarme industrielle ne projette plus sa lumière colorée clignotante.",
     "create_submarine.options.sail_subdivisions":  "Finesse des voiles",
     "create_submarine.options.sail_subdivisions.tooltip":  "Douceur du gonflement des voiles. Plus bas : plus carré, proche du vanilla. Plus haut : plus lisse.",
+    "create_submarine.options.shaderpack_sails":  "Voiles sous shader pack",
+    "create_submarine.options.shaderpack_sails.tooltip":  "Voiles gonflées quand un shader pack Iris est actif. Désactiver pour les dessiner à plat. S'applique au prochain chargement du shader pack.",
     "create_submarine.options.seaglide_screen_effects":  "Effets d'écran du Seaglide",
     "create_submarine.options.seaglide_screen_effects.tooltip":  "Tremblement de caméra et lignes de vent à pleine vitesse du Seaglide."
 }

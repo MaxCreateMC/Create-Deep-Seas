@@ -494,6 +494,8 @@
   "create_submarine.options.photosensitive_mode.tooltip": "For photosensitive or epileptic players: the Industrial Alarm no longer throws its coloured flashing light.",
   "create_submarine.options.sail_subdivisions": "Sail Smoothness",
   "create_submarine.options.sail_subdivisions.tooltip": "How smoothly the sails billow. Lower is blockier and closer to vanilla, higher is smoother.",
+  "create_submarine.options.shaderpack_sails": "Sails Under Shader Packs",
+  "create_submarine.options.shaderpack_sails.tooltip": "Billowing sails while an Iris shader pack is in use. Turn off to draw them flat. Applies the next time the shader pack is loaded.",
   "create_submarine.options.seaglide_screen_effects": "Seaglide Screen Effects",
   "create_submarine.options.seaglide_screen_effects.tooltip": "Camera shake and wind lines at full Seaglide speed."
 }
