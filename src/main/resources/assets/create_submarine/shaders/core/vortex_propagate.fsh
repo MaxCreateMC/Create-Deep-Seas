@@ -54,14 +54,13 @@ vec4 source(ivec3 cell) {
 
     int code = int(emitted.a * 255.0 + 0.5) - 1;
     float reach = float(code >> 2) / 62.0 * 15.0;
-    float strength = rhythm(cell, code);
 
     if (Mode < 1.5) {
-        float energy = FAINT * exp(0.61 + 0.85 * reach) * strength;
+        float energy = FAINT * exp(0.61 + 0.85 * reach) * rhythm(cell, code);
         return vec4(emitted.rgb * energy, energy);
     }
 
-    return vec4(emitted.rgb, reach * STEP * strength);
+    return vec4(emitted.rgb, reach * STEP);
 }
 
 vec4 soft(ivec3 cell) {

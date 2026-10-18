@@ -31,6 +31,13 @@ public class VortexConfig {
     public static final ModConfigSpec SPEC;
     public static final ModConfigSpec.BooleanValue ENABLED;
     public static final ModConfigSpec.BooleanValue LIGHTS;
+    public static final ModConfigSpec.IntValue BRIGHTNESS;
+    public static final ModConfigSpec.IntValue REACH;
+    public static final ModConfigSpec.IntValue SATURATION;
+    public static final ModConfigSpec.BooleanValue ANIMATED_LIGHTS;
+    public static final ModConfigSpec.IntValue HALO_STRENGTH;
+    public static final ModConfigSpec.IntValue SUNLIGHT;
+    public static final ModConfigSpec.IntValue BLOOM_STRENGTH;
     public static final ModConfigSpec.IntValue LIGHT_DISTANCE;
     public static final ModConfigSpec.IntValue MAX_LIGHTS;
     public static final ModConfigSpec.BooleanValue PIXEL_LIGHTING;
@@ -67,6 +74,22 @@ public class VortexConfig {
                         "the Industrial Alarm and the Submarine Staff. Off while an Iris shader pack is in use.")
                 .define("lights", true);
 
+        BRIGHTNESS = builder
+                .comment("Brightness of the coloured light, in percent of the default.")
+                .defineInRange("brightness", 100, 10, 200);
+
+        REACH = builder
+                .comment("How far the light of each glowing block reaches, in percent of the default.")
+                .defineInRange("reach", 100, 50, 200);
+
+        SATURATION = builder
+                .comment("How strong the colours of the light are, in percent. 0 gives white light.")
+                .defineInRange("saturation", 100, 0, 200);
+
+        ANIMATED_LIGHTS = builder
+                .comment("Torches, fire and lava flicker, glowing plants pulse. Off for steady light.")
+                .define("animatedLights", true);
+
         LIGHT_DISTANCE = builder
                 .comment("How far from the camera, in blocks, coloured lights are drawn.")
                 .defineInRange("lightDistance", 64, 16, 256);
@@ -98,6 +121,18 @@ public class VortexConfig {
         BLOOM = builder
                 .comment("Lit areas spill a soft, pixelated glow around them, out of the water too.")
                 .define("bloom", true);
+
+        BLOOM_STRENGTH = builder
+                .comment("Strength of the bloom, in percent of the default.")
+                .defineInRange("bloomStrength", 100, 0, 200);
+
+        HALO_STRENGTH = builder
+                .comment("Strength of the glow of lights in the water around them, in percent of the default.")
+                .defineInRange("haloStrength", 100, 0, 200);
+
+        SUNLIGHT = builder
+                .comment("Strength of the sun shafts and caustics under the water, in percent of the default.")
+                .defineInRange("sunlight", 100, 0, 200);
         builder.pop();
 
         builder.push("mist");

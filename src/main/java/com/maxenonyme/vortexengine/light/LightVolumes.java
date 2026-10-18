@@ -91,6 +91,7 @@ public class LightVolumes {
             return;
 
         boolean usable = VortexLights.usable();
+        Tuning.refresh();
         VortexConfig.LightStyle style = VortexConfig.LIGHT_STYLE.get();
         boolean field = usable && style != VortexConfig.LightStyle.VOLUMES;
         boolean shadows = usable && VortexConfig.SHADOWS.get();
@@ -250,7 +251,8 @@ public class LightVolumes {
         float x = (float) (light.x() - anchorX);
         float y = (float) (light.y() - anchorY);
         float z = (float) (light.z() - anchorZ);
-        float radius = light.radius();
+        float radius = light.radius() * Tuning.reach();
+        float top = Math.max(Math.max(light.red(), light.green()), Math.max(light.blue(), 0.001f));
         int dirX = Math.round(light.dirX() * Short.MAX_VALUE);
         int dirY = Math.round(light.dirY() * Short.MAX_VALUE);
         int dirZ = Math.round(light.dirZ() * Short.MAX_VALUE);
@@ -263,7 +265,8 @@ public class LightVolumes {
                 float sy = (corner & 2) == 0 ? -1 : 1;
                 float sz = (corner & 4) == 0 ? -1 : 1;
                 builder.addVertex(x + sx * radius, y + sy * radius, z + sz * radius)
-                        .setColor(light.red(), light.green(), light.blue(), light.behavior() / 255f)
+                        .setColor(Tuning.saturate(light.red(), top), Tuning.saturate(light.green(), top),
+                                Tuning.saturate(light.blue(), top), Tuning.behavior(light.behavior()) / 255f)
                         .setUv(radius, light.intensity())
                         .setUv1(dirX, dirY)
                         .setUv2(dirZ, cone)
@@ -308,10 +311,11 @@ public class LightVolumes {
         shader.safeGetUniform("Pixelated").set(VortexConfig.PIXEL_LIGHTING.get() ? 1f : 0f);
         shader.safeGetUniform("Shadows").set(shadows ? 1f : 0f);
         shader.safeGetUniform("Haze").set(haze ? 1f : 0f);
-        shader.safeGetUniform("Strength").set(strength);
+        shader.safeGetUniform("Strength").set(strength * VortexConfig.BRIGHTNESS.get() / 100f);
         shader.safeGetUniform("HaloScale").set(volumes ? 0.6f : 0.35f);
         shader.safeGetUniform("HaloCap").set(volumes ? 4.5f : 2.5f);
-        shader.safeGetUniform("HaloGain").set(volumes ? 1.6f : 1f);
+        float halo = volumes ? 1.6f : 1f;
+        shader.safeGetUniform("HaloGain").set(halo * VortexConfig.HALO_STRENGTH.get() / 100f);
         shader.safeGetUniform("FadeRange").set(Math.max(fadeRange, 12));
         shader.safeGetUniform("Murk").set(underwater ? 1f : 0.2f);
 
@@ -416,12 +420,14 @@ public class LightVolumes {
                 (float) Math.floorMod(Mth.floor(camera.y), 1024), (float) Math.floorMod(Mth.floor(camera.z), 1024));
         surface.safeGetUniform("Pixelated").set(VortexConfig.PIXEL_LIGHTING.get() ? 1f : 0f);
         surface.safeGetUniform("Murk").set(underwater ? 1f : 0.2f);
-        surface.safeGetUniform("Caustics").set(rays && sun.strength() > 0 ? 0.55f : 0f);
+        float caustics = rays && sun.strength() > 0 ? 0.55f : 0f;
+        surface.safeGetUniform("Caustics").set(caustics * VortexConfig.SUNLIGHT.get() / 100f);
         surface.safeGetUniform("SunDir").set(sun.x(), sun.y(), 0f);
         surface.safeGetUniform("SunColor").set(sun.red(), sun.green(), sun.blue());
         surface.safeGetUniform("SurfaceY").set((float) (sun.surface() - camera.y));
         boolean hybrid = VortexConfig.LIGHT_STYLE.get() == VortexConfig.LightStyle.HYBRID;
-        surface.safeGetUniform("Gain").set(hybrid ? 0.6f : 1f);
+        float gain = hybrid ? 0.3f : 0.5f;
+        surface.safeGetUniform("Gain").set(gain * VortexConfig.BRIGHTNESS.get() / 100f);
         surface.safeGetUniform("FieldLight").set(light ? 1f : 0f);
         surface.safeGetUniform("GridOffset").set(Mth.floor(camera.x) - ShadowGrid.originX(),
                 Mth.floor(camera.y) - ShadowGrid.originY(), Mth.floor(camera.z) - ShadowGrid.originZ());
@@ -462,6 +468,7 @@ public class LightVolumes {
         composite.safeGetUniform("Strength").set(0.28f);
         boolean volumes = VortexConfig.LIGHT_STYLE.get() == VortexConfig.LightStyle.VOLUMES;
         float bloom = volumes ? 0.8f : 0.5f;
+        bloom *= VortexConfig.BLOOM_STRENGTH.get() / 100f;
         composite.safeGetUniform("Bloom").set(VortexConfig.BLOOM.get() ? bloom : 0f);
         BufferUploader.drawWithShader(screenQuad());
     }

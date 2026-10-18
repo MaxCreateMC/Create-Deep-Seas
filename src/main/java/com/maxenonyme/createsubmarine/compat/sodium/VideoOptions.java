@@ -62,6 +62,14 @@ public class VideoOptions implements ConfigEntryPoint {
                         .setName(Component.translatable(KEY + "group.vortex"))
                         .addOption(toggle(builder, spec, VortexConfig.ENABLED, "vortex_enabled", OptionImpact.HIGH))
                         .addOption(toggle(builder, spec, VortexConfig.LIGHTS, "vortex_lights", OptionImpact.HIGH))
+                        .addOption(number(builder, spec, VortexConfig.BRIGHTNESS, "brightness", 10, 200, 10,
+                                OptionImpact.LOW, "percent"))
+                        .addOption(number(builder, spec, VortexConfig.REACH, "reach", 50, 200, 10,
+                                OptionImpact.LOW, "percent"))
+                        .addOption(number(builder, spec, VortexConfig.SATURATION, "saturation", 0, 200, 10,
+                                OptionImpact.LOW, "percent"))
+                        .addOption(toggle(builder, spec, VortexConfig.ANIMATED_LIGHTS, "animated_lights",
+                                OptionImpact.LOW))
                         .addOption(choice(builder, spec, VortexConfig.LIGHT_STYLE, VortexConfig.LightStyle.class,
                                 "light_style", OptionImpact.VARIES)))
                 .addOptionGroup(builder.createOptionGroup()
@@ -74,7 +82,9 @@ public class VideoOptions implements ConfigEntryPoint {
                                 OptionImpact.LOW))
                         .addOption(toggle(builder, spec, VortexConfig.SHADOWS, "shadows", OptionImpact.MEDIUM))
                         .addOption(toggle(builder, spec, VortexConfig.AUTO_GLOW, "auto_glow", OptionImpact.LOW))
-                        .addOption(toggle(builder, spec, VortexConfig.BLOOM, "bloom", OptionImpact.LOW)));
+                        .addOption(toggle(builder, spec, VortexConfig.BLOOM, "bloom", OptionImpact.LOW))
+                        .addOption(number(builder, spec, VortexConfig.BLOOM_STRENGTH, "bloom_strength", 0, 200, 10,
+                                OptionImpact.LOW, "percent")));
     }
 
     private static OptionPageBuilder waterPage(ConfigBuilder builder) {
@@ -85,6 +95,10 @@ public class VideoOptions implements ConfigEntryPoint {
                 .addOptionGroup(builder.createOptionGroup()
                         .setName(Component.translatable(KEY + "group.water"))
                         .addOption(toggle(builder, spec, VortexConfig.HAZE, "haze", OptionImpact.MEDIUM))
+                        .addOption(number(builder, spec, VortexConfig.HALO_STRENGTH, "halo_strength", 0, 200, 10,
+                                OptionImpact.LOW, "percent"))
+                        .addOption(number(builder, spec, VortexConfig.SUNLIGHT, "sunlight", 0, 200, 10,
+                                OptionImpact.LOW, "percent"))
                         .addOption(choice(builder, spec, VortexConfig.HALO_STYLE, VortexConfig.HaloStyle.class,
                                 "halo_style", OptionImpact.MEDIUM))
                         .addOption(choice(builder, spec, VortexConfig.WATER_STYLE, VortexConfig.WaterStyle.class,

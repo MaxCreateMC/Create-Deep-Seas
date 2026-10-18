@@ -87,10 +87,11 @@ public class Atmosphere {
         float glow = 0;
 
         if (glowing)
-            glow = (underwater ? 0.05f : 0.0125f) * (blocky ? 1.6f : 1f);
+            glow = (underwater ? 0.05f : 0.0125f) * (blocky ? 1.6f : 1f) * VortexConfig.HALO_STRENGTH.get() / 100f;
         
         VortexConfig.WaterStyle water = VortexConfig.WATER_STYLE.get();
         float shafts = water != VortexConfig.WaterStyle.NONE && underwater && sun.strength() > 0 ? 0.035f : 0;
+        shafts *= VortexConfig.SUNLIGHT.get() / 100f;
         int beams = water == VortexConfig.WaterStyle.ALL_RAYS && underwater ? uploadBeams(event, eye) : 0;
         int mists = MistField.voxel() ? uploadMist(level, eye) : 0;
         int motes = VortexConfig.MOTES_STYLE.get().ordinal();

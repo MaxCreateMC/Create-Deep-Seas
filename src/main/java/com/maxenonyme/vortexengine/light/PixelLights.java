@@ -303,7 +303,7 @@ public class PixelLights {
         shader.safeGetUniform("TileSize").set(TILE);
         shader.safeGetUniform("Shadows").set(ShadowGrid.ready() && VortexConfig.SHADOWS.get() ? 1f : 0f);
         shader.safeGetUniform("Pixelated").set(VortexConfig.PIXEL_LIGHTING.get() ? 1f : 0f);
-        shader.safeGetUniform("Strength").set(1.4f);
+        shader.safeGetUniform("Strength").set(0.7f * VortexConfig.BRIGHTNESS.get() / 100f);
 
         LightField.bind(LightVolumes.SHADOW_UNIT, ShadowGrid.texture());
         RenderSystem.disableCull();

@@ -1,5 +1,14 @@
 # Changelog
 
+## [3.4.3]
+
+### Changes
+- Halved the brightness of glowing blocks in the Vortex Engine (torches, lanterns, Sea Lanterns, Magma Blocks and the rest), in every light style; the new Light Brightness setting (Vortex Engine video settings, `brightness`, 10 to 200%) tunes it. Also added Light Reach, Light Saturation, Animated Lights, Bloom Strength, Glow in Water and Sunlight Under Water to the same settings
+
+### Bug Fixes
+- Fixed the vanilla light style of the Vortex Engine flashing in steps around torches, fire and glowing plants: lights now stay steady in that style
+- The photosensitive mode texts no longer mention the old Veil lights
+
 ## [3.4.2]
 
 ### Changes

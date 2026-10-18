@@ -120,7 +120,7 @@ public class GlowDefinitions extends SimpleJsonResourceReloadListener {
                     || block instanceof AbstractCandleBlock || block instanceof BaseTorchBlock;
             float level = emission > 0 ? emission / 15f : 0.3f;
 
-            glows.put(state, new Glow(color[0], color[1], color[2], 1 + 5 * level, 0.25f + 0.5f * level, 0,
+            glows.put(state, new Glow(color[0], color[1], color[2], 1 + 5 * level, 0.125f + 0.25f * level, 0,
                     fire ? 0.35f : 0));
         }
     }

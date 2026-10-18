@@ -154,11 +154,12 @@ public class ShadowGrid {
 
     static int pack(float red, float green, float blue, float radius, float intensity, int behavior) {
         float top = Math.max(Math.max(red, green), Math.max(blue, 0.001f));
-        int r = Math.round(Mth.clamp(red / top, 0, 1) * 255);
-        int g = Math.round(Mth.clamp(green / top, 0, 1) * 255);
-        int b = Math.round(Mth.clamp(blue / top, 0, 1) * 255);
+        int r = Math.round(Mth.clamp(Tuning.saturate(red, top) / top, 0, 1) * 255);
+        int g = Math.round(Mth.clamp(Tuning.saturate(green, top) / top, 0, 1) * 255);
+        int b = Math.round(Mth.clamp(Tuning.saturate(blue, top) / top, 0, 1) * 255);
 
-        float reach = Mth.clamp(radius * (1.0f + 0.55f * intensity), 1, 15);
+        float reach = Mth.clamp(radius * Tuning.reach() * (1.0f + 0.55f * intensity), 1, 15);
+        behavior = Tuning.behavior(behavior);
         int rhythm = ((behavior >> 4) > 0 ? 1 : 0) | ((behavior & 15) > 0 ? 2 : 0);
         int code = Math.round(reach / 15 * 62) << 2 | rhythm;
         return r << 24 | g << 16 | b << 8 | code + 1;
