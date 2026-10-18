@@ -106,7 +106,7 @@ public class RealisticHullAnalyzer {
                 for (int k = 0; k < n; k++)
                     if (exterior[k])
                         depths.put(BlockPos.asLong(x[k], y[k], z[k]), crush[k]);
-                if (CompartmentTracker.structureVersion(id) == version)
+                if (!CompartmentTracker.solidBlocks(id).isEmpty() && CompartmentTracker.structureVersion(id) == version)
                     DONE.put(id, new Snapshot(solid, version, thickness, depths));
             } catch (RuntimeException e) {
                 CreateSubmarine.LOGGER.warn("Realistic hull analysis failed for {}", id, e);

@@ -24,6 +24,7 @@ public class SonarScan {
     boolean swept;
     CompletableFuture<SonarTerrain.Bake> baking;
     BlockPos bakingOrigin;
+    volatile boolean freed;
 
     long lastDraw;
     long lastPing;
@@ -78,6 +79,7 @@ public class SonarScan {
     }
 
     void free() {
+        freed = true;
         freeTargets();
         close(shells);
         close(previous);

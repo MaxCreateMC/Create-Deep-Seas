@@ -61,7 +61,7 @@ float fogFade(float range) {
         return 1.0;
     if (range >= FogEnd)
         return 0.0;
-    return smoothstep(FogEnd, FogStart, range);
+    return 1.0 - smoothstep(FogStart, FogEnd, range);
 }
 
 float spotOf(vec3 fromLight) {

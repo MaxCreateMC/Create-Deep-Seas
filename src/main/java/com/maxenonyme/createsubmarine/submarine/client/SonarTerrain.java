@@ -39,6 +39,7 @@ import org.joml.Vector3d;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.function.BooleanSupplier;
 
 import static com.maxenonyme.createsubmarine.submarine.client.SonarView.DOWN;
 import static com.maxenonyme.createsubmarine.submarine.client.SonarView.RANGE;
@@ -60,12 +61,15 @@ class SonarTerrain {
     record Bake(ByteBufferBuilder bytes, MeshData[] meshes) {
     }
 
-    static CompletableFuture<Bake> ping(Minecraft mc, Level level, BlockPos origin) {
+    static CompletableFuture<Bake> ping(Minecraft mc, Level level, BlockPos origin, BooleanSupplier dropped) {
         BlockState[] states = new BlockState[SPAN * SPAN * (DOWN + UP + 1)];
         IntArrayList[] shells = sortIntoShells(level, origin, states);
         BlockRenderDispatcher dispatcher = mc.getBlockRenderer();
 
         return CompletableFuture.supplyAsync(() -> {
+            if (dropped.getAsBoolean())
+                return null;
+
             ByteBufferBuilder bytes = new ByteBufferBuilder(RenderType.cutout().bufferSize());
 
             try {

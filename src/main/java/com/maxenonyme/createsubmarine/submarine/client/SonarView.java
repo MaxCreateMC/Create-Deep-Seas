@@ -187,7 +187,7 @@ public class SonarView {
 
         if (scan.baking == null && (now - scan.lastPing >= PING_NANOS || scan.origin == null)) {
             scan.bakingOrigin = BlockPos.containing(sonar.x, sonar.y, sonar.z);
-            scan.baking = SonarTerrain.ping(mc, sub.getLevel(), scan.bakingOrigin);
+            scan.baking = SonarTerrain.ping(mc, sub.getLevel(), scan.bakingOrigin, () -> scan.freed);
         }
 
         float front = scan.front(now);

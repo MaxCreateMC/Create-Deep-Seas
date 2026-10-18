@@ -7,7 +7,7 @@
     "item.create_submarine.diving_chestplate.tooltip.condition1":  "Avec la combinaison en cuivre complète",
     "item.create_submarine.diving_chestplate.tooltip.behaviour1":  "Résiste à l'eau jusqu'à 280 m.\nSans la combinaison complète, la\npression blesse au-delà de 120 m\net tue net à 180 m.",
     "item.create_submarine.diving_chestplate.tooltip.condition2":  "Avec une Bombonne en cuivre dans l'inventaire",
-    "item.create_submarine.diving_chestplate.tooltip.behaviour2":  "Le casque respire dessus comme si\nelle était portée. La plus vide sert\nen premier, puis la suivante prend\nle relais.",
+    "item.create_submarine.diving_chestplate.tooltip.behaviour2":  "Le casque y puise son air comme si\nelle était portée. La plus vide sert\nen premier, puis la suivante prend\nle relais.",
     "item.create_submarine.diving_leggings.tooltip.summary":  "Un blindage de cuivre pour les\njambes. Fait partie de la\ncombinaison de plongée en cuivre.",
     "item.create_submarine.diving_leggings.tooltip.condition1":  "Avec la combinaison en cuivre complète",
     "item.create_submarine.diving_leggings.tooltip.behaviour1":  "Résiste à l'eau jusqu'à 280 m.\nSans la combinaison complète, la\npression blesse au-delà de 120 m\net tue net à 180 m.",

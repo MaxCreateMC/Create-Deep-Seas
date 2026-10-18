@@ -89,6 +89,8 @@ public class RigidLatticeSolver {
 
     private final double meanModulus;
     private double[] precon;
+    private double[] spin;
+    private double px, py, pz;
 
     public RigidLatticeSolver(int n, int[] x, int[] y, int[] z, RealisticHull.Material[] materials, double[] limit,
             int[][] neighbors, double[][] stiffness, boolean[][] wet) {
@@ -276,6 +278,7 @@ public class RigidLatticeSolver {
 
         double alpha = TIKHONOV * meanModulus;
         buildPreconditioner();
+        buildProjection();
 
         double[] r = b.clone();
         double[] zv = new double[size];
@@ -322,38 +325,63 @@ public class RigidLatticeSolver {
         }
     }
 
-    private void project(double[] v) {
-        double mass = 0, tx = 0, ty = 0, tz = 0, wx = 0, wy = 0, wz = 0;
+    private void buildProjection() {
+        px = py = pz = 0;
         for (int i = 0; i < n; i++) {
-            double m = Math.max(volume[i], 1e-3);
-            int i6 = 6 * i;
-            mass += m;
-            tx += m * v[i6];
-            ty += m * v[i6 + 1];
-            tz += m * v[i6 + 2];
-            wx += m * v[i6 + 3];
-            wy += m * v[i6 + 4];
-            wz += m * v[i6 + 5];
+            px += x[i];
+            py += y[i];
+            pz += z[i];
+        }
+        px /= n;
+        py /= n;
+        pz /= n;
+
+        double a = n, b = n, c = n, d = 0, e = 0, f = 0;
+        for (int i = 0; i < n; i++) {
+            double rx = x[i] - px, ry = y[i] - py, rz = z[i] - pz;
+            a += ry * ry + rz * rz;
+            b += rx * rx + rz * rz;
+            c += rx * rx + ry * ry;
+            d -= rx * ry;
+            e -= rx * rz;
+            f -= ry * rz;
         }
 
-        if (!(mass > 0))
-            return;
+        double i00 = b * c - f * f, i01 = e * f - d * c, i02 = d * f - e * b;
+        double i11 = a * c - e * e, i12 = d * e - a * f, i22 = a * b - d * d;
+        double det = a * i00 + d * i01 + e * i02;
+        spin = new double[]{i00 / det, i01 / det, i02 / det, i11 / det, i12 / det, i22 / det};
+    }
 
-        tx /= mass;
-        ty /= mass;
-        tz /= mass;
-        wx /= mass;
-        wy /= mass;
-        wz /= mass;
+    private void project(double[] v) {
+        double tx = 0, ty = 0, tz = 0, lx = 0, ly = 0, lz = 0;
+        for (int i = 0; i < n; i++) {
+            int i6 = 6 * i;
+            double rx = x[i] - px, ry = y[i] - py, rz = z[i] - pz;
+            tx += v[i6];
+            ty += v[i6 + 1];
+            tz += v[i6 + 2];
+            lx += ry * v[i6 + 2] - rz * v[i6 + 1] + v[i6 + 3];
+            ly += rz * v[i6] - rx * v[i6 + 2] + v[i6 + 4];
+            lz += rx * v[i6 + 1] - ry * v[i6] + v[i6 + 5];
+        }
+
+        tx /= n;
+        ty /= n;
+        tz /= n;
+        double ax = spin[0] * lx + spin[1] * ly + spin[2] * lz;
+        double ay = spin[1] * lx + spin[3] * ly + spin[4] * lz;
+        double az = spin[2] * lx + spin[4] * ly + spin[5] * lz;
 
         for (int i = 0; i < n; i++) {
             int i6 = 6 * i;
-            v[i6] -= tx;
-            v[i6 + 1] -= ty;
-            v[i6 + 2] -= tz;
-            v[i6 + 3] -= wx;
-            v[i6 + 4] -= wy;
-            v[i6 + 5] -= wz;
+            double rx = x[i] - px, ry = y[i] - py, rz = z[i] - pz;
+            v[i6] -= tx + ay * rz - az * ry;
+            v[i6 + 1] -= ty + az * rx - ax * rz;
+            v[i6 + 2] -= tz + ax * ry - ay * rx;
+            v[i6 + 3] -= ax;
+            v[i6 + 4] -= ay;
+            v[i6 + 5] -= az;
         }
     }
 

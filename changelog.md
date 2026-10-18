@@ -7,6 +7,10 @@
 
 ### Bug Fixes
 - Fixed Iris turning off heavy shader packs such as IterationRP on GPUs with few texture units since 3.4.0: the hull culling now only takes texture units in the programs that use it, and steps aside when the pack needs them all (#119)
+- Fixed Vortex lights fading out unevenly at the edge of the fog on some graphics drivers
+- Fixed blocks near a sail bending with it under shader packs whose terrain programs have no texture coordinates
+- Closing a sonar screen no longer leaves its terrain scan running in the background
+- Fixed a removed ship's hull analysis being cached again when it finished after the ship was gone
 
 ## [3.4.1]
 

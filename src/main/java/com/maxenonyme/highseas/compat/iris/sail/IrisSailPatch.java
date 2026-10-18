@@ -122,6 +122,8 @@ public class IrisSailPatch {
     public static String patch(String vertex) {
         if (vertex == null || vertex.contains("cds_billow") || !vertex.contains("iris_ChunkOffset"))
             return null;
+        if (!UV_IN.matcher(vertex).find())
+            return null;
 
         Matcher in = POSITION_IN.matcher(vertex);
         if (!in.find())
@@ -134,10 +136,9 @@ public class IrisSailPatch {
         if (!main.find())
             return null;
 
-        String test = UV_IN.matcher(vertex).find() ? "cds_onSailSprite(iris_UV0)" : "true";
         return head + "\nvec3 cds_sailPosition;\n"
                 + body.substring(0, main.start())
-                + UNIFORMS.formatted(test)
+                + UNIFORMS.formatted("cds_onSailSprite(iris_UV0)")
                 + body.substring(main.start(), main.end())
                 + "\n    cds_sailPosition = cds_billow(iris_Position);\n"
                 + body.substring(main.end());

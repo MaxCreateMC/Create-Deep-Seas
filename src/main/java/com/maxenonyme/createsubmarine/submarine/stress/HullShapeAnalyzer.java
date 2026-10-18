@@ -80,7 +80,7 @@ public class HullShapeAnalyzer {
         WORKER.execute(() -> {
             try {
                 Long2FloatOpenHashMap factors = analyse(id, solid, params);
-                if (CompartmentTracker.structureVersion(id) == version)
+                if (!CompartmentTracker.solidBlocks(id).isEmpty() && CompartmentTracker.structureVersion(id) == version)
                     DONE.put(id, new Snapshot(solid, version, params, factors));
             } catch (RuntimeException e) {
                 CreateSubmarine.LOGGER.warn("Hull shape analysis failed for {}", id, e);
