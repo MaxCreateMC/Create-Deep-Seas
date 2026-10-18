@@ -8,6 +8,7 @@ import com.maxenonyme.vortexengine.VortexConfig;
 import com.mojang.blaze3d.platform.NativeImage;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.block.BlockModelShaper;
+import net.minecraft.client.renderer.texture.MissingTextureAtlasSprite;
 import net.minecraft.client.renderer.texture.SpriteContents;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.core.BlockPos;
@@ -25,6 +26,7 @@ import net.minecraft.world.level.block.BaseTorchBlock;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.CampfireBlock;
 import net.minecraft.world.level.block.LiquidBlock;
+import net.minecraft.world.level.block.RenderShape;
 import net.minecraft.world.level.block.state.BlockState;
 import net.neoforged.neoforge.client.event.RegisterClientReloadListenersEvent;
 
@@ -34,6 +36,9 @@ import java.util.Map;
 import java.util.Set;
 
 public class GlowDefinitions extends SimpleJsonResourceReloadListener {
+
+    private static final float[] NEUTRAL = { 1, 0.92f, 0.8f };
+    private static final Set<String> OWN = Set.of("create_submarine", "create_high_seas", "create_abyss");
 
     private static volatile Map<BlockState, Glow> defined = Map.of();
     private static volatile Map<BlockState, Glow> combined = Map.of();
@@ -72,6 +77,8 @@ public class GlowDefinitions extends SimpleJsonResourceReloadListener {
         automatic(everything);
         everything.keySet().removeAll(muted);
         everything.putAll(blocks);
+        blocks.keySet().removeIf(state -> !own(state));
+        everything.keySet().removeIf(state -> !own(state));
 
         defined = Collections.unmodifiableMap(blocks);
         combined = Collections.unmodifiableMap(everything);
@@ -115,6 +122,9 @@ public class GlowDefinitions extends SimpleJsonResourceReloadListener {
                 continue;
 
             float[] color = colors.computeIfAbsent(models.getParticleIcon(state), GlowDefinitions::brightest);
+            if (state.getRenderShape() == RenderShape.INVISIBLE)
+                color = NEUTRAL;
+
             Block block = state.getBlock();
             boolean fire = block instanceof BaseFireBlock || block instanceof CampfireBlock
                     || block instanceof AbstractCandleBlock || block instanceof BaseTorchBlock;
@@ -123,6 +133,10 @@ public class GlowDefinitions extends SimpleJsonResourceReloadListener {
             glows.put(state, new Glow(color[0], color[1], color[2], 1 + 5 * level, 0.125f + 0.25f * level, 0,
                     fire ? 0.35f : 0));
         }
+    }
+
+    private static boolean own(BlockState state) {
+        return OWN.contains(state.getBlock().builtInRegistryHolder().key().location().getNamespace());
     }
 
     private static boolean emissive(BlockState state) {
@@ -134,6 +148,9 @@ public class GlowDefinitions extends SimpleJsonResourceReloadListener {
     }
 
     private static float[] brightest(TextureAtlasSprite sprite) {
+        if (MissingTextureAtlasSprite.getLocation().equals(sprite.contents().name()))
+            return NEUTRAL;
+
         try {
             return sample(sprite.contents());
         } catch (RuntimeException e) {

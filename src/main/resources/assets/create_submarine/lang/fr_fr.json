@@ -469,7 +469,7 @@
     "create_submarine.options.shadows":  "Ombres des lumières",
     "create_submarine.options.shadows.tooltip":  "Les blocs pleins arrêtent la lumière colorée et projettent des ombres.",
     "create_submarine.options.auto_glow":  "Lueur automatique",
-    "create_submarine.options.auto_glow.tooltip":  "Chaque bloc qui émet de la lumière brille d'une couleur tirée de sa propre texture.",
+    "create_submarine.options.auto_glow.tooltip":  "Chaque bloc du mod qui émet de la lumière brille d'une couleur tirée de sa propre texture.",
     "create_submarine.options.bloom":  "Bloom",
     "create_submarine.options.bloom.tooltip":  "Les zones éclairées débordent d'une douce lueur.",
     "create_submarine.options.haze":  "Halos",

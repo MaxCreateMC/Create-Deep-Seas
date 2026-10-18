@@ -163,6 +163,20 @@ public class LightIndex {
         return EMITTERS.get(section);
     }
 
+    static boolean emittersWithin(Vec3 camera, int distance) {
+        double reach = (distance + 14) * (distance + 14);
+
+        for (long key : EMITTERS.keySet()) {
+            double dx = (SectionPos.x(key) << 4) + 8 - camera.x;
+            double dy = (SectionPos.y(key) << 4) + 8 - camera.y;
+            double dz = (SectionPos.z(key) << 4) + 8 - camera.z;
+            if (dx * dx + dy * dy + dz * dz <= reach)
+                return true;
+        }
+
+        return false;
+    }
+
     static List<Emitter> emittersNear(Vec3 camera, int distance) {
         List<Emitter> near = new ArrayList<>();
         double reach = distance * distance;

@@ -1,5 +1,14 @@
 # Changelog
 
+## [3.4.4]
+
+### Changes
+- The Vortex Engine now only lights the blocks of Create Deep Seas, Create High Seas and Create Abyss, and the moving lights of the Sonar and the Industrial Alarm. Vanilla blocks and blocks from other mods (torches, lanterns, Sea Lanterns, Power Grid lights and the rest) keep plain Minecraft light, which removes most of the engine's cost in a normal world
+- The Vortex Engine only spreads light around the light sources instead of through its whole 128 block volume, no longer rebuilds and uploads its block grid while no light of the mod, moving light or water is around, and only builds the bloom when bloom is on
+
+### Bug Fixes
+- Fixed the Vortex Engine keeping the graphics card busy with no light or water around, for example in a flat world: the light spreading stops when no glowing block is near, and the caustics, plankton and their full-screen passes only run under water
+
 ## [3.4.3]
 
 ### Changes

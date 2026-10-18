@@ -469,7 +469,7 @@
   "create_submarine.options.shadows": "Light Shadows",
   "create_submarine.options.shadows.tooltip": "Solid blocks stop coloured light and cast shadows.",
   "create_submarine.options.auto_glow": "Automatic Glow",
-  "create_submarine.options.auto_glow.tooltip": "Every block that gives off light glows in a colour taken from its own texture.",
+  "create_submarine.options.auto_glow.tooltip": "Every block of the mod that gives off light glows in a colour taken from its own texture.",
   "create_submarine.options.bloom": "Bloom",
   "create_submarine.options.bloom.tooltip": "Lit areas spill a soft glow around them.",
   "create_submarine.options.haze": "Halos",

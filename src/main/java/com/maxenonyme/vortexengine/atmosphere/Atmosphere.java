@@ -94,7 +94,7 @@ public class Atmosphere {
         shafts *= VortexConfig.SUNLIGHT.get() / 100f;
         int beams = water == VortexConfig.WaterStyle.ALL_RAYS && underwater ? uploadBeams(event, eye) : 0;
         int mists = MistField.voxel() ? uploadMist(level, eye) : 0;
-        int motes = VortexConfig.MOTES_STYLE.get().ordinal();
+        int motes = underwater ? VortexConfig.MOTES_STYLE.get().ordinal() : 0;
 
         if (glow <= 0 && shafts <= 0 && mists == 0 && motes == 0 && beams == 0)
             return;

@@ -49,6 +49,9 @@ public class ShadowGrid {
     private static int builtGlowVersion = -1;
     private static long[][] builtSections;
     private static int[][] builtEmitters;
+    private static boolean lit;
+    private static Box builtBox;
+    private static Box frameBox;
     private static byte[] builtCells;
     private static byte[] builtEmission;
     private static int[] injected = new int[256];
@@ -118,6 +121,14 @@ public class ShadowGrid {
         return ready;
     }
 
+    static boolean lit() {
+        return lit;
+    }
+
+    static Box litBox() {
+        return Box.union(builtBox, frameBox);
+    }
+
     public static boolean hasField() {
         return ready && builtEmission != null;
     }
@@ -177,6 +188,7 @@ public class ShadowGrid {
         GL11.glBindTexture(GL12.GL_TEXTURE_3D, emissionTexture);
 
         int writes = injectedCount;
+        frameBox = null;
 
         for (int i = 0; i < injectedCount; i++) {
             int index = injected[i] * 4;
@@ -193,6 +205,7 @@ public class ShadowGrid {
             if (cx < 0 || cy < 0 || cz < 0 || cx >= SIZE || cy >= SIZE || cz >= SIZE)
                 continue;
 
+            frameBox = Box.union(frameBox, Box.around(cx, cy, cz, 16, SIZE));
             int index = cx + cy * SIZE + cz * SIZE * SIZE;
             if (builtCells[index] != 0 || injectedCount == injected.length)
                 continue;
@@ -373,6 +386,27 @@ public class ShadowGrid {
         builtGlowVersion = built.glowVersion();
         builtSections = built.sections();
         builtEmitters = built.emitters();
+        lit = false;
+        builtBox = null;
+        frameBox = null;
+        if (builtEmitters != null) {
+            int i = 0;
+
+            for (int sx = 0; sx < SIZE / 16; sx++) {
+                for (int sy = 0; sy < SIZE / 16; sy++) {
+                    for (int sz = 0; sz < SIZE / 16; sz++) {
+                        if (builtEmitters[i++] == null)
+                            continue;
+
+                        lit = true;
+                        builtBox = Box.union(builtBox, new Box(Math.max(0, sx * 16 - 16), Math.max(0, sy * 16 - 16),
+                                Math.max(0, sz * 16 - 16), Math.min(SIZE, sx * 16 + 32), Math.min(SIZE, sy * 16 + 32),
+                                Math.min(SIZE, sz * 16 + 32)));
+                    }
+                }
+            }
+        }
+
         builtCells = built.cells();
         builtEmission = built.emission();
         withField = built.emission() != null;

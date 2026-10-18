@@ -114,8 +114,8 @@ public class VortexConfig {
                 .define("haze", true);
 
         AUTO_GLOW = builder
-                .comment("Every block that gives off light, or has glowing parts, glows in a colour taken",
-                        "from its own texture. Definitions in assets/<namespace>/vortex/glow/*.json override it.")
+                .comment("Every block of the mod that gives off light, or has glowing parts, glows in a colour",
+                        "taken from its own texture. Definitions in assets/<namespace>/vortex/glow/*.json override it.")
                 .define("autoGlow", true);
 
         BLOOM = builder

@@ -118,13 +118,19 @@ public class LightVolumes {
         }
 
         List<Light> spread = buildMoving(event, camera, distance, field);
+        boolean underwater = event.getCamera().getFluidInCamera() == FogType.WATER;
+        boolean needed = !movingAll.isEmpty() || !spread.isEmpty() || rays && underwater
+                || LightIndex.emittersWithin(camera, Math.max(distance, 64) + 16);
 
         VortexProfiler.begin(VortexProfiler.Pass.UPLOAD);
-        if (shadows || field || rays)
-            ShadowGrid.update(camera, field);
-        else
+        if (!shadows && !field && !rays)
             ShadowGrid.forget();
+        else if (needed)
+            ShadowGrid.update(camera, field);
         VortexProfiler.end(VortexProfiler.Pass.UPLOAD);
+
+        if (field && (!needed || !ShadowGrid.lit() && spread.isEmpty()))
+            field = false;
 
         if (field) {
             VortexProfiler.begin(VortexProfiler.Pass.INJECTION);
@@ -152,7 +158,7 @@ public class LightVolumes {
         VortexProfiler.count(VortexProfiler.Counter.SPREAD, spread.size());
 
         if (fixedCount > 0 || movingCount > 0 || LightField.ready() || PixelLights.ready()
-                || rays && ShadowGrid.ready())
+                || rays && underwater && ShadowGrid.ready())
             draw(event, camera);
     }
 
@@ -447,9 +453,14 @@ public class LightVolumes {
     }
 
     private static void composite() {
+        boolean blooming = VortexConfig.BLOOM.get() && VortexConfig.BLOOM_STRENGTH.get() > 0;
         GlStateManager._bindTexture(target.getColorTextureId());
-        GL30.glGenerateMipmap(GL11.GL_TEXTURE_2D);
-        GlStateManager._texParameter(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_LINEAR_MIPMAP_LINEAR);
+        if (blooming) {
+            GlStateManager._texParameter(GL11.GL_TEXTURE_2D, GL12.GL_TEXTURE_MAX_LEVEL, 5);
+            GL30.glGenerateMipmap(GL11.GL_TEXTURE_2D);
+        }
+        GlStateManager._texParameter(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER,
+                blooming ? GL11.GL_LINEAR_MIPMAP_LINEAR : GL11.GL_LINEAR);
         GlStateManager._texParameter(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_LINEAR);
         GlStateManager._bindTexture(0);
 
@@ -469,7 +480,7 @@ public class LightVolumes {
         boolean volumes = VortexConfig.LIGHT_STYLE.get() == VortexConfig.LightStyle.VOLUMES;
         float bloom = volumes ? 0.8f : 0.5f;
         bloom *= VortexConfig.BLOOM_STRENGTH.get() / 100f;
-        composite.safeGetUniform("Bloom").set(VortexConfig.BLOOM.get() ? bloom : 0f);
+        composite.safeGetUniform("Bloom").set(blooming ? bloom : 0f);
         BufferUploader.drawWithShader(screenQuad());
     }
 
