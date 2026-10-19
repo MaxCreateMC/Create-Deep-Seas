@@ -1,6 +1,9 @@
 package com.maxenonyme.createsubmarine.submarine.stress;
 
+import net.minecraft.core.BlockPos;
+
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.stream.IntStream;
 
 public class RigidLatticeSolver {
@@ -17,7 +20,7 @@ public class RigidLatticeSolver {
     };
     public static final int[] DZ = {
             0, 0, 0, 0, 1, -1,
-            0, 0, 0, 0, 1, 1, -1, -1, 1, -1, 1, -1,
+            0, 0, 0, 0, 1, 1, -1, -1, 1, 1, -1, -1,
             1, -1, 1, -1, 1, -1, 1, -1
     };
     public static final double[] INV_DIST = new double[NEIGHBORS];
@@ -28,13 +31,24 @@ public class RigidLatticeSolver {
 
     public static final double RHO_G = 10000.0;
     public static final double REFERENCE_DEPTH = 100.0;
+    public static final byte WET_DRY = 0;
+    public static final byte WET_EXTERNAL = 1;
+    public static final byte WET_INTERNAL = 2;
+    public static final double MOON_POOL_FACTOR = 0.8;
     private static final double MODULUS_SCALE = 0.419;
     private static final double SHEAR_SCALE = 0.10;
     private static final int PARALLEL_FROM = 1500;
     private static final int MAX_ITERATIONS = 6000;
-    private static final double TOLERANCE = 1e-6;
     private static final double TIKHONOV = 1e-6;
     private static final long BUDGET_NANOS = 15_000_000_000L;
+    private static final long REFRESH_BUDGET_NANOS = 2_000_000_000L;
+    private static final int MULTIGRID_FROM = 2000;
+
+    public static boolean USE_MULTIGRID = true;
+
+    public static void setUseMultigrid(boolean v) {
+        USE_MULTIGRID = v;
+    }
 
     static {
         for (int d = 0; d < NEIGHBORS; d++) {
@@ -87,13 +101,34 @@ public class RigidLatticeSolver {
     final boolean[][] wet;
     final double[] u;
 
+    byte[] faceClass;
+    double[] faceDepth;
+    double[] blockDepth;
+
+    public double cgTolerance = 1e-10;
+    public long solveTimeNanos;
+    public int lastIterations;
+    public boolean lastConverged;
+    public double lastResidualRel;
+
+    private boolean nextSolveIsRefresh;
+
     private final double meanModulus;
     private double[] precon;
     private double[] spin;
     private double px, py, pz;
 
+    private double previousBNorm = -1;
+    private double[] cgR, cgZv, cgP, cgAp;
+
     public RigidLatticeSolver(int n, int[] x, int[] y, int[] z, RealisticHull.Material[] materials, double[] limit,
             int[][] neighbors, double[][] stiffness, boolean[][] wet) {
+        this(n, x, y, z, materials, limit, neighbors, stiffness, wet, null, null, null);
+    }
+
+    public RigidLatticeSolver(int n, int[] x, int[] y, int[] z, RealisticHull.Material[] materials, double[] limit,
+            int[][] neighbors, double[][] stiffness, boolean[][] wet, byte[] faceClass, double[] faceDepth,
+            double[] blockDepth) {
         this.n = n;
         this.x = x;
         this.y = y;
@@ -103,6 +138,9 @@ public class RigidLatticeSolver {
         this.neighbors = neighbors;
         this.stiffness = stiffness;
         this.wet = wet;
+        this.faceClass = faceClass;
+        this.faceDepth = faceDepth;
+        this.blockDepth = blockDepth;
         this.u = new double[6 * n];
         this.nu = new double[n];
         this.volume = new double[n];
@@ -114,6 +152,34 @@ public class RigidLatticeSolver {
             sum += materials[i].stiffness();
         }
         this.meanModulus = n > 0 ? sum / n : 1.0;
+    }
+
+    /** True when the immutable graph (block set, centres and materials) is the one recorded here. */
+    public boolean structureMatches(int n, int[] x, int[] y, int[] z) {
+        return this.n == n && Arrays.equals(this.x, x) && Arrays.equals(this.y, y) && Arrays.equals(this.z, z);
+    }
+
+    public boolean structureMatches(int n, int[] x, int[] y, int[] z, RealisticHull.Material[] materials) {
+        if (!structureMatches(n, x, y, z))
+            return false;
+        for (int i = 0; i < n; i++)
+            if (this.materials[i] != materials[i])
+                return false;
+        return true;
+    }
+
+    /** Rebinds the load description for a warm solve with purely new water data. The
+     *  displacement field and the CG bookkeeping survive: only the loads are rewritten. */
+    public void setFaceLoads(byte[] faceClass, double[] faceDepth, double[] blockDepth) {
+        this.faceClass = faceClass;
+        this.faceDepth = faceDepth;
+        this.blockDepth = blockDepth;
+        this.nextSolveIsRefresh = true;
+    }
+
+    /** Per-block failure limits, for translating raw crush depths into display depths. */
+    public double[] limits() {
+        return limit;
     }
 
     public double[] crushDepths() {
@@ -137,21 +203,43 @@ public class RigidLatticeSolver {
         if (limit[i] <= 0)
             return Double.POSITIVE_INFINITY;
 
+        double depth = blockDepth != null ? blockDepth[i] : REFERENCE_DEPTH;
+        if (depth <= 0)
+            return Double.POSITIVE_INFINITY;
+
         double stress = stress(i);
         if (stress <= 1e-30)
             return Double.POSITIVE_INFINITY;
-        return REFERENCE_DEPTH * limit[i] / stress;
+        return depth * limit[i] / stress;
     }
 
     private boolean load(double[] b) {
         boolean any = false;
-        double pressure = RHO_G * REFERENCE_DEPTH;
         for (int i = 0; i < n; i++) {
             RealisticHull.Geometry geometry = materials[i].geometry();
             double[] centroid = geometry.centroid();
+            double blockDepthI = blockDepth != null ? blockDepth[i] : -1;
+            if (blockDepth != null && blockDepthI <= 0)
+                continue;
             for (int d = 0; d < 6; d++) {
-                if (neighbors[i][d] >= 0 || !wet[i][d])
+                if (neighbors[i][d] >= 0)
                     continue;
+                if (faceClass != null) {
+                    int cls = faceClass[6 * i + d];
+                    if (cls == WET_DRY)
+                        continue;
+                } else if (!wet[i][d]) {
+                    continue;
+                }
+
+                double depth = faceDepth != null ? faceDepth[6 * i + d]
+                        : (blockDepth != null ? blockDepthI : REFERENCE_DEPTH);
+                if (depth <= 0)
+                    continue;
+
+                double pressure = RHO_G * depth;
+                if (faceClass != null && faceClass[6 * i + d] == WET_INTERNAL)
+                    pressure *= MOON_POOL_FACTOR;
 
                 double force = pressure * geometry.faceArea()[d];
                 double fx = -force * DX[d], fy = -force * DY[d], fz = -force * DZ[d];
@@ -271,19 +359,129 @@ public class RigidLatticeSolver {
     }
 
     private void solve(double[] b) {
+        long t0 = System.nanoTime();
+        long budget = nextSolveIsRefresh ? REFRESH_BUDGET_NANOS : BUDGET_NANOS;
+        nextSolveIsRefresh = false;
+        if (USE_MULTIGRID && n > MULTIGRID_FROM) {
+            solveMultigrid(b, budget);
+        } else {
+            runCG(b, 0, budget);
+        }
+        solveTimeNanos = System.nanoTime() - t0;
+    }
+
+    private void solveMultigrid(double[] b, long budget) {
+        int smoothIters = Math.max(10, Math.min(60, n / 200));
+        runCG(b, smoothIters, budget);
+
         int size = 6 * n;
-        double bNorm = dot(b, b);
-        if (bNorm < 1e-30)
+        double alpha = TIKHONOV * meanModulus;
+
+        double[] r = new double[size];
+        apply(u, r);
+        for (int k = 0; k < size; k++)
+            r[k] = b[k] - r[k] - alpha * u[k];
+        double rNormBefore = dot(r, r);
+        if (!(rNormBefore > 0))
             return;
 
+        CoarseGrid coarse = new CoarseGrid();
+        if (coarse.cn <= 0)
+            return;
+
+        double[] cr = new double[6 * coarse.cn];
+        restrict(r, cr, coarse);
+
+        double[] cu = new double[6 * coarse.cn];
+        coarse.solveCG(cr, cu);
+
+        double[] correction = new double[size];
+        prolongate(cu, correction, coarse);
+
+        // safeguard: only keep the coarse correction when it actually reduced the residual
+        double[] uBefore = u.clone();
+        for (int k = 0; k < size; k++)
+            u[k] += correction[k];
+
+        apply(u, r);
+        for (int k = 0; k < size; k++)
+            r[k] = b[k] - r[k] - alpha * u[k];
+        if (dot(r, r) > rNormBefore) {
+            System.arraycopy(uBefore, 0, u, 0, size);
+        }
+
+        runCG(b, smoothIters, budget);
+    }
+
+    private void restrict(double[] fineR, double[] coarseR, CoarseGrid coarse) {
+        Arrays.fill(coarseR, 0.0);
+        for (int i = 0; i < n; i++) {
+            int ci = coarse.group[i];
+            if (ci < 0)
+                continue;
+            coarseR[6 * ci] += fineR[6 * i];
+            coarseR[6 * ci + 1] += fineR[6 * i + 1];
+            coarseR[6 * ci + 2] += fineR[6 * i + 2];
+        }
+    }
+
+    private void prolongate(double[] coarseU, double[] fineCorrection, CoarseGrid coarse) {
+        Arrays.fill(fineCorrection, 0.0);
+        for (int i = 0; i < n; i++) {
+            int ci = coarse.group[i];
+            if (ci < 0)
+                continue;
+            fineCorrection[6 * i] = coarseU[6 * ci];
+            fineCorrection[6 * i + 1] = coarseU[6 * ci + 1];
+            fineCorrection[6 * i + 2] = coarseU[6 * ci + 2];
+        }
+    }
+
+    /** Dereference out-of-bounds and non-convergence at the end of a CG run on the shared workspace. */
+    private void runCG(double[] b, int maxIterOverride, long budgetNanos) {
+        int size = 6 * n;
+        double bNorm = dot(b, b);
+        if (bNorm < 1e-30) {
+            lastIterations = 0;
+            lastConverged = true;
+            lastResidualRel = 0.0;
+            return;
+        }
+
+        if (previousBNorm < 0) {
+            boolean hasU = false;
+            for (int k = 0; k < size; k++) {
+                if (u[k] != 0.0) {
+                    hasU = true;
+                    break;
+                }
+            }
+            if (!hasU)
+                Arrays.fill(u, 0.0);
+        } else {
+            double scale = bNorm / previousBNorm;
+            if (Math.abs(scale - 1.0) > 1e-6)
+                for (int k = 0; k < size; k++)
+                    u[k] *= scale;
+        }
+        previousBNorm = bNorm;
+
         double alpha = TIKHONOV * meanModulus;
-        buildPreconditioner();
+        if (precon == null)
+            buildPreconditioner();
         buildProjection();
 
-        double[] r = b.clone();
-        double[] zv = new double[size];
-        double[] p = new double[size];
-        double[] ap = new double[size];
+        if (cgR == null || cgR.length != size) {
+            cgR = new double[size];
+            cgZv = new double[size];
+            cgP = new double[size];
+            cgAp = new double[size];
+        }
+        double[] r = cgR, zv = cgZv, p = cgP, ap = cgAp;
+
+        apply(u, r);
+        for (int k = 0; k < size; k++)
+            r[k] = b[k] - r[k] - alpha * u[k];
         project(r);
 
         for (int k = 0; k < size; k++)
@@ -291,10 +489,14 @@ public class RigidLatticeSolver {
         System.arraycopy(zv, 0, p, 0, size);
         double rz = dot(r, zv);
 
-        double target = TOLERANCE * TOLERANCE * bNorm;
-        long deadline = System.nanoTime() + BUDGET_NANOS;
-        int cap = Math.min(MAX_ITERATIONS, Math.max(300, size));
-        for (int iteration = 0; iteration < cap && System.nanoTime() < deadline; iteration++) {
+        double target = cgTolerance * cgTolerance * bNorm;
+        long deadline = System.nanoTime() + budgetNanos;
+        int cap = maxIterOverride > 0 ? maxIterOverride : Math.min(MAX_ITERATIONS, Math.max(300, size));
+
+        double rr = dot(r, r);
+        int iteration = 0;
+        boolean converged = false;
+        for (; iteration < cap && System.nanoTime() < deadline; iteration++) {
             apply(p, ap);
             for (int k = 0; k < size; k++)
                 ap[k] += alpha * p[k];
@@ -309,8 +511,11 @@ public class RigidLatticeSolver {
                 r[k] -= step * ap[k];
             }
             project(r);
-            if (dot(r, r) < target)
+            rr = dot(r, r);
+            if (rr < target) {
+                converged = true;
                 break;
+            }
 
             for (int k = 0; k < size; k++)
                 zv[k] = r[k] / (precon[k] + alpha);
@@ -323,9 +528,15 @@ public class RigidLatticeSolver {
                 p[k] = zv[k] + beta * p[k];
             rz = next;
         }
+
+        lastIterations = iteration;
+        lastConverged = converged;
+        lastResidualRel = Math.sqrt(rr / bNorm);
     }
 
     private void buildProjection() {
+        if (spin != null)
+            return;
         px = py = pz = 0;
         for (int i = 0; i < n; i++) {
             px += x[i];
@@ -523,6 +734,189 @@ public class RigidLatticeSolver {
         double rho = Math.sqrt(j2 / 3.0);
         double cos = Math.clamp(det / (2.0 * rho * rho * rho), -1.0, 1.0);
         return mean + 2.0 * rho * Math.cos(Math.acos(cos) / 3.0);
+    }
+
+    // Two-grid accelerator over 2x2x2 aggregates of the block graph. The restriction is a
+    // straight sum and the prolongation is injection, so a coarse aggregate carries the
+    // residual of its 8 blocks; with that scaling the correction is safeguarded below: it
+    // is only kept when it genuinely reduced the residual, so the accelerator can never
+    // make the solution worse than plain pre-smoothing would.
+    private final class CoarseGrid {
+        final int cn;
+        final int[] group;
+        private final int[] cx, cy, cz;
+        private final int[][] neighborsC;
+        private final double[][] springC;
+        private final double[] nuAvg;
+
+        CoarseGrid() {
+            HashMap<Long, Integer> coarseMap = new HashMap<>();
+            int[] coarseIdx = new int[n];
+            int[][] cxyz = new int[n][];
+            for (int i = 0; i < n; i++) {
+                int gx = Math.floorDiv(x[i], 2), gy = Math.floorDiv(y[i], 2), gz = Math.floorDiv(z[i], 2);
+                long key = BlockPos.asLong(gx, gy, gz);
+                int ci = coarseMap.computeIfAbsent(key, k -> {
+                    int idx = coarseMap.size();
+                    cxyz[idx] = new int[]{gx, gy, gz};
+                    return idx;
+                });
+                coarseIdx[i] = ci;
+            }
+
+            this.cn = coarseMap.size();
+            this.group = coarseIdx;
+            this.cx = new int[this.cn];
+            this.cy = new int[this.cn];
+            this.cz = new int[this.cn];
+            for (int ci = 0; ci < this.cn; ci++) {
+                cx[ci] = cxyz[ci][0];
+                cy[ci] = cxyz[ci][1];
+                cz[ci] = cxyz[ci][2];
+            }
+
+            neighborsC = new int[this.cn][NEIGHBORS];
+            springC = new double[this.cn][NEIGHBORS];
+            nuAvg = new double[this.cn];
+            double[] aggStiff = new double[this.cn];
+            int[] count = new int[this.cn];
+            for (int i = 0; i < n; i++) {
+                int ci = group[i];
+                aggStiff[ci] += materials[i].stiffness();
+                nuAvg[ci] += nu[i];
+                count[ci]++;
+            }
+            for (int ci = 0; ci < this.cn; ci++) {
+                aggStiff[ci] = count[ci] > 0 ? aggStiff[ci] / count[ci] : 1.0;
+                nuAvg[ci] = count[ci] > 0 ? nuAvg[ci] / count[ci] : 0.3;
+            }
+
+            double aggregateVolume = 8.0;
+            for (int ci = 0; ci < this.cn; ci++) {
+                for (int d = 0; d < NEIGHBORS; d++) {
+                    long key = BlockPos.asLong(cx[ci] + DX[d], cy[ci] + DY[d], cz[ci] + DZ[d]);
+                    Integer cj = coarseMap.get(key);
+                    if (cj != null && cj != ci) {
+                        neighborsC[ci][d] = cj;
+                        double axial = 0.5 * (aggStiff[ci] + aggStiff[cj]) * aggregateVolume;
+                        springC[ci][d] = -(axial * INV_DIST[d]);
+                    } else {
+                        neighborsC[ci][d] = -1;
+                        springC[ci][d] = 0.0;
+                    }
+                }
+            }
+        }
+
+        void solveCG(double[] rhs, double[] uOut) {
+            Arrays.fill(uOut, 0.0);
+            int cn6 = 6 * cn;
+            double bNorm = 0;
+            for (int k = 0; k < cn6; k++)
+                bNorm += rhs[k] * rhs[k];
+            if (bNorm < 1e-30)
+                return;
+
+            double avgE = meanModulus;
+            double alpha = TIKHONOV * avgE;
+
+            double[] r = new double[cn6];
+            double[] p = new double[cn6];
+            double[] ap = new double[cn6];
+
+            applyCoarse(uOut, r);
+            double rr = 0;
+            for (int k = 0; k < cn6; k++) {
+                r[k] = rhs[k] - r[k] - alpha * uOut[k];
+                rr += r[k] * r[k];
+            }
+            System.arraycopy(r, 0, p, 0, cn6);
+            double rrOld = rr;
+
+            int maxIter = Math.min(200, Math.max(50, cn6 / 8));
+            for (int iter = 0; iter < maxIter; iter++) {
+                applyCoarse(p, ap);
+                for (int k = 0; k < cn6; k++)
+                    ap[k] += alpha * p[k];
+                double pAp = dot(p, ap);
+                if (pAp <= 0)
+                    break;
+
+                double step = rr / pAp;
+                for (int k = 0; k < cn6; k++) {
+                    uOut[k] += step * p[k];
+                    r[k] -= step * ap[k];
+                }
+
+                rr = dot(r, r);
+                if (rr < 1e-12 * bNorm)
+                    break;
+
+                double beta = rr / rrOld;
+                for (int k = 0; k < cn6; k++)
+                    p[k] = r[k] + beta * p[k];
+                rrOld = rr;
+            }
+        }
+
+        /** Same calibrated Cosserat law as the fine operator, with the aggregate averages. */
+        private void applyCoarse(double[] v, double[] out) {
+            Arrays.fill(out, 0.0);
+            for (int ci = 0; ci < cn; ci++) {
+                int ci6 = 6 * ci;
+                double nuI = nuAvg[ci];
+                for (int d = 0; d < NEIGHBORS; d++) {
+                    int cj = neighborsC[ci][d];
+                    if (cj < 0)
+                        continue;
+
+                    int cj6 = 6 * cj;
+                    double k = -springC[ci][d] * MODULUS_SCALE; // stored negative -> positive
+                    double nx = DIR[d][0], ny = DIR[d][1], nz = DIR[d][2];
+                    double h = 0.5 / INV_DIST[d];
+
+                    double wIx = v[ci6 + 3], wIy = v[ci6 + 4], wIz = v[ci6 + 5];
+                    double wJx = v[cj6 + 3], wJy = v[cj6 + 4], wJz = v[cj6 + 5];
+                    double uax = v[ci6] + wIy * (h * nz) - wIz * (h * ny);
+                    double uay = v[ci6 + 1] + wIz * (h * nx) - wIx * (h * nz);
+                    double uaz = v[ci6 + 2] + wIx * (h * ny) - wIy * (h * nx);
+                    double ubx = v[cj6] - wJy * (h * nz) + wJz * (h * ny);
+                    double uby = v[cj6 + 1] - wJz * (h * nx) + wJx * (h * nz);
+                    double ubz = v[cj6 + 2] - wJx * (h * ny) + wJy * (h * nx);
+                    double rx = ubx - uax, ry = uby - uay, rz = ubz - uaz;
+
+                    double t1x = T1[d][0], t1y = T1[d][1], t1z = T1[d][2];
+                    double t2x = T2[d][0], t2y = T2[d][1], t2z = T2[d][2];
+                    double kS = k * SHEAR_SCALE / (2.0 + nuI + nuAvg[cj]);
+                    double length2 = 1.0 / (INV_DIST[d] * INV_DIST[d]);
+                    double kBend = k * length2 / 12.0;
+                    double kTor = k * length2 / 6.0;
+
+                    double fN = k * (nx * rx + ny * ry + nz * rz);
+                    double fS1 = kS * (t1x * rx + t1y * ry + t1z * rz);
+                    double fS2 = kS * (t2x * rx + t2y * ry + t2z * rz);
+                    double fx = fN * nx + fS1 * t1x + fS2 * t2x;
+                    double fy = fN * ny + fS1 * t1y + fS2 * t2y;
+                    double fz = fN * nz + fS1 * t1z + fS2 * t2z;
+
+                    double wx = wJx - wIx, wy = wJy - wIy, wz = wJz - wIz;
+
+                    double b1 = kBend * (wx * t1x + wy * t1y + wz * t1z);
+                    double b2 = kBend * (wx * t2x + wy * t2y + wz * t2z);
+                    double tor = kTor * (wx * nx + wy * ny + wz * nz);
+                    double mx = b1 * t1x + b2 * t2x + tor * nx;
+                    double my = b1 * t1y + b2 * t2y + tor * ny;
+                    double mz = b1 * t1z + b2 * t2z + tor * nz;
+
+                    out[ci6] -= fx;
+                    out[ci6 + 1] -= fy;
+                    out[ci6 + 2] -= fz;
+                    out[ci6 + 3] -= (h * ny) * fz - (h * nz) * fy + mx;
+                    out[ci6 + 4] -= (h * nz) * fx - (h * nx) * fz + my;
+                    out[ci6 + 5] -= (h * nx) * fy - (h * ny) * fx + mz;
+                }
+            }
+        }
     }
 
     private static double dot(double[] a, double[] b) {
