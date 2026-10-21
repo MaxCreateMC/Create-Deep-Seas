@@ -9,6 +9,8 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.shapes.VoxelShape;
+import org.joml.Matrix4dc;
+import org.joml.Vector3d;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -35,6 +37,9 @@ public class RealisticHull {
 
     public record Material(double stiffness, double yield, double tensile, boolean brittle, double nu,
             Direction.Axis grainAxis, double[] grain, Geometry geometry) {
+    }
+
+    public record SolveResult(float[] depths, RigidLatticeSolver solver) {
     }
 
     public static Material material(BlockState state) {
@@ -121,15 +126,55 @@ public class RealisticHull {
 
     public static float[] crushDepths(int n, int[] x, int[] y, int[] z, Material[] materials, Long2IntOpenHashMap index,
             boolean[][] wet, double thickness) {
-        return POOL.submit(() -> solve(n, x, y, z, materials, index, wet, thickness)).join();
+        byte[] faceClass = new byte[6 * n];
+        for (int i = 0; i < n; i++)
+            for (int d = 0; d < 6; d++)
+                if (wet[i][d])
+                    faceClass[6 * i + d] = RigidLatticeSolver.WET_EXTERNAL;
+        return solveHull(n, x, y, z, materials, index, faceClass, Double.NaN, null, thickness, null).depths();
     }
 
-    private static float[] solve(int n, int[] x, int[] y, int[] z, Material[] materials, Long2IntOpenHashMap index,
-            boolean[][] wet, double thickness) {
-        int[][] neighbors = new int[n][RigidLatticeSolver.NEIGHBORS];
-        double[][] stiffness = new double[n][RigidLatticeSolver.NEIGHBORS];
-        double[] limit = new double[n];
+    public static SolveResult solveHull(int n, int[] x, int[] y, int[] z, Material[] materials, Long2IntOpenHashMap index,
+            byte[] faceClass, double surfaceY, Matrix4dc pose, double thickness, RigidLatticeSolver reuse) {
+        return POOL.submit(() -> {
+            boolean depthDriven = faceClass != null && Double.isFinite(surfaceY);
+            double[] faceDepth = null, blockDepth = null;
+            if (faceClass != null && depthDriven) {
+                faceDepth = buildFaceDepths(n, x, y, z, materials, surfaceY, pose);
+                blockDepth = buildBlockDepths(n, x, y, z, surfaceY, pose);
+            }
 
+            RigidLatticeSolver solver = reuse != null && reuse.structureMatches(n, x, y, z, materials) ? reuse : null;
+            double[] limit;
+            if (solver != null) {
+                limit = solver.limits();
+                solver.setFaceLoads(faceClass, faceDepth, blockDepth);
+            } else {
+                int[][] neighbors = new int[n][RigidLatticeSolver.NEIGHBORS];
+                double[][] stiffness = new double[n][RigidLatticeSolver.NEIGHBORS];
+                limit = new double[n];
+                buildGraph(n, x, y, z, materials, index, neighbors, stiffness, limit);
+                solver = new RigidLatticeSolver(n, x, y, z, materials, limit, neighbors, stiffness, null,
+                        faceClass, faceDepth, blockDepth);
+            }
+
+            double[] crush = solver.crushDepths();
+            return new SolveResult(convert(crush, limit, thickness), solver);
+        }).join();
+    }
+
+    private static float[] convert(double[] crush, double[] limit, double thickness) {
+        float[] out = new float[crush == null ? limit.length : crush.length];
+        double scale = thickness * thickness;
+        for (int i = 0; i < out.length; i++) {
+            double c = crush == null ? Double.POSITIVE_INFINITY : crush[i];
+            out[i] = (float) Math.min(UNBREAKABLE, Math.sqrt(c * limit[i] * REFERENCE_DEPTH_PER_PASCAL) * scale);
+        }
+        return out;
+    }
+
+    private static void buildGraph(int n, int[] x, int[] y, int[] z, Material[] materials, Long2IntOpenHashMap index,
+            int[][] neighbors, double[][] stiffness, double[] limit) {
         for (int i = 0; i < n; i++) {
             Material a = materials[i];
             double grainSum = 0;
@@ -160,16 +205,51 @@ public class RealisticHull {
             double grainFactor = faces > 0 ? grainSum / faces : 1.0;
             limit[i] = a.brittle() ? a.tensile() : a.yield() * Math.max(grainFactor, 0.05);
         }
+    }
 
-        double[] crush = new RigidLatticeSolver(n, x, y, z, materials, limit, neighbors, stiffness, wet).crushDepths();
-
-        float[] out = new float[n];
-        double scale = thickness * thickness;
+    private static double[] buildFaceDepths(int n, int[] x, int[] y, int[] z, Material[] materials, double surfaceY,
+            Matrix4dc pose) {
+        double[] out = new double[6 * n];
+        Vector3d local = new Vector3d();
+        Vector3d world = new Vector3d();
         for (int i = 0; i < n; i++) {
-            double c = crush == null ? Double.POSITIVE_INFINITY : crush[i];
-            out[i] = (float) Math.min(UNBREAKABLE, Math.sqrt(c * limit[i] * REFERENCE_DEPTH_PER_PASCAL) * scale);
+            double[] fc = materials[i].geometry().faceCenter();
+            for (int d = 0; d < 6; d++) {
+                local.set(x[i] + fc[3 * d], y[i] + fc[3 * d + 1], z[i] + fc[3 * d + 2]);
+                out[6 * i + d] = surfaceY - worldY(pose, local, world);
+            }
         }
         return out;
+    }
+
+    private static double[] buildBlockDepths(int n, int[] x, int[] y, int[] z, double surfaceY, Matrix4dc pose) {
+        double[] out = new double[n];
+        Vector3d local = new Vector3d();
+        Vector3d world = new Vector3d();
+        for (int i = 0; i < n; i++) {
+            double minWorldY;
+            if (pose != null) {
+                minWorldY = Double.POSITIVE_INFINITY;
+                for (int cx = 0; cx <= 1; cx++)
+                    for (int cy = 0; cy <= 1; cy++)
+                        for (int cz = 0; cz <= 1; cz++) {
+                            local.set(x[i] + cx, y[i] + cy, z[i] + cz);
+                            minWorldY = Math.min(minWorldY, worldY(pose, local, world));
+                        }
+            } else {
+                minWorldY = y[i];
+            }
+            out[i] = surfaceY > minWorldY ? surfaceY - minWorldY : 0.0;
+        }
+        return out;
+    }
+
+    private static double worldY(Matrix4dc pose, Vector3d local, Vector3d world) {
+        if (pose != null) {
+            pose.transformPosition(local, world);
+            return world.y;
+        }
+        return local.y;
     }
 
     private static boolean touches(Material a, Material b, int d) {
