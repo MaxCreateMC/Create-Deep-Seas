@@ -72,6 +72,7 @@ public class SodiumWaterOcclusionBridge {
         int close = GL20.glGetUniformLocation(program, UNIFORM_CLOSE_SAMPLER);
         int far = GL20.glGetUniformLocation(program, UNIFORM_FAR_SAMPLER);
         int hull = GL20.glGetUniformLocation(program, ShaderpackSupport.HULL_SAMPLER);
+        int ready = GL20.glGetUniformLocation(program, ShaderpackSupport.HULL_READY);
         if (close < 0 && far < 0 && hull < 0)
             return reserved;
 
@@ -95,6 +96,9 @@ public class SodiumWaterOcclusionBridge {
 
         if (hull >= 0)
             GL41.glProgramUniform1i(program, hull, FAR_TEXTURE_UNIT);
+        if (ready >= 0)
+            GL41.glProgramUniform1f(program, ready, 1f);
+
         return units;
     }
 

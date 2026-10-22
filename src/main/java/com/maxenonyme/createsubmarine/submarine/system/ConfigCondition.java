@@ -1,6 +1,6 @@
 package com.maxenonyme.createsubmarine.submarine.system;
 
-import com.maxenonyme.AbyssDimension.CreateAbyss;
+import com.maxenonyme.theabyss.CreateAbyss;
 import com.maxenonyme.createsubmarine.CreateSubmarine;
 import com.maxenonyme.createsubmarine.submarine.config.SubmarineConfig;
 import com.mojang.serialization.Codec;

@@ -24,10 +24,6 @@ public class VortexConfig {
         NONE, PLANKTON, SNOW
     }
 
-    public enum WakeStyle {
-        NONE, GLOW
-    }
-
     public static final ModConfigSpec SPEC;
     public static final ModConfigSpec.BooleanValue ENABLED;
     public static final ModConfigSpec.BooleanValue LIGHTS;
@@ -44,6 +40,7 @@ public class VortexConfig {
     public static final ModConfigSpec.BooleanValue SHADOWS;
     public static final ModConfigSpec.BooleanValue HAZE;
     public static final ModConfigSpec.BooleanValue AUTO_GLOW;
+    public static final ModConfigSpec.BooleanValue ALL_BLOCKS;
     public static final ModConfigSpec.BooleanValue BLOOM;
     public static final ModConfigSpec.BooleanValue MIST;
     public static final ModConfigSpec.IntValue MAX_PUFFS;
@@ -52,7 +49,6 @@ public class VortexConfig {
     public static final ModConfigSpec.EnumValue<WaterStyle> WATER_STYLE;
     public static final ModConfigSpec.EnumValue<MistStyle> MIST_STYLE;
     public static final ModConfigSpec.EnumValue<MotesStyle> MOTES_STYLE;
-    public static final ModConfigSpec.EnumValue<WakeStyle> WAKE_STYLE;
 
 
 // ya plusieurs mode pour le rendu, je ne sais pas encore lequel choisir
@@ -117,6 +113,12 @@ public class VortexConfig {
                 .comment("Every block of the mod that gives off light, or has glowing parts, glows in a colour",
                         "taken from its own texture. Definitions in assets/<namespace>/vortex/glow/*.json override it.")
                 .define("autoGlow", true);
+
+        ALL_BLOCKS = builder
+                .comment("Every block that gives off light casts coloured light, vanilla blocks and blocks from",
+                        "other mods included (torches, lanterns, Sea Lanterns...), in the colour of its own texture.",
+                        "Off: only the blocks of Create Deep Seas, Create High Seas and Create Abyss do.")
+                .define("allBlocks", false);
 
         BLOOM = builder
                 .comment("Lit areas spill a soft, pixelated glow around them, out of the water too.")
@@ -187,14 +189,6 @@ public class VortexConfig {
                         "SNOW: marine snow slowly sinking, caught by sunlight and coloured lights.",
                         "Needs the FLOOD or VANILLA light style.")
                 .defineEnum("motesStyle", MotesStyle.PLANKTON);
-
-        WAKE_STYLE = builder
-                .comment("Bioluminescent wakes.",
-                        "GLOW: the water lights up blue behind anything swimming through it, other players,",
-                        "mobs and fish, and the plankton around them glows.",
-                        "Your own wake stays dark so it never hides the scene.",
-                        "Needs the FLOOD, VANILLA or HYBRID light style.")
-                .defineEnum("wakeStyle", WakeStyle.GLOW);
         builder.pop();
 
         SPEC = builder.build();

@@ -24,12 +24,13 @@ import java.util.regex.Pattern;
 
 public class ShaderpackSupport {
     public static final String HULL_SAMPLER = "CdsHullFar";
+    public static final String HULL_READY = "CdsHullReady";
 
     private static final Pattern MAIN = Pattern.compile("\\bvoid\\s+main\\s*\\(\\s*(void)?\\s*\\)");
 
     private static final String WATER_BEHIND_HULL = """
             float cdsWaterBehindHull(vec2 cdsUV, float sceneDepth) {
-                float hull = texture2D(CdsHullFar, cdsUV).r;
+                float hull = CdsHullReady > 0.5 ? texture2D(CdsHullFar, cdsUV).r : 1.0;
                 if (hull >= 1.0 || sceneDepth <= hull)
                     return -1.0;
                 if (sceneDepth >= 1.0)
@@ -66,7 +67,8 @@ public class ShaderpackSupport {
             return source;
 
         patched = true;
-        return WaterOcclusionPatch.declare(result, "uniform sampler2D " + HULL_SAMPLER + ";\n");
+        return WaterOcclusionPatch.declare(result,
+                "uniform sampler2D " + HULL_SAMPLER + ";\nuniform float " + HULL_READY + ";\n");
     }
 
     public static boolean lyingAboutWater() {

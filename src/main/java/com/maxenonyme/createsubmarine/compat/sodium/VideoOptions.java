@@ -82,6 +82,7 @@ public class VideoOptions implements ConfigEntryPoint {
                                 OptionImpact.LOW))
                         .addOption(toggle(builder, spec, VortexConfig.SHADOWS, "shadows", OptionImpact.MEDIUM))
                         .addOption(toggle(builder, spec, VortexConfig.AUTO_GLOW, "auto_glow", OptionImpact.LOW))
+                        .addOption(toggle(builder, spec, VortexConfig.ALL_BLOCKS, "all_blocks", OptionImpact.HIGH))
                         .addOption(toggle(builder, spec, VortexConfig.BLOOM, "bloom", OptionImpact.LOW))
                         .addOption(number(builder, spec, VortexConfig.BLOOM_STRENGTH, "bloom_strength", 0, 200, 10,
                                 OptionImpact.LOW, "percent")));
@@ -104,9 +105,7 @@ public class VideoOptions implements ConfigEntryPoint {
                         .addOption(choice(builder, spec, VortexConfig.WATER_STYLE, VortexConfig.WaterStyle.class,
                                 "water_style", OptionImpact.MEDIUM))
                         .addOption(choice(builder, spec, VortexConfig.MOTES_STYLE, VortexConfig.MotesStyle.class,
-                                "motes_style", OptionImpact.LOW))
-                        .addOption(choice(builder, spec, VortexConfig.WAKE_STYLE, VortexConfig.WakeStyle.class,
-                                "wake_style", OptionImpact.LOW)))
+                                "motes_style", OptionImpact.LOW)))
                 .addOptionGroup(builder.createOptionGroup()
                         .setName(Component.translatable(KEY + "group.mist"))
                         .addOption(toggle(builder, spec, VortexConfig.MIST, "mist", OptionImpact.MEDIUM))

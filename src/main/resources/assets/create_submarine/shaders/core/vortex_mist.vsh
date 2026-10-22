@@ -28,7 +28,7 @@ bool solid(ivec3 cell) {
     ivec3 grid = cell + GridOffset;
     if (any(lessThan(grid, ivec3(0))) || any(greaterThanEqual(grid, ivec3(128))))
         return false;
-    return texelFetch(ShadowGrid, grid, 0).r > 0.5;
+    return texelFetch(ShadowGrid, grid, 0).a > 0.5;
 }
 
 float visibility(vec3 from, vec3 to) {

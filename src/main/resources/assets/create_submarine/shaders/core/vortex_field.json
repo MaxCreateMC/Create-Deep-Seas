@@ -3,6 +3,7 @@
     "fragment": "create_submarine:vortex_field",
     "samplers": [
         { "name": "DepthSampler" },
+        { "name": "OpaqueDepth" },
         { "name": "Heights" }
     ],
     "uniforms": [
@@ -23,6 +24,7 @@
         { "name": "SunDir", "type": "float", "count": 3, "values": [ 0.0, 1.0, 0.0 ] },
         { "name": "SunColor", "type": "float", "count": 3, "values": [ 0.0, 0.0, 0.0 ] },
         { "name": "SurfaceY", "type": "float", "count": 1, "values": [ 0.0 ] },
-        { "name": "GameTime", "type": "float", "count": 1, "values": [ 0.0 ] }
+        { "name": "GameTime", "type": "float", "count": 1, "values": [ 0.0 ] },
+        { "name": "Translucent", "type": "float", "count": 1, "values": [ 0.0 ] }
     ]
 }

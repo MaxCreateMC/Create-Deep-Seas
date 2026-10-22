@@ -31,8 +31,7 @@ public class VortexCommand {
                         .then(choices("halo", VortexConfig.HALO_STYLE, VortexConfig.HaloStyle.values()))
                         .then(choices("water", VortexConfig.WATER_STYLE, VortexConfig.WaterStyle.values()))
                         .then(choices("mist", VortexConfig.MIST_STYLE, VortexConfig.MistStyle.values()))
-                        .then(choices("motes", VortexConfig.MOTES_STYLE, VortexConfig.MotesStyle.values()))
-                        .then(choices("wake", VortexConfig.WAKE_STYLE, VortexConfig.WakeStyle.values())))
+                        .then(choices("motes", VortexConfig.MOTES_STYLE, VortexConfig.MotesStyle.values())))
                 .then(Commands.literal("mist")
                         .then(Commands.literal("clear")
                                 .executes(VortexCommand::clear))
@@ -94,8 +93,7 @@ public class VortexCommand {
                 + ", halo " + lower(VortexConfig.HALO_STYLE.get())
                 + ", water " + lower(VortexConfig.WATER_STYLE.get())
                 + ", mist " + lower(VortexConfig.MIST_STYLE.get())
-                + ", motes " + lower(VortexConfig.MOTES_STYLE.get())
-                + ", wake " + lower(VortexConfig.WAKE_STYLE.get());
+                + ", motes " + lower(VortexConfig.MOTES_STYLE.get());
         context.getSource().sendSuccess(() -> Component.literal("Vortex styles: " + summary), false);
         return 1;
     }

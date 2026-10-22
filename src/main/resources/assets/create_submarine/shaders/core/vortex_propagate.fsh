@@ -24,7 +24,12 @@ bool inside(ivec3 cell) {
 }
 
 bool solid(ivec3 cell) {
-    return texelFetch(ShadowGrid, cell, 0).r > 0.5;
+    return texelFetch(ShadowGrid, cell, 0).a > 0.5;
+}
+
+vec4 filtered(ivec3 cell, vec4 light) {
+    vec3 through = vec3(1.0) - texelFetch(ShadowGrid, cell, 0).rgb;
+    return vec4(light.rgb * through, light.a * max(through.r, max(through.g, through.b)));
 }
 
 vec4 previous(ivec3 cell) {
@@ -112,5 +117,5 @@ void main() {
         return;
     }
 
-    fragColor = Mode < 1.5 ? soft(cell) : vanilla(cell);
+    fragColor = filtered(cell, Mode < 1.5 ? soft(cell) : vanilla(cell));
 }

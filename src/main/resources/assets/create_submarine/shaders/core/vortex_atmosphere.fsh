@@ -55,12 +55,11 @@ bool solid(ivec3 cell) {
     ivec3 grid = cell + GridOffset;
     if (any(lessThan(grid, ivec3(0))) || any(greaterThanEqual(grid, ivec3(128))))
         return false;
-    return texelFetch(ShadowGrid, grid, 0).r > 0.5;
+    return texelFetch(ShadowGrid, grid, 0).a > 0.5;
 }
 
-vec3 vivid(vec3 hue) {
-    hue /= max(max(hue.r, hue.g), max(hue.b, 0.001));
-    return pow(hue, vec3(1.5));
+vec3 hueOf(vec3 hue) {
+    return hue / max(max(hue.r, hue.g), max(hue.b, 0.001));
 }
 
 vec3 glowAt(vec3 point) {
@@ -76,10 +75,10 @@ vec3 glowAt(vec3 point) {
         if (field.a <= FAINT)
             return vec3(0.0);
         float level = clamp(log(field.a / FAINT) / 10.2, 0.0, 1.0);
-        return vivid(field.rgb / field.a) * level;
+        return hueOf(field.rgb / field.a) * level;
     }
 
-    return vivid(field.rgb) * field.a;
+    return hueOf(field.rgb) * field.a;
 }
 
 float topAt(vec2 point) {

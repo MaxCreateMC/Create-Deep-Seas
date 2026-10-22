@@ -1,5 +1,29 @@
 # Changelog
 
+## [3.4.5]
+
+### Changes
+- The hulls of submarines and boats now stop the coloured light of the Vortex Engine, the Sonar's included, instead of letting it shine through; glass still lets it through
+- Stained glass and stained glass panes now tint the coloured light of the Vortex Engine passing through them, in the world and in ship hulls, and Tinted Glass blocks it like Minecraft's light
+- Glass, water, ice and other see-through blocks now catch the coloured light of the Vortex Engine on their surface
+- Added Light From Every Block to the Vortex Engine video settings (`allBlocks`, off by default): torches, lanterns, Sea Lanterns and the glowing blocks of other mods cast coloured light again
+- The coloured light of the Vortex Engine now keeps the colour of its source: a white light lights in white instead of drifting towards pink or another tint
+- The colour of a glowing block is now read from every texture of its model and taken from its brightest and most common colour, so a Campfire lights in yellow-orange instead of the pale colour of its logs, and a Soul Campfire in cyan
+
+### Bug Fixes
+- Fixed the depth on the Onboard Computer getting stuck around 400 m; below that depth the hull also never felt more than 400 m of water (#126)
+- Fixed the sea around a ship with a dry hold losing water for good: flowing water near the hull drained itself, leaving holes in the water behind moving boats and blue cubes around a breached hull. Holes left in existing worlds fill up again when the water next to them updates (#126, #124)
+- Fixed blocks of light from dynamic light mods leaving a trail behind moving ships (#124)
+- Fixed a broken Onboard Computer leaving its screen floating in the air after leaving and re-entering the area, and an old copy of the computer drawing a wrong depth and a shifted ship diagram over the real one (#124)
+- Fixed a crash when the Onboard Computer drew the diagram of a ship with a 2×2 Submarine Propeller (#121)
+- Fixed the Vortex Engine pixel light style failing to load on NVIDIA graphics cards (#125)
+- Fixed a thick greenish water fog covering the whole world with Complementary, BSL, Bliss or Photon on graphics cards with few texture units, since 3.4.2
+- Fixed players being crushed instantly while swimming up a waterfall, and ships counting a waterfall above them as hundreds of metres of water: falling water no longer adds to the depth, only still water does
+- Added the `diverPressure` server option to turn off the pressure damage on players
+
+### Removed
+- The Vortex Engine only lights from blocks for now: removed the bioluminescent wakes behind swimming mobs and players (`wakeStyle`), the light of the Submarine Staff held in hand, and the light of single glowing blocks thrown around as physics objects
+
 ## [3.4.4]
 
 ### Changes

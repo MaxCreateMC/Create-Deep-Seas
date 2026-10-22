@@ -1,6 +1,6 @@
 package com.maxenonyme.createsubmarine.submarine.network;
 
-import com.maxenonyme.AbyssDimension.client.CameraShake;
+import com.maxenonyme.theabyss.client.CameraShake;
 import com.maxenonyme.createsubmarine.CreateSubmarine;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;

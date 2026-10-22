@@ -1,0 +1,8 @@
+{
+    "vertex": "create_submarine:vortex_composite",
+    "fragment": "create_submarine:vortex_depth",
+    "samplers": [
+        { "name": "DepthSampler" }
+    ],
+    "uniforms": []
+}

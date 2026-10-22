@@ -1,6 +1,7 @@
 package com.maxenonyme.createsubmarine.submarine.system;
 
 import com.maxenonyme.createsubmarine.CreateSubmarine;
+import com.maxenonyme.createsubmarine.submarine.config.SubmarineConfig;
 import com.maxenonyme.createsubmarine.submarine.network.CameraShakePayload;
 import com.maxenonyme.createsubmarine.submarine.network.ImplosionFxPayload;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -48,7 +49,7 @@ public class DiverPressure {
         if (suited)
             PacketDistributor.sendToPlayer(player,
                     new ImplosionFxPayload(ImplosionFxPayload.DEPTH, (float) depth, limit));
-        if (player.isCreative())
+        if (player.isCreative() || !SubmarineConfig.diverPressure())
             return;
         double over = depth - limit;
         if (over < 0)

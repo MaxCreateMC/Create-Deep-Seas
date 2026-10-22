@@ -41,9 +41,8 @@ float rhythm(float behavior, float seed) {
     return (1.0 - pulse * 0.6 * breathing) * (1.0 - flicker * 0.35 * jolt);
 }
 
-vec3 vivid(vec3 hue) {
-    hue /= max(max(hue.r, hue.g), max(hue.b, 0.001));
-    return pow(hue, vec3(1.5));
+vec3 hueOf(vec3 hue) {
+    return hue / max(max(hue.r, hue.g), max(hue.b, 0.001));
 }
 
 vec3 fieldAt(vec3 point) {
@@ -53,10 +52,10 @@ vec3 fieldAt(vec3 point) {
         if (field.a <= 0.0001)
             return vec3(0.0);
         float level = clamp(log(field.a / 0.0001) / 10.2, 0.0, 1.0);
-        return vivid(field.rgb / field.a) * level;
+        return hueOf(field.rgb / field.a) * level;
     }
 
-    return vivid(field.rgb) * field.a;
+    return hueOf(field.rgb) * field.a;
 }
 
 vec3 lightAt(vec3 point, vec3 view) {
@@ -88,7 +87,6 @@ vec3 lightAt(vec3 point, vec3 view) {
 
         float forward = 0.5 + 1.5 * pow(max(dot(view, direction), 0.0), 4.0);
         vec3 hue = tint.rgb / max(max(tint.r, tint.g), max(tint.b, 0.001));
-        hue = pow(hue, vec3(1.5));
 
         glow += hue * tint.a * rhythm(rhythmData.x, rhythmData.y) * falloff * spot * forward * shade[i];
     }

@@ -68,6 +68,7 @@ public class CompartmentTracker {
     private static final Set<UUID> STRUCTURE_DIRTY = ConcurrentHashMap.newKeySet();
     private static final Map<UUID, Set<BlockPos>> PLUGS = new ConcurrentHashMap<>();
     private static final Map<UUID, Set<BlockPos>> SUNKEN = new ConcurrentHashMap<>();
+    private static final ThreadLocal<Boolean> TRUTH = ThreadLocal.withInitial(() -> false);
     private static volatile AABB globalBounds = null;
     private static volatile AABB sealedBounds = null;
     private static volatile Long2ObjectOpenHashMap<SealedEntry[]> sealedGrid;
@@ -977,10 +978,16 @@ public class CompartmentTracker {
 
     @Nullable
     public static BlockState getLiedBlockState(Level level, BlockPos worldPos, BlockState real) {
-        if (real.isAir() || sealedBounds == null || findSealedSublevel(level, worldPos) == null)
+        if (real.isAir() || sealedBounds == null || real.getFluidState().isEmpty() && !real.blocksMotion())
+            return real;
+        if (findSealedSublevel(level, worldPos) == null || TRUTH.get())
             return real;
 
         return Blocks.AIR.defaultBlockState();
+    }
+
+    public static void tellTruth(boolean truth) {
+        TRUTH.set(truth);
     }
 
     @Nullable

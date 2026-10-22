@@ -1,6 +1,7 @@
 #version 150
 
 uniform sampler2D DepthSampler;
+uniform sampler2D OpaqueDepth;
 uniform sampler2D Heights;
 uniform sampler3D ShadowGrid;
 uniform sampler3D Field;
@@ -20,6 +21,7 @@ uniform vec3 SunDir;
 uniform vec3 SunColor;
 uniform float SurfaceY;
 uniform float GameTime;
+uniform float Translucent;
 
 out vec4 fragColor;
 
@@ -27,15 +29,14 @@ const float FAINT = 0.0001;
 
 vec4 fieldAt(vec3 point) {
     vec3 grid = (point + CameraFract + vec3(GridOffset)) / 128.0;
-    float open = 1.0 - texture(ShadowGrid, grid).r;
+    float open = 1.0 - texture(ShadowGrid, grid).a;
     if (open < 0.02)
         return vec4(0.0);
     return texture(Field, grid) / open;
 }
 
-vec3 vivid(vec3 hue) {
-    hue /= max(max(hue.r, hue.g), max(hue.b, 0.001));
-    return pow(hue, vec3(1.5));
+vec3 hueOf(vec3 hue) {
+    return hue / max(max(hue.r, hue.g), max(hue.b, 0.001));
 }
 
 vec3 glowOf(vec4 field) {
@@ -43,11 +44,11 @@ vec3 glowOf(vec4 field) {
         if (field.a <= FAINT)
             return vec3(0.0);
         float level = clamp(log(field.a / FAINT) / 10.2, 0.0, 1.0);
-        return vivid(field.rgb / field.a) * pow(level, 1.5);
+        return hueOf(field.rgb / field.a) * pow(level, 1.5);
     }
 
     float level = floor(field.a * 15.0 + 0.5) / 15.0;
-    return vivid(field.rgb) * level * 0.8;
+    return hueOf(field.rgb) * level * 0.8;
 }
 
 float facing(vec3 point, vec3 normal) {
@@ -135,7 +136,7 @@ vec3 axis(vec3 normal) {
 void main() {
     vec2 uv = gl_FragCoord.xy / ScreenSize;
     float depth = texture(DepthSampler, uv).r;
-    if (depth >= 1.0)
+    if (depth >= 1.0 || Translucent > 0.5 && depth >= texelFetch(OpaqueDepth, ivec2(gl_FragCoord.xy), 0).r)
         discard;
 
     vec3 world = worldAt(uv, depth);

@@ -47,6 +47,9 @@ public class LightVolumes {
     private static final VertexFormat FORMAT = DefaultVertexFormat.NEW_ENTITY;
     public static final int SHADOW_UNIT = 5;
 
+    record Layer(RenderTarget scene, int opaqueDepth, float share, boolean translucent) {
+    }
+
     private static ShaderInstance shader;
     private static ShaderInstance composite;
     private static TextureTarget target;
@@ -66,6 +69,7 @@ public class LightVolumes {
     private static long glowSection = Long.MIN_VALUE;
     private static int glowSeen = -1;
     private static int anchorX, anchorY, anchorZ;
+    private static boolean drawn;
 
     public static void onRegisterShaders(RegisterShadersEvent event) {
         try {
@@ -87,8 +91,20 @@ public class LightVolumes {
     }
 
     public static void onRenderStage(RenderLevelStageEvent event) {
+        if (event.getStage() == RenderLevelStageEvent.Stage.AFTER_TRANSLUCENT_BLOCKS) {
+            boolean lit = fixedCount > 0 || movingCount > 0 || LightField.ready() || PixelLights.ready();
+            Layer layer = translucentLayer();
+            if (drawn && lit && layer != null)
+                draw(event, event.getCamera().getPosition(), layer);
+
+            drawn = false;
+            return;
+        }
+
         if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_BLOCK_ENTITIES)
             return;
+
+        drawn = false;
 
         boolean usable = VortexLights.usable();
         Tuning.refresh();
@@ -158,8 +174,14 @@ public class LightVolumes {
         VortexProfiler.count(VortexProfiler.Counter.SPREAD, spread.size());
 
         if (fixedCount > 0 || movingCount > 0 || LightField.ready() || PixelLights.ready()
-                || rays && underwater && ShadowGrid.ready())
-            draw(event, camera);
+                || rays && underwater && ShadowGrid.ready()) {
+            RenderTarget main = Minecraft.getInstance().getMainRenderTarget();
+            if (!Minecraft.useShaderTransparency())
+                OpaqueDepth.copy(main);
+
+            draw(event, camera, new Layer(main, main.getDepthTextureId(), 1, false));
+            drawn = true;
+        }
     }
 
     private static void buildFixed(Vec3 camera, int distance) {
@@ -205,8 +227,6 @@ public class LightVolumes {
         }
 
         movingAll = new ArrayList<>(near);
-        if (Wakes.active())
-            VortexProfiler.count(VortexProfiler.Counter.WAKES, Wakes.collect(near));
 
         int max = VortexConfig.MAX_LIGHTS.get();
         if (near.size() > max) {
@@ -281,9 +301,22 @@ public class LightVolumes {
         }
     }
 
-    private static void draw(RenderLevelStageEvent event, Vec3 camera) {
-        RenderTarget main = Minecraft.getInstance().getMainRenderTarget();
-        prepareTarget(main);
+    private static Layer translucentLayer() {
+        Minecraft mc = Minecraft.getInstance();
+        RenderTarget main = mc.getMainRenderTarget();
+
+        if (Minecraft.useShaderTransparency()) {
+            RenderTarget layer = mc.levelRenderer.getTranslucentTarget();
+            return layer == null ? null : new Layer(layer, main.getDepthTextureId(), 1, true);
+        }
+
+        return OpaqueDepth.ready() ? new Layer(main, OpaqueDepth.texture(), 0.5f, true) : null;
+    }
+
+    private static void draw(RenderLevelStageEvent event, Vec3 camera, Layer layer) {
+        RenderTarget scene = layer.scene();
+        boolean translucent = layer.translucent();
+        prepareTarget(scene);
 
         Matrix4f view = event.getModelViewMatrix();
         Matrix4f projection = event.getProjectionMatrix();
@@ -294,20 +327,23 @@ public class LightVolumes {
         boolean shadows = ShadowGrid.ready() && VortexConfig.SHADOWS.get();
         boolean hybrid = VortexConfig.LIGHT_STYLE.get() == VortexConfig.LightStyle.HYBRID;
         boolean volumes = VortexConfig.LIGHT_STYLE.get() == VortexConfig.LightStyle.VOLUMES;
-        boolean haze = VortexConfig.HAZE.get() && VortexConfig.HALO_STYLE.get() != VortexConfig.HaloStyle.NONE
+        boolean haze = !translucent && VortexConfig.HAZE.get()
+                && VortexConfig.HALO_STYLE.get() != VortexConfig.HaloStyle.NONE
                 && !(hybrid && VortexConfig.HALO_STYLE.get() == VortexConfig.HaloStyle.GLOW_FOG);
         boolean underwater = event.getCamera().getFluidInCamera() == FogType.WATER;
 
-        float strength = 1;
+        float strength = layer.share();
         if (hybrid)
-            strength = 0.6f;
+            strength *= 0.6f;
         else if (volumes)
-            strength = 1.3f;
+            strength *= 1.3f;
 
-        shader.setSampler("DepthSampler", main.getDepthTextureId());
+        shader.setSampler("DepthSampler", scene.getDepthTextureId());
+        shader.setSampler("OpaqueDepth", layer.opaqueDepth());
+        shader.safeGetUniform("Translucent").set(translucent ? 1f : 0f);
         shader.safeGetUniform("InvProjMat").set(new Matrix4f(projection).invert());
         shader.safeGetUniform("InvViewMat").set(new Matrix4f(view).invert());
-        shader.safeGetUniform("ScreenSize").set((float) main.width, (float) main.height);
+        shader.safeGetUniform("ScreenSize").set((float) scene.width, (float) scene.height);
         shader.safeGetUniform("CameraFract").set((float) Mth.frac(camera.x), (float) Mth.frac(camera.y),
                 (float) Mth.frac(camera.z));
         shader.safeGetUniform("AnchorOffset").set(offsetX, offsetY, offsetZ);
@@ -365,25 +401,27 @@ public class LightVolumes {
         }
 
         boolean fieldSurface = LightField.ready() && !PixelLights.ready();
-        boolean caustics = VortexConfig.WATER_STYLE.get() != VortexConfig.WaterStyle.NONE && underwater
-                && ShadowGrid.ready();
+        boolean caustics = !translucent && VortexConfig.WATER_STYLE.get() != VortexConfig.WaterStyle.NONE
+                && underwater && ShadowGrid.ready();
 
         if (PixelLights.ready()) {
             VortexProfiler.begin(VortexProfiler.Pass.SURFACE);
-            PixelLights.draw(camera, main, view, projection);
+            PixelLights.draw(camera, layer, view, projection);
             VortexProfiler.end(VortexProfiler.Pass.SURFACE);
         }
 
         if (fieldSurface || caustics) {
             VortexProfiler.begin(VortexProfiler.Pass.SURFACE);
-            drawField(event, camera, main, underwater, fieldSurface);
+            drawField(event, camera, layer, underwater, fieldSurface);
             VortexProfiler.end(VortexProfiler.Pass.SURFACE);
         }
 
-        main.bindWrite(false);
+        scene.bindWrite(false);
         VortexProfiler.begin(VortexProfiler.Pass.COMPOSITE);
-        composite();
+        composite(!translucent);
         VortexProfiler.end(VortexProfiler.Pass.COMPOSITE);
+
+        Minecraft.getInstance().getMainRenderTarget().bindWrite(false);
 
         RenderSystem.depthMask(true);
         RenderSystem.enableDepthTest();
@@ -405,8 +443,11 @@ public class LightVolumes {
         return all;
     }
 
-    private static void drawField(RenderLevelStageEvent event, Vec3 camera, RenderTarget main, boolean underwater,
+    private static void drawField(RenderLevelStageEvent event, Vec3 camera, Layer layer, boolean underwater,
             boolean light) {
+        RenderTarget scene = layer.scene();
+        boolean translucent = layer.translucent();
+
         ShaderInstance surface = LightField.surface();
         ClientLevel level = Minecraft.getInstance().level;
         if (surface == null || level == null)
@@ -416,8 +457,10 @@ public class LightVolumes {
         Sunlight sun = Sunlight.of(level, partialTick, camera);
         boolean rays = VortexConfig.WATER_STYLE.get() != VortexConfig.WaterStyle.NONE;
 
-        surface.setSampler("DepthSampler", main.getDepthTextureId());
+        surface.setSampler("DepthSampler", scene.getDepthTextureId());
+        surface.setSampler("OpaqueDepth", layer.opaqueDepth());
         surface.setSampler("Heights", ShadowGrid.heights());
+        surface.safeGetUniform("Translucent").set(translucent ? 1f : 0f);
         surface.safeGetUniform("InvProjMat").set(new Matrix4f(event.getProjectionMatrix()).invert());
         surface.safeGetUniform("InvViewMat").set(new Matrix4f(event.getModelViewMatrix()).invert());
         surface.safeGetUniform("CameraFract").set((float) Mth.frac(camera.x), (float) Mth.frac(camera.y),
@@ -426,13 +469,13 @@ public class LightVolumes {
                 (float) Math.floorMod(Mth.floor(camera.y), 1024), (float) Math.floorMod(Mth.floor(camera.z), 1024));
         surface.safeGetUniform("Pixelated").set(VortexConfig.PIXEL_LIGHTING.get() ? 1f : 0f);
         surface.safeGetUniform("Murk").set(underwater ? 1f : 0.2f);
-        float caustics = rays && sun.strength() > 0 ? 0.55f : 0f;
+        float caustics = rays && !translucent && sun.strength() > 0 ? 0.55f : 0f;
         surface.safeGetUniform("Caustics").set(caustics * VortexConfig.SUNLIGHT.get() / 100f);
         surface.safeGetUniform("SunDir").set(sun.x(), sun.y(), 0f);
         surface.safeGetUniform("SunColor").set(sun.red(), sun.green(), sun.blue());
         surface.safeGetUniform("SurfaceY").set((float) (sun.surface() - camera.y));
         boolean hybrid = VortexConfig.LIGHT_STYLE.get() == VortexConfig.LightStyle.HYBRID;
-        float gain = hybrid ? 0.3f : 0.5f;
+        float gain = (hybrid ? 0.3f : 0.5f) * layer.share();
         surface.safeGetUniform("Gain").set(gain * VortexConfig.BRIGHTNESS.get() / 100f);
         surface.safeGetUniform("FieldLight").set(light ? 1f : 0f);
         surface.safeGetUniform("GridOffset").set(Mth.floor(camera.x) - ShadowGrid.originX(),
@@ -452,8 +495,8 @@ public class LightVolumes {
         LightField.bind(LightField.UNIT, 0);
     }
 
-    private static void composite() {
-        boolean blooming = VortexConfig.BLOOM.get() && VortexConfig.BLOOM_STRENGTH.get() > 0;
+    private static void composite(boolean withBloom) {
+        boolean blooming = withBloom && VortexConfig.BLOOM.get() && VortexConfig.BLOOM_STRENGTH.get() > 0;
         GlStateManager._bindTexture(target.getColorTextureId());
         if (blooming) {
             GlStateManager._texParameter(GL11.GL_TEXTURE_2D, GL12.GL_TEXTURE_MAX_LEVEL, 5);

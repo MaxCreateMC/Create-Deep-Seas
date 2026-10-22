@@ -9,6 +9,8 @@ import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.SectionPos;
 import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.block.BeaconBeamBlock;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.chunk.LevelChunkSection;
@@ -27,6 +29,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Predicate;
 
 public class LightIndex {
 
@@ -45,6 +48,7 @@ public class LightIndex {
 
     private static final Map<Long, Light[]> GLOWS = new ConcurrentHashMap<>();
     private static final Map<Long, long[]> SOLIDS = new ConcurrentHashMap<>();
+    private static final Map<Long, int[]> FILTERS = new ConcurrentHashMap<>();
     private static final Map<Long, int[]> EMITTERS = new ConcurrentHashMap<>();
     private static final Set<Long> CHUNKS = new HashSet<>();
     private static final AtomicInteger GLOW_VERSION = new AtomicInteger();
@@ -79,10 +83,15 @@ public class LightIndex {
             if (generation != GENERATION.get())
                 return;
 
-            EMITTERS.keySet().removeIf(key -> SectionPos.x(key) == pos.x && SectionPos.z(key) == pos.z);
-            if (GLOWS.keySet().removeIf(key -> SectionPos.x(key) == pos.x && SectionPos.z(key) == pos.z))
+            Predicate<Long> inChunk = key -> SectionPos.x(key) == pos.x && SectionPos.z(key) == pos.z;
+
+            EMITTERS.keySet().removeIf(inChunk);
+            if (GLOWS.keySet().removeIf(inChunk))
                 GLOW_VERSION.incrementAndGet();
-            if (SOLIDS.keySet().removeIf(key -> SectionPos.x(key) == pos.x && SectionPos.z(key) == pos.z))
+
+            boolean solids = SOLIDS.keySet().removeIf(inChunk);
+            boolean filters = FILTERS.keySet().removeIf(inChunk);
+            if (solids || filters)
                 SOLID_VERSION.incrementAndGet();
         });
     }
@@ -103,7 +112,7 @@ public class LightIndex {
 
         boolean glow = GlowDefinitions.glows(old) || GlowDefinitions.glows(state);
         Map<BlockState, Glow> glows = GlowDefinitions.all();
-        boolean solid = shadows && occludes(old, glows) != occludes(state, glows);
+        boolean solid = shadows && (occludes(old, glows) != occludes(state, glows) || filter(old) != filter(state));
         if (!glow && !solid)
             return;
 
@@ -157,6 +166,10 @@ public class LightIndex {
 
     static long[] solids(long section) {
         return SOLIDS.get(section);
+    }
+
+    static int[] filters(long section) {
+        return FILTERS.get(section);
     }
 
     static int[] emitters(long section) {
@@ -237,9 +250,11 @@ public class LightIndex {
 
     private static void clear() {
         SubLevelGlows.clear();
+        SubLevelSolids.clear();
         GENERATION.incrementAndGet();
         GLOWS.clear();
         SOLIDS.clear();
+        FILTERS.clear();
         EMITTERS.clear();
         GLOW_VERSION.incrementAndGet();
         SOLID_VERSION.incrementAndGet();
@@ -260,8 +275,9 @@ public class LightIndex {
         boolean empty = section.hasOnlyAir();
         boolean lit = !empty && section.maybeHas(glows::containsKey);
         boolean solid = shadows && !empty && section.maybeHas(state -> occludes(state, glows));
+        boolean tinted = shadows && !empty && section.maybeHas(state -> filter(state) != 0);
         boolean withShadows = shadows;
-        PalettedContainer<BlockState> states = lit || solid ? section.getStates().copy() : null;
+        PalettedContainer<BlockState> states = lit || solid || tinted ? section.getStates().copy() : null;
         int generation = GENERATION.get();
 
         WORKER.execute(() -> {
@@ -269,6 +285,7 @@ public class LightIndex {
                 Light[] lights = lit ? collectGlows(states, key, glows) : null;
                 int[] emitters = lit ? collectEmitters(states, glows) : null;
                 long[] bits = solid ? collectSolids(states, glows) : null;
+                int[] filters = tinted ? collectFilters(states) : null;
                 if (generation != GENERATION.get())
                     return;
 
@@ -288,14 +305,29 @@ public class LightIndex {
                     GLOW_VERSION.incrementAndGet();
                 }
 
-                if (!withShadows || Arrays.equals(SOLIDS.get(key), bits))
+                if (!withShadows)
                     return;
 
-                if (bits == null)
-                    SOLIDS.remove(key);
-                else
-                    SOLIDS.put(key, bits);
-                SOLID_VERSION.incrementAndGet();
+                boolean changed = false;
+
+                if (!Arrays.equals(SOLIDS.get(key), bits)) {
+                    if (bits == null)
+                        SOLIDS.remove(key);
+                    else
+                        SOLIDS.put(key, bits);
+                    changed = true;
+                }
+
+                if (!Arrays.equals(FILTERS.get(key), filters)) {
+                    if (filters == null)
+                        FILTERS.remove(key);
+                    else
+                        FILTERS.put(key, filters);
+                    changed = true;
+                }
+
+                if (changed)
+                    SOLID_VERSION.incrementAndGet();
             } catch (RuntimeException e) {
                 CreateSubmarine.LOGGER.warn("Couldn't index the light of section {}", SectionPos.of(key), e);
             }
@@ -303,7 +335,37 @@ public class LightIndex {
     }
 
     private static boolean occludes(BlockState state, Map<BlockState, Glow> glows) {
-        return state.canOcclude() && state.getLightEmission() == 0 && !glows.containsKey(state);
+        return (state.canOcclude() || state.is(Blocks.TINTED_GLASS)) && state.getLightEmission() == 0
+                && !glows.containsKey(state);
+    }
+
+    static int filter(BlockState state) {
+        if (!(state.getBlock() instanceof BeaconBeamBlock beam) || state.canOcclude())
+            return 0;
+
+        int color = beam.getColor().getTextureDiffuseColor();
+        int r = 255 - (color >> 16 & 255);
+        int g = 255 - (color >> 8 & 255);
+        int b = 255 - (color & 255);
+        return 1 << 24 | r << 16 | g << 8 | b;
+    }
+
+    private static int[] collectFilters(PalettedContainer<BlockState> states) {
+        int[] found = new int[32];
+        int count = 0;
+
+        for (int i = 0; i < 4096; i++) {
+            int filter = filter(states.get(i & 15, i >> 8, i >> 4 & 15));
+            if (filter == 0)
+                continue;
+
+            if (count + 2 > found.length)
+                found = Arrays.copyOf(found, found.length * 2);
+            found[count++] = i;
+            found[count++] = filter;
+        }
+
+        return count == 0 ? null : Arrays.copyOf(found, count);
     }
 
     private static long[] collectSolids(PalettedContainer<BlockState> states, Map<BlockState, Glow> glows) {

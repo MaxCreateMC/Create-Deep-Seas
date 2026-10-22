@@ -1,6 +1,7 @@
 #version 150
 
 uniform sampler2D DepthSampler;
+uniform sampler2D OpaqueDepth;
 uniform sampler3D ShadowGrid;
 uniform mat4 InvProjMat;
 uniform mat4 InvViewMat;
@@ -19,6 +20,7 @@ uniform float HaloCap;
 uniform float HaloGain;
 uniform float FogStart;
 uniform float FogEnd;
+uniform float Translucent;
 
 flat in vec3 lightCenter;
 flat in vec3 lightColor;
@@ -78,27 +80,35 @@ ivec3 cellOf(vec3 point) {
     return ivec3(floor(point + CameraFract));
 }
 
-bool solid(ivec3 cell) {
+vec4 gridAt(ivec3 cell) {
     ivec3 grid = cell + GridOffset;
     if (any(lessThan(grid, ivec3(0))) || any(greaterThanEqual(grid, ivec3(128))))
-        return false;
-    return texelFetch(ShadowGrid, grid, 0).r > 0.5;
+        return vec4(0.0);
+    return texelFetch(ShadowGrid, grid, 0);
 }
 
-float shadow(vec3 from) {
+vec3 shadow(vec3 from) {
     ivec3 source = cellOf(lightCenter);
+    ivec3 last = cellOf(from);
     vec3 path = lightCenter - from;
+    vec3 through = vec3(1.0);
     int count = int(min(length(path) * 4.0, 64.0));
 
     for (int i = 1; i < count; i++) {
         ivec3 cell = cellOf(from + path * (float(i) / float(count)));
         if (cell == source)
             break;
-        if (solid(cell))
-            return 0.0;
+        if (cell == last)
+            continue;
+
+        last = cell;
+        vec4 grid = gridAt(cell);
+        if (grid.a > 0.5)
+            return vec3(0.0);
+        through *= vec3(1.0) - grid.rgb;
     }
 
-    return 1.0;
+    return through;
 }
 
 float caustic(vec3 point, float time) {
@@ -134,10 +144,12 @@ vec3 surfaceLight(vec3 world, vec3 normal, vec3 hue, float time) {
 
     if (Murk > 0.5)
         strength *= caustic(surface + CameraFract + WorldWrap, time);
-    if (Shadows > 0.5 && shadow(surface + normal * 0.1) <= 0.0)
+
+    vec3 through = Shadows > 0.5 ? shadow(surface + normal * 0.1) : vec3(1.0);
+    if (max(through.r, max(through.g, through.b)) <= 0.0)
         return vec3(0.0);
 
-    return hot(hue, strength) * strength * absorb(length(world) + dist);
+    return hot(hue, strength) * strength * through * absorb(length(world) + dist);
 }
 
 vec3 worldAt(vec2 uv, float depth) {
@@ -202,6 +214,8 @@ vec3 hazeLight(vec3 eye, vec3 ray, float limit, float spread, vec3 hue, float ti
 void main() {
     vec2 uv = gl_FragCoord.xy / ScreenSize;
     float depth = texture(DepthSampler, uv).r;
+    if (Translucent > 0.5 && depth >= texelFetch(OpaqueDepth, ivec2(gl_FragCoord.xy), 0).r)
+        discard;
 
     vec3 world = worldAt(uv, depth);
 
@@ -212,7 +226,6 @@ void main() {
     float viewDistance = length(world);
     float time = GameTime * 1200.0;
     vec3 hue = lightColor / max(max(lightColor.r, lightColor.g), max(lightColor.b, 0.001));
-    hue = pow(hue, vec3(1.5));
 
     vec3 light = vec3(0.0);
     if (depth < 1.0)

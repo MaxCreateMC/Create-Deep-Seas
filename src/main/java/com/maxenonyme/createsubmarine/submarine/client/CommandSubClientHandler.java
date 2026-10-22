@@ -221,7 +221,7 @@ public class CommandSubClientHandler {
 
         double best = Double.MAX_VALUE;
         for (CommandSubBlockEntity be : CommandSubBlockEntity.LOADED_ON_CLIENT) {
-            if (be.isRemoved() || be.getLevel() != mc.level)
+            if (be.stale() || be.getLevel() != mc.level)
                 continue;
             BlockPos pos = be.getBlockPos();
             Vec3 from = eye;

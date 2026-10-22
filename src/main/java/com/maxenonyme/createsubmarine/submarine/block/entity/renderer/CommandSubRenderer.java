@@ -121,7 +121,7 @@ public class CommandSubRenderer implements BlockEntityRenderer<CommandSubBlockEn
 
     @Override
     public void render(CommandSubBlockEntity be, float partialTicks, PoseStack ms, MultiBufferSource buffer, int light, int overlay) {
-        if (CommandSubDiagram.drawing)
+        if (CommandSubDiagram.drawing || be.stale())
             return;
 
         Font font = Minecraft.getInstance().font;

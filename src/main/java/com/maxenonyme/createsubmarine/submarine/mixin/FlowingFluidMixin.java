@@ -1,5 +1,8 @@
 package com.maxenonyme.createsubmarine.submarine.mixin;
 
+import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import com.maxenonyme.createsubmarine.submarine.compartment.CompartmentTracker;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -21,6 +24,18 @@ public abstract class FlowingFluidMixin {
         if (DecompressionChamberBlockEntity
                 .isChamberPartialWater(level, pos)) {
             ci.cancel();
+        }
+    }
+
+    @WrapMethod(method = "tick")
+    private void createsubmarine$tickWithRealWater(Level level, BlockPos pos, FluidState state,
+            Operation<Void> original) {
+        CompartmentTracker.tellTruth(true);
+
+        try {
+            original.call(level, pos, state);
+        } finally {
+            CompartmentTracker.tellTruth(false);
         }
     }
 }

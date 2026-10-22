@@ -288,8 +288,10 @@ public class PixelLights {
         GlStateManager._texParameter(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
     }
 
-    static void draw(Vec3 camera, RenderTarget main, Matrix4f view, Matrix4f projection) {
-        shader.setSampler("DepthSampler", main.getDepthTextureId());
+    static void draw(Vec3 camera, LightVolumes.Layer layer, Matrix4f view, Matrix4f projection) {
+        shader.setSampler("DepthSampler", layer.scene().getDepthTextureId());
+        shader.setSampler("OpaqueDepth", layer.opaqueDepth());
+        shader.safeGetUniform("Translucent").set(layer.translucent() ? 1f : 0f);
         shader.setSampler("LightData", dataTexture);
         shader.setSampler("Tiles", tileTexture);
         shader.setSampler("Indices", indexTexture);
@@ -303,7 +305,7 @@ public class PixelLights {
         shader.safeGetUniform("TileSize").set(TILE);
         shader.safeGetUniform("Shadows").set(ShadowGrid.ready() && VortexConfig.SHADOWS.get() ? 1f : 0f);
         shader.safeGetUniform("Pixelated").set(VortexConfig.PIXEL_LIGHTING.get() ? 1f : 0f);
-        shader.safeGetUniform("Strength").set(0.7f * VortexConfig.BRIGHTNESS.get() / 100f);
+        shader.safeGetUniform("Strength").set(0.7f * layer.share() * VortexConfig.BRIGHTNESS.get() / 100f);
 
         LightField.bind(LightVolumes.SHADOW_UNIT, ShadowGrid.texture());
         RenderSystem.disableCull();

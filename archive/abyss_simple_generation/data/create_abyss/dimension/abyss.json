@@ -1,0 +1,17 @@
+{
+  "neoforge:conditions": [
+    {
+      "type": "create_submarine:config_enabled",
+      "config_key": "enableAbyssDimension"
+    }
+  ],
+  "type": "create_abyss:abyss",
+  "generator": {
+    "type": "minecraft:noise",
+    "settings": "create_abyss:abyss",
+    "biome_source": {
+      "type": "minecraft:fixed",
+      "biome": "create_abyss:abyss"
+    }
+  }
+}

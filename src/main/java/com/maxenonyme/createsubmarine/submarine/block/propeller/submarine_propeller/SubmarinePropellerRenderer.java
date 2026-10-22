@@ -72,7 +72,6 @@ public class SubmarinePropellerRenderer extends KineticBlockEntityRenderer<Subma
     }
 
     private void renderCluster(SubmarinePropellerBlockEntity be, int size, float partialTicks, PoseStack ms, MultiBufferSource buffer, int light) {
-        VertexConsumer vb = buffer.getBuffer(RenderType.solid());
         BlockState state = be.getBlockState();
         Direction dir = state.getValue(BlockStateProperties.FACING);
         Quaternionf facing = dir.getRotation();
@@ -94,8 +93,10 @@ public class SubmarinePropellerRenderer extends KineticBlockEntityRenderer<Subma
         ms.mulPose(facing);
         ms.translate(-halfWidth, -0.5f, -halfWidth);
         CachedBuffers.partial(size == 2 ? AllPartialModels.SUBMARINE_PROPELLER_2X2_BASE : AllPartialModels.SUBMARINE_PROPELLER_3X3_BASE, state)
-                .light(light).renderInto(ms, size == 2 ? buffer.getBuffer(RenderType.cutout()) : vb);
+                .light(light).renderInto(ms, buffer.getBuffer(size == 2 ? RenderType.cutout() : RenderType.solid()));
         ms.popPose();
+
+        VertexConsumer vb = buffer.getBuffer(RenderType.solid());
 
         ms.mulPose(new Quaternionf().rotateAxis(angle, axis.step()).mul(facing));
         ms.translate(0, -0.5, 0);

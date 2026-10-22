@@ -43,6 +43,7 @@ public class SubmarineConfig {
         public static final ModConfigSpec.IntValue REALISTIC_MAX_BLOCKS;
         public static final ModConfigSpec.ConfigValue<List<? extends String>> LIQUID_DENSITIES;
         public static final ModConfigSpec.BooleanValue LAVA_BURNS_HULL;
+        public static final ModConfigSpec.BooleanValue DIVER_PRESSURE;
         public static final ModConfigSpec.BooleanValue EXPERIMENTAL_ABYSS_WORLDGEN;
 
         public enum PressureModel implements TranslatableEnum {
@@ -158,6 +159,10 @@ public class SubmarineConfig {
                 LAVA_BURNS_HULL = server
                                 .comment("Flammable hull blocks (wood, wool...) touching lava catch fire.")
                                 .define("lavaBurnsHull", true);
+                DIVER_PRESSURE = server
+                                .comment("Deep water hurts and finally crushes players swimming past their depth limit",
+                                                "(120 m, or 280 m in the full Copper Diving Suit).")
+                                .define("diverPressure", true);
                 server.pop();
 
                 server.push("mechanics");
@@ -243,6 +248,10 @@ public class SubmarineConfig {
                 client.pop();
 
                 CLIENT_SPEC = client.build();
+        }
+
+        public static boolean diverPressure() {
+                return !SERVER_SPEC.isLoaded() || DIVER_PRESSURE.get();
         }
 
         public static boolean progressiveFlooding() {

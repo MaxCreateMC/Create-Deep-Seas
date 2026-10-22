@@ -3,6 +3,7 @@
     "fragment": "create_submarine:vortex_pixel",
     "samplers": [
         { "name": "DepthSampler" },
+        { "name": "OpaqueDepth" },
         { "name": "LightData" },
         { "name": "Tiles" },
         { "name": "Indices" }
@@ -18,6 +19,7 @@
         { "name": "Shadows", "type": "float", "count": 1, "values": [ 1.0 ] },
         { "name": "Pixelated", "type": "float", "count": 1, "values": [ 1.0 ] },
         { "name": "Strength", "type": "float", "count": 1, "values": [ 1.0 ] },
-        { "name": "GameTime", "type": "float", "count": 1, "values": [ 0.0 ] }
+        { "name": "GameTime", "type": "float", "count": 1, "values": [ 0.0 ] },
+        { "name": "Translucent", "type": "float", "count": 1, "values": [ 0.0 ] }
     ]
 }

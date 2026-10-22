@@ -24,7 +24,7 @@ class Tuning {
 
     static void refresh() {
         int current = Objects.hash(VortexConfig.REACH.get(), VortexConfig.SATURATION.get(),
-                VortexConfig.ANIMATED_LIGHTS.get());
+                VortexConfig.ANIMATED_LIGHTS.get(), VortexConfig.ALL_BLOCKS.get());
         if (current == applied)
             return;
 
