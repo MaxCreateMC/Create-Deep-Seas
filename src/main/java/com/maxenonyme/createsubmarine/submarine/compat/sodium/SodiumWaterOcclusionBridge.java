@@ -106,7 +106,14 @@ public class SodiumWaterOcclusionBridge {
     }
 
     public static void setHullReady(boolean ready) {
-        HULL_READY.forEach((program, location) -> GL41.glProgramUniform1f(program, location, ready ? 1f : 0f));
+        for (var entry : HULL_READY.entrySet()) {
+            int program = entry.getKey();
+            if (!GL20.glIsProgram(program)) {
+                HULL_READY.remove(program);
+                continue;
+            }
+            GL41.glProgramUniform1f(program, entry.getValue(), ready ? 1f : 0f);
+        }
     }
 
     private static int samplerUnits(int program) {
