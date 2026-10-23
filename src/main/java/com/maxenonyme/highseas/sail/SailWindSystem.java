@@ -62,6 +62,7 @@ public class SailWindSystem {
         final boolean afloat;
         final Vector3d drift = new Vector3d();
         double canvas;
+        double rigged;
         double weighted;
         double dragXX, dragXZ, dragZZ;
 
@@ -269,11 +270,16 @@ public class SailWindSystem {
         }
         UUID sourceId = sailSource.getUniqueId();
         for (SailGroup group : sails) {
-            float reefed = FurlState.amount(sourceId, group.min());
-            if (group.axis() == Direction.Axis.Y || reefed >= 0.999f)
+            if (group.axis() == Direction.Axis.Y)
                 continue;
-            double factor = Math.min(1.0, (gameTime - group.startTick()) / 60.0) * (1.0 - reefed);
-            pull(parentLevel, sailSource, sailPose, group, factor, speedRatio, drive);
+
+            double ramp = Math.min(1.0, (gameTime - group.startTick()) / 60.0);
+            float reefed = FurlState.amount(sourceId, group.min());
+            drive.rigged += group.area() * ramp;
+            if (reefed >= 0.9f)
+                continue;
+
+            pull(parentLevel, sailSource, sailPose, group, ramp * (1.0 - reefed / 0.9), speedRatio, drive);
         }
         for (DecayingSail ds : SailWindRegistry.getDecayingSails(sourceId, gameTime)) {
             if (ds.group().axis() == Direction.Axis.Y)
@@ -305,8 +311,11 @@ public class SailWindSystem {
         double section = Math.cbrt(hullMass * hullMass);
 
         double hullSpeed = HighSeasConfig.sailHullSpeed * Math.sqrt(length);
-        double rigging = Math.min(1.0, Math.sqrt(drive.canvas / (HighSeasConfig.sailCanvasNeeded * section)));
-        double target = Math.min(HighSeasConfig.sailMaxSpeed, hullSpeed * rigging * drive.weighted / drive.canvas);
+        double rig = Math.max(drive.rigged, drive.canvas);
+        double rigging = Math.min(1.0, Math.sqrt(rig / (HighSeasConfig.sailCanvasNeeded * section)));
+        double exposure = drive.canvas / rig;
+        double target = Math.min(HighSeasConfig.sailMaxSpeed,
+                hullSpeed * rigging * exposure * drive.weighted / drive.canvas);
 
         Vector3dc velocity = SablePhysicsHelper.getVelocity(handle);
         double speed = velocity == null ? 0.0 : velocity.x() * dir.x + velocity.z() * dir.z;
