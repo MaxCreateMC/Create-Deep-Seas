@@ -4,13 +4,13 @@ import com.maxenonyme.createsubmarine.submarine.client.SubmarineFogHandler;
 import com.maxenonyme.createsubmarine.submarine.compat.sodium.SodiumWaterOcclusionBridge;
 import com.maxenonyme.createsubmarine.submarine.compat.sodium.WaterOcclusionPatch;
 import com.maxenonyme.createsubmarine.submarine.mixin.compat.sable.WaterOcclusionRendererAccessor;
-import com.mojang.blaze3d.platform.NativeImage;
 import com.mojang.blaze3d.systems.RenderSystem;
 import dev.ryanhcode.sable.SableClient;
 import foundry.veil.api.client.render.framebuffer.AdvancedFbo;
 import foundry.veil.api.client.render.framebuffer.AdvancedFboTextureAttachment;
-import net.minecraft.client.renderer.texture.DynamicTexture;
+import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL13;
+import org.lwjgl.opengl.GL20;
 
 import java.util.Locale;
 import java.util.regex.Matcher;
@@ -44,7 +44,6 @@ public class ShaderpackSupport {
 
     private static boolean patched;
     private static boolean photon;
-    private static DynamicTexture outside;
 
     public static String patchFragment(String source) {
         if (source == null || source.contains(HULL_SAMPLER))
@@ -76,13 +75,15 @@ public class ShaderpackSupport {
     }
 
     public static void bindHull() {
-        if (!patched)
+        int program = GL11.glGetInteger(GL20.GL_CURRENT_PROGRAM);
+        if (!patched || !SodiumWaterOcclusionBridge.holdsHull(program))
             return;
 
         int texture = SubmarineFogHandler.shouldFog() ? hullDepth() : 0;
-        SodiumWaterOcclusionBridge.setHullReady(texture != 0);
+        SodiumWaterOcclusionBridge.setHullReady(program, texture != 0);
         if (texture == 0)
-            texture = outside().getId();
+            return;
+
         RenderSystem.activeTexture(GL13.GL_TEXTURE0 + SodiumWaterOcclusionBridge.FAR_TEXTURE_UNIT);
         RenderSystem.bindTexture(texture);
         RenderSystem.activeTexture(GL13.GL_TEXTURE0);
@@ -122,15 +123,5 @@ public class ShaderpackSupport {
 
         AdvancedFboTextureAttachment depth = far.getDepthTextureAttachment();
         return depth == null ? 0 : depth.getId();
-    }
-
-    private static DynamicTexture outside() {
-        if (outside == null) {
-            NativeImage image = new NativeImage(1, 1, false);
-            image.setPixelRGBA(0, 0, 0xFFFFFFFF);
-            outside = new DynamicTexture(image);
-        }
-
-        return outside;
     }
 }

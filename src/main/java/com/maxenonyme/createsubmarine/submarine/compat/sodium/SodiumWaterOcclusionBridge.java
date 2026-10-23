@@ -99,21 +99,20 @@ public class SodiumWaterOcclusionBridge {
 
         if (hull >= 0)
             GL41.glProgramUniform1i(program, hull, FAR_TEXTURE_UNIT);
-        if (ready >= 0)
+        if (hull >= 0 && ready >= 0)
             HULL_READY.put(program, ready);
 
         return units;
     }
 
-    public static void setHullReady(boolean ready) {
-        for (var entry : HULL_READY.entrySet()) {
-            int program = entry.getKey();
-            if (!GL20.glIsProgram(program)) {
-                HULL_READY.remove(program);
-                continue;
-            }
-            GL41.glProgramUniform1f(program, entry.getValue(), ready ? 1f : 0f);
-        }
+    public static boolean holdsHull(int program) {
+        return HULL_READY.containsKey(program);
+    }
+
+    public static void setHullReady(int program, boolean ready) {
+        Integer location = HULL_READY.get(program);
+        if (location != null)
+            GL41.glProgramUniform1f(program, location, ready ? 1f : 0f);
     }
 
     private static int samplerUnits(int program) {
