@@ -80,6 +80,7 @@ public class ShaderpackSupport {
             return;
 
         int texture = SubmarineFogHandler.shouldFog() ? hullDepth() : 0;
+        SodiumWaterOcclusionBridge.setHullReady(texture != 0);
         if (texture == 0)
             texture = outside().getId();
         RenderSystem.activeTexture(GL13.GL_TEXTURE0 + SodiumWaterOcclusionBridge.FAR_TEXTURE_UNIT);
