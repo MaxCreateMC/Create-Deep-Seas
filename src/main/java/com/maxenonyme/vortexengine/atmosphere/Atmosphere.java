@@ -83,7 +83,7 @@ public class Atmosphere {
         boolean field = LightField.ready();
         boolean glowing = field && VortexConfig.HAZE.get()
                 && VortexConfig.HALO_STYLE.get() == VortexConfig.HaloStyle.GLOW_FOG;
-        boolean blocky = VortexConfig.LIGHT_STYLE.get() == VortexConfig.LightStyle.PIXEL;
+        boolean blocky = VortexConfig.lightStyle() == VortexConfig.LightStyle.PIXEL;
         float glow = 0;
 
         if (glowing)
@@ -170,7 +170,7 @@ public class Atmosphere {
         float[] scores = new float[BEAMS];
         float[] places = new float[BEAMS * 4];
 
-        for (Light light : LightVolumes.shaftCandidates(eye)) {
+        for (Light light : LightVolumes.shaftCandidates()) {
             if (light.cone() > -0.99f || light.intensity() <= 0)
                 continue;
 

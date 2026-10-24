@@ -1,0 +1,12 @@
+{
+  "replace": false,
+  "values": [
+    "#minecraft:water",
+    { "id": "#c:salt_water", "required": false },
+    { "id": "tfc:salt_water", "required": false },
+    { "id": "tfc:flowing_salt_water", "required": false },
+    { "id": "tfc:river_water", "required": false },
+    { "id": "tfc:spring_water", "required": false },
+    { "id": "tfc:flowing_spring_water", "required": false }
+  ]
+}

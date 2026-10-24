@@ -1,5 +1,6 @@
 package com.maxenonyme.createsubmarine.submarine.system;
 
+import com.maxenonyme.createsubmarine.CreateSubmarine;
 import com.maxenonyme.createsubmarine.submarine.config.HullStrengthConfig;
 import com.maxenonyme.createsubmarine.submarine.compartment.CompartmentDetector;
 import com.maxenonyme.createsubmarine.submarine.compartment.CompartmentTracker;
@@ -843,7 +844,7 @@ public class SubmarinePressureSystem {
 
         for (BlockPos p : comp.internal()) {
             BlockState state = level.getBlockState(p);
-            boolean water = state.getFluidState().is(FluidTags.WATER);
+            boolean water = state.getFluidState().is(CreateSubmarine.WATER_TAG);
             if (!state.isAir() && !water)
                 continue;
 

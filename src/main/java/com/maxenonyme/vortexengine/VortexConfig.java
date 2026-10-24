@@ -5,7 +5,7 @@ import net.neoforged.neoforge.common.ModConfigSpec;
 public class VortexConfig {
 
     public enum LightStyle {
-        VOLUMES, FLOOD, VANILLA, HYBRID, PIXEL
+        FLOOD, PIXEL
     }
 
     public enum HaloStyle {
@@ -24,6 +24,10 @@ public class VortexConfig {
         NONE, PLANKTON, SNOW
     }
 
+    public enum LightResolution {
+        FULL, HALF, QUARTER
+    }
+
     public static final ModConfigSpec SPEC;
     public static final ModConfigSpec.BooleanValue ENABLED;
     public static final ModConfigSpec.BooleanValue LIGHTS;
@@ -37,6 +41,9 @@ public class VortexConfig {
     public static final ModConfigSpec.IntValue LIGHT_DISTANCE;
     public static final ModConfigSpec.IntValue MAX_LIGHTS;
     public static final ModConfigSpec.BooleanValue PIXEL_LIGHTING;
+    public static final ModConfigSpec.EnumValue<LightResolution> LIGHT_RESOLUTION;
+    public static final ModConfigSpec.BooleanValue TEMPORAL;
+    public static final ModConfigSpec.BooleanValue REFLECTIONS;
     public static final ModConfigSpec.BooleanValue SHADOWS;
     public static final ModConfigSpec.BooleanValue HAZE;
     public static final ModConfigSpec.BooleanValue AUTO_GLOW;
@@ -100,6 +107,17 @@ public class VortexConfig {
                         "Turn off for a smooth gradient.")
                 .define("pixelLighting", true);
 
+        LIGHT_RESOLUTION = builder
+                .comment("Resolution the coloured light is worked out at before it is scaled up to the screen.",
+                        "HALF and QUARTER cost four and sixteen times less on the graphics card; the edges of",
+                        "blocks stay sharp and the pixel steps up close keep their size.")
+                .defineEnum("lightResolution", LightResolution.FULL);
+
+        TEMPORAL = builder
+                .comment("Each frame shifts the light slightly and blends it with the previous frames, smoothing its",
+                        "grain and its edges, most of all at half or quarter resolution.")
+                .define("temporalAccumulation", false);
+
         SHADOWS = builder
                 .comment("Solid blocks stop coloured light and cast shadows, within 64 blocks of the camera.",
                         "Costs more on the graphics card.")
@@ -137,6 +155,12 @@ public class VortexConfig {
                 .defineInRange("sunlight", 100, 0, 200);
         builder.pop();
 
+        builder.push("effects");
+        REFLECTIONS = builder
+                .comment("Water, glass and the other see-through blocks reflect the scene around them.")
+                .define("reflections", false);
+        builder.pop();
+
         builder.push("mist");
         MIST = builder
                 .comment("Drifting mist and smoke volumes, lit by the world and by coloured lights.",
@@ -151,12 +175,8 @@ public class VortexConfig {
         builder.push("styles");
         LIGHT_STYLE = builder
                 .comment("How coloured light reaches the blocks around it. Switch in game with /vortex style.",
-                        "VOLUMES: one sphere of light per source, with sharp shadows (the first version).",
                         "FLOOD: light spreads block by block and blends its colours, wrapping around corners",
                         "and never through walls, like Complementary or Rethinking Voxels.",
-                        "VANILLA: the same spreading, but falling off one step per block like Minecraft's light.",
-                        "HYBRID: FLOOD for the soft bounce, plus sharp shadows from the lights close to you,",
-                        "like Rethinking Voxels.",
                         "PIXEL: every glowing block is its own light, falling off one level per block like",
                         "Minecraft's light, in texture pixels, with block shadows and a halo of glowing cubes.")
                 .defineEnum("lightStyle", LightStyle.FLOOD);
@@ -165,7 +185,6 @@ public class VortexConfig {
                 .comment("How light shows in the water around its source.",
                         "CORE: a small halo around each source (the first version).",
                         "GLOW_FOG: the water itself glows where the light reaches, stopped by walls.",
-                        "Needs the FLOOD or VANILLA light style, otherwise CORE is used.",
                         "NONE: no halo.")
                 .defineEnum("haloStyle", HaloStyle.GLOW_FOG);
 
@@ -179,18 +198,24 @@ public class VortexConfig {
         MIST_STYLE = builder
                 .comment("How mist from /vortex mist is drawn.",
                         "PUFFS: large smoke puffs that hug the ground (the first version).",
-                        "VOXEL: a volume of small cubes of fog, lit by every coloured light around.",
-                        "Needs the FLOOD or VANILLA light style, otherwise PUFFS is used.")
+                        "VOXEL: a volume of small cubes of fog, lit by every coloured light around.")
                 .defineEnum("mistStyle", MistStyle.VOXEL);
 
         MOTES_STYLE = builder
                 .comment("Tiny specks floating in the water, one pixel wide.",
                         "PLANKTON: glowing plankton that twinkles in the colour of the light around it.",
-                        "SNOW: marine snow slowly sinking, caught by sunlight and coloured lights.",
-                        "Needs the FLOOD or VANILLA light style.")
+                        "SNOW: marine snow slowly sinking, caught by sunlight and coloured lights.")
                 .defineEnum("motesStyle", MotesStyle.PLANKTON);
         builder.pop();
 
         SPEC = builder.build();
+    }
+
+    public static LightStyle lightStyle() {
+        try {
+            return LIGHT_STYLE.get();
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            return LightStyle.FLOOD;
+        }
     }
 }

@@ -28,7 +28,8 @@ bool solid(ivec3 cell) {
 }
 
 vec4 filtered(ivec3 cell, vec4 light) {
-    vec3 through = vec3(1.0) - texelFetch(ShadowGrid, cell, 0).rgb;
+    vec4 grid = texelFetch(ShadowGrid, cell, 0);
+    vec3 through = grid.a > 0.002 ? vec3(1.0 - grid.g) : vec3(1.0) - grid.rgb;
     return vec4(light.rgb * through, light.a * max(through.r, max(through.g, through.b)));
 }
 

@@ -1,5 +1,6 @@
 package com.maxenonyme.highseas;
 
+import com.maxenonyme.createsubmarine.CreateSubmarine;
 import com.maxenonyme.createsubmarine.submarine.compartment.CompartmentDetector;
 import com.maxenonyme.createsubmarine.submarine.compartment.CompartmentTracker;
 import com.maxenonyme.createsubmarine.submarine.system.GirderFailure;
@@ -12,7 +13,6 @@ import dev.ryanhcode.sable.sublevel.plot.LevelPlot;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.tags.FluidTags;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
@@ -94,18 +94,25 @@ public class BoatManager {
             return;
         }
 
+        Set<UUID> seen = new HashSet<>();
         for (ServerLevel level : event.getServer().getAllLevels())
-            tick(level, false);
+            tick(level, false, seen);
+        forgetMissing(SERVER, seen);
     }
 
     public static void tick(Level level, boolean client) {
+        Set<UUID> seen = new HashSet<>();
+        tick(level, client, seen);
+        forgetMissing(client ? CLIENT : SERVER, seen);
+    }
+
+    private static void tick(Level level, boolean client, Set<UUID> seen) {
         SubLevelContainer container = SubLevelContainer.getContainer(level);
         if (container == null)
             return;
 
         Map<UUID, Boat> boats = client ? CLIENT : SERVER;
         long now = level.getGameTime();
-        Set<UUID> seen = new HashSet<>();
         UUID nearest = nearestSub(level, container);
         boolean busy = false;
 
@@ -211,7 +218,9 @@ public class BoatManager {
             queued.scanVersion = CompartmentTracker.structureVersion(queuedSub.getUniqueId());
             queued.scanGlued = queued.glue.hash();
         }
+    }
 
+    private static void forgetMissing(Map<UUID, Boat> boats, Set<UUID> seen) {
         Iterator<Map.Entry<UUID, Boat>> it = boats.entrySet().iterator();
 
         while (it.hasNext()) {
@@ -268,11 +277,11 @@ public class BoatManager {
         Vector3dc centre = pose.position();
         BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos(Mth.floor(centre.x()), Mth.floor(high) + 1,
                 Mth.floor(centre.z()));
-        if (CompartmentTracker.realFluidState(level, cursor).is(FluidTags.WATER))
+        if (CompartmentTracker.realFluidState(level, cursor).is(CreateSubmarine.WATER_TAG))
             return false;
 
         for (int y = Mth.floor(high); y >= Mth.floor(low); y--) {
-            if (CompartmentTracker.realFluidState(level, cursor.setY(y)).is(FluidTags.WATER))
+            if (CompartmentTracker.realFluidState(level, cursor.setY(y)).is(CreateSubmarine.WATER_TAG))
                 return true;
         }
 
@@ -319,7 +328,8 @@ public class BoatManager {
 
         for (BlockPos n : openings) {
             pose.transformPosition(point.set(n.getX() + 0.5, n.getY() + 0.5, n.getZ() + 0.5));
-            if (CompartmentTracker.realFluidState(level, BlockPos.containing(point.x, point.y, point.z)).is(FluidTags.WATER))
+            if (CompartmentTracker.realFluidState(level, BlockPos.containing(point.x, point.y, point.z))
+                    .is(CreateSubmarine.WATER_TAG))
                 return true;
         }
 
@@ -386,7 +396,7 @@ public class BoatManager {
         }
 
         return top != null && CompartmentTracker.realFluidState(level, BlockPos.containing(top.x, top.y, top.z))
-                .is(FluidTags.WATER);
+                .is(CreateSubmarine.WATER_TAG);
     }
 
     private static UUID nearestSub(Level level, SubLevelContainer container) {

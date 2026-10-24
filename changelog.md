@@ -1,5 +1,28 @@
 # Changelog
 
+## [3.4.6]
+
+### Changes
+- Added Light Resolution to the Vortex Engine video settings (`lightResolution`): half and quarter resolution are much lighter on the graphics card and keep the edges of blocks sharp
+- In the Pixel light style, distant glowing blocks are merged into fewer lights
+- Every ship, boat and other Sable sub-level now casts shadows and tints the coloured light of the Vortex Engine, not only the submarine you are in
+- Added Reflections to the Vortex Engine video settings (`reflections`, off by default): water, glass and other see-through blocks reflect the scene and the sky
+- The shadows of the Vortex Engine now follow the shape of blocks: slabs, stairs, doors and trapdoors cast a matching shadow, and thin blocks like shafts, fences or carpets no longer cast the shadow of a full cube
+- Players and mobs now cast shadows in the coloured light of the Vortex Engine
+- Added Temporal Accumulation to the Vortex Engine video settings (`temporalAccumulation`, off by default): the light is blended over several frames, smoothing its grain and its edges at half or quarter resolution
+- The Vortex Engine video settings now fit on one page with the most useful settings, named like the settings of a shader pack (Shadows, Bloom, Volumetric Light, Light Shafts); every other setting is behind the Advanced Settings button
+- Create Deep Seas and Create High Seas now treat the salt, river and spring water of TerraFirmaCraft as water, through the new `create_submarine:water` fluid tag that other mods can add to (#129)
+
+### Bug Fixes
+- Fixed black shadows flickering on kelp, lianas and other thin blocks lit by the Vortex Engine
+- Fixed boats floating in singleplayer but barely floating, sinking or capsizing on servers with `selfRighting` having no effect, and their dry holds counting as flooded on servers, so players drowned and items floated inside: every other dimension of the server wiped the holds of the boats each tick (#131)
+- Fixed sails still pushing the ship when lowered, which also made anchored ships dip their bow into the water
+- Fixed a thick fog covering the world with Complementary, and the sea fog showing outside of ships with Iris Flywheel Compat or Iris Veil Compat (#128, #130, thanks to SpacEagle17)
+- Fixed death messages showing a translation key when a diver was crushed, gave in to the pressure or suffocated while fleeing a mob (#127)
+
+### Removed
+- Removed the Volumes, Vanilla and Hybrid light styles of the Vortex Engine; Flood and Pixel remain and get every feature of the engine. A config set to a removed style falls back to Flood
+
 ## [3.4.5]
 
 ### Changes

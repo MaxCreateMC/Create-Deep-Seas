@@ -11,7 +11,6 @@ import dev.ryanhcode.sable.companion.SubLevelAccess;
 import com.maxenonyme.createsubmarine.submarine.util.SubLevelRegistry;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.tags.FluidTags;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
@@ -198,7 +197,7 @@ public class SubmarinePropellerBlockEntity extends BasePropellerBlockEntity {
         }
         SubLevelAccess ship = SableCompanion.INSTANCE.getContaining(level, worldPosition);
         if (ship == null) {
-            return level.getFluidState(worldPosition).is(FluidTags.WATER);
+            return level.getFluidState(worldPosition).is(CreateSubmarine.WATER_TAG);
         }
         Vector3d worldPos = new Vector3d(worldPosition.getX() + 0.5, worldPosition.getY() + 0.5, worldPosition.getZ() + 0.5);
         ship.logicalPose().transformPosition(worldPos);
@@ -210,7 +209,7 @@ public class SubmarinePropellerBlockEntity extends BasePropellerBlockEntity {
         if (parentLevel == null) {
             return false;
         }
-        return CompartmentTracker.realFluidState(parentLevel, wPos).is(FluidTags.WATER);
+        return CompartmentTracker.realFluidState(parentLevel, wPos).is(CreateSubmarine.WATER_TAG);
     }
 
     @Override

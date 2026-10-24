@@ -15,7 +15,6 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
-import net.minecraft.tags.FluidTags;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
@@ -182,7 +181,7 @@ public class SubmarineSinkingSystem {
         }
         // The water this chamber created vanishes as the pocket collapses.
         for (BlockPos p : comp.internal()) {
-            if (parentLevel.getFluidState(p).is(FluidTags.WATER)) {
+            if (parentLevel.getFluidState(p).is(CreateSubmarine.WATER_TAG)) {
                 PENDING.offer(new ScheduledRemoval(parentLevel, p.immutable(), baseTick + RAND.nextInt(10)));
             }
         }

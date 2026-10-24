@@ -1,12 +1,12 @@
 package com.maxenonyme.createsubmarine.submarine.mixin.compat.sable;
 
+import com.maxenonyme.createsubmarine.CreateSubmarine;
 import dev.ryanhcode.sable.companion.math.BoundingBox3dc;
 import dev.ryanhcode.sable.companion.math.Pose3dc;
 import dev.ryanhcode.sable.sublevel.ClientSubLevel;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.tags.FluidTags;
 import net.minecraft.util.Mth;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -31,7 +31,7 @@ public abstract class ClientSubLevelDepthLightMixin {
                 Mth.floor(box.maxY()),
                 Mth.floor((box.minZ() + box.maxZ()) * 0.5));
         int water = 0;
-        while (water < 15 && level.getFluidState(cursor).is(FluidTags.WATER)) {
+        while (water < 15 && level.getFluidState(cursor).is(CreateSubmarine.WATER_TAG)) {
             water++;
             cursor.move(Direction.UP);
         }

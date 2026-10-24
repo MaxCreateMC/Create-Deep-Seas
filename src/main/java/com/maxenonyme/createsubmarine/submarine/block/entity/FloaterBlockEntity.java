@@ -9,7 +9,6 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundSource;
-import net.minecraft.tags.FluidTags;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
@@ -120,13 +119,13 @@ public class FloaterBlockEntity extends BlockEntity implements BlockEntitySubLev
         } else {
             localWaterSurfaceY = -999.0;
             FluidState fluidState = CompartmentTracker.realFluidState(parentLevel, parentPos);
-            if (fluidState.is(FluidTags.WATER)) {
+            if (fluidState.is(CreateSubmarine.WATER_TAG)) {
                 float h = fluidState.getHeight(parentLevel, parentPos);
                 localWaterSurfaceY = parentPos.getY() + h + countWaterAbove(parentLevel, parentPos);
             } else {
                 BlockPos belowPos = parentPos.below();
                 FluidState belowFluid = CompartmentTracker.realFluidState(parentLevel, belowPos);
-                if (belowFluid.is(FluidTags.WATER)) {
+                if (belowFluid.is(CreateSubmarine.WATER_TAG)) {
                     float h = belowFluid.getHeight(parentLevel, belowPos);
                     localWaterSurfaceY = belowPos.getY() + h + countWaterAbove(parentLevel, belowPos);
                 }
@@ -190,7 +189,7 @@ public class FloaterBlockEntity extends BlockEntity implements BlockEntitySubLev
         BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
         for (int y = pos.getY() + 1; y < pos.getY() + 1 + MAX_WATER_SCAN; y++) {
             cursor.set(pos.getX(), y, pos.getZ());
-            if (CompartmentTracker.realFluidState(level, cursor).is(FluidTags.WATER)) {
+            if (CompartmentTracker.realFluidState(level, cursor).is(CreateSubmarine.WATER_TAG)) {
                 depth++;
             } else {
                 break;

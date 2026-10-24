@@ -28,6 +28,8 @@
         { "name": "Shadows", "type": "float", "count": 1, "values": [ 0.0 ] },
         { "name": "FogStart", "type": "float", "count": 1, "values": [ 0.0 ] },
         { "name": "FogEnd", "type": "float", "count": 1, "values": [ 1.0 ] },
-        { "name": "Translucent", "type": "float", "count": 1, "values": [ 0.0 ] }
+        { "name": "Translucent", "type": "float", "count": 1, "values": [ 0.0 ] },
+        { "name": "LightScale", "type": "float", "count": 1, "values": [ 1.0 ] },
+        { "name": "Jitter", "type": "float", "count": 2, "values": [ 0.0, 0.0 ] }
     ]
 }

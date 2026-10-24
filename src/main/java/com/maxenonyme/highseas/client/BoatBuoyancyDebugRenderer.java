@@ -1,5 +1,6 @@
 package com.maxenonyme.highseas.client;
 
+import com.maxenonyme.createsubmarine.CreateSubmarine;
 import com.maxenonyme.createsubmarine.submarine.compartment.CompartmentDetector;
 import com.maxenonyme.createsubmarine.submarine.compartment.CompartmentTracker;
 import com.maxenonyme.highseas.BoatManager;
@@ -11,7 +12,6 @@ import dev.ryanhcode.sable.companion.math.Pose3dc;
 import dev.ryanhcode.sable.sublevel.ClientSubLevel;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
-import net.minecraft.tags.FluidTags;
 import net.minecraft.util.Mth;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.api.distmarker.Dist;
@@ -70,7 +70,8 @@ public class BoatBuoyancyDebugRenderer {
                 for (BlockPos cell : compartment.internal()) {
                     w.set(cell.getX() + 0.5, cell.getY() + 0.5, cell.getZ() + 0.5);
                     pose.transformPosition(w);
-                    if (CompartmentTracker.realFluidState(mc.level, BlockPos.containing(w.x, w.y, w.z)).is(FluidTags.WATER))
+                    if (CompartmentTracker.realFluidState(mc.level, BlockPos.containing(w.x, w.y, w.z))
+                            .is(CreateSubmarine.WATER_TAG))
                         cube(lines, mat, cell, 0.2f, 0.2f, 1.0f, 0.35f);
                 }
             }

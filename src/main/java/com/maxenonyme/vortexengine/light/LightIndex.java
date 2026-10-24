@@ -9,12 +9,16 @@ import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.SectionPos;
 import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.EmptyBlockGetter;
 import net.minecraft.world.level.block.BeaconBeamBlock;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.DoorBlock;
+import net.minecraft.world.level.block.TrapDoorBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.chunk.LevelChunkSection;
 import net.minecraft.world.level.chunk.PalettedContainer;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.event.level.ChunkEvent;
 import net.neoforged.neoforge.event.level.LevelEvent;
@@ -46,9 +50,10 @@ public class LightIndex {
         return t;
     });
 
-    private static final Map<Long, Light[]> GLOWS = new ConcurrentHashMap<>();
     private static final Map<Long, long[]> SOLIDS = new ConcurrentHashMap<>();
     private static final Map<Long, int[]> FILTERS = new ConcurrentHashMap<>();
+    private static final Map<Long, int[]> PARTS = new ConcurrentHashMap<>();
+    private static final Map<BlockState, Integer> SHAPES = new ConcurrentHashMap<>();
     private static final Map<Long, int[]> EMITTERS = new ConcurrentHashMap<>();
     private static final Set<Long> CHUNKS = new HashSet<>();
     private static final AtomicInteger GLOW_VERSION = new AtomicInteger();
@@ -85,13 +90,13 @@ public class LightIndex {
 
             Predicate<Long> inChunk = key -> SectionPos.x(key) == pos.x && SectionPos.z(key) == pos.z;
 
-            EMITTERS.keySet().removeIf(inChunk);
-            if (GLOWS.keySet().removeIf(inChunk))
+            if (EMITTERS.keySet().removeIf(inChunk))
                 GLOW_VERSION.incrementAndGet();
 
             boolean solids = SOLIDS.keySet().removeIf(inChunk);
             boolean filters = FILTERS.keySet().removeIf(inChunk);
-            if (solids || filters)
+            boolean parts = PARTS.keySet().removeIf(inChunk);
+            if (solids || filters || parts)
                 SOLID_VERSION.incrementAndGet();
         });
     }
@@ -112,13 +117,15 @@ public class LightIndex {
 
         boolean glow = GlowDefinitions.glows(old) || GlowDefinitions.glows(state);
         Map<BlockState, Glow> glows = GlowDefinitions.all();
-        boolean solid = shadows && (occludes(old, glows) != occludes(state, glows) || filter(old) != filter(state));
+        boolean solid = shadows && (cover(old, glows) != cover(state, glows) || filter(old) != filter(state));
         if (!glow && !solid)
             return;
 
         if (Sable.HELPER.getContaining(chunk.getLevel(), chunk.getPos()) instanceof SubLevel subLevel) {
             if (glow)
                 SubLevelGlows.markDirty(subLevel.getUniqueId());
+            if (solid)
+                SubLevelSolids.markDirty(subLevel.getUniqueId());
             return;
         }
 
@@ -172,6 +179,10 @@ public class LightIndex {
         return FILTERS.get(section);
     }
 
+    static int[] parts(long section) {
+        return PARTS.get(section);
+    }
+
     static int[] emitters(long section) {
         return EMITTERS.get(section);
     }
@@ -223,38 +234,16 @@ public class LightIndex {
         for (int[] found : EMITTERS.values())
             emitters += found.length / 2;
 
-        return new Census(GLOWS.size(), SOLIDS.size(), emitters);
-    }
-
-    static List<Light> near(Vec3 camera, int distance) {
-        List<Light> near = new ArrayList<>();
-        double reach = distance * distance;
-        double sectionReach = (distance + 14) * (distance + 14);
-
-        for (Map.Entry<Long, Light[]> entry : GLOWS.entrySet()) {
-            long key = entry.getKey();
-            double dx = (SectionPos.x(key) << 4) + 8 - camera.x;
-            double dy = (SectionPos.y(key) << 4) + 8 - camera.y;
-            double dz = (SectionPos.z(key) << 4) + 8 - camera.z;
-            if (dx * dx + dy * dy + dz * dz > sectionReach)
-                continue;
-
-            for (Light light : entry.getValue()) {
-                if (light.distanceSqr(camera) <= reach)
-                    near.add(light);
-            }
-        }
-
-        return near;
+        return new Census(EMITTERS.size(), SOLIDS.size(), emitters);
     }
 
     private static void clear() {
         SubLevelGlows.clear();
         SubLevelSolids.clear();
         GENERATION.incrementAndGet();
-        GLOWS.clear();
         SOLIDS.clear();
         FILTERS.clear();
+        PARTS.clear();
         EMITTERS.clear();
         GLOW_VERSION.incrementAndGet();
         SOLID_VERSION.incrementAndGet();
@@ -274,7 +263,7 @@ public class LightIndex {
         long key = SectionPos.asLong(chunk.getPos().x, chunk.getSectionYFromSectionIndex(index), chunk.getPos().z);
         boolean empty = section.hasOnlyAir();
         boolean lit = !empty && section.maybeHas(glows::containsKey);
-        boolean solid = shadows && !empty && section.maybeHas(state -> occludes(state, glows));
+        boolean solid = shadows && !empty && section.maybeHas(state -> cover(state, glows) != 0);
         boolean tinted = shadows && !empty && section.maybeHas(state -> filter(state) != 0);
         boolean withShadows = shadows;
         PalettedContainer<BlockState> states = lit || solid || tinted ? section.getStates().copy() : null;
@@ -282,9 +271,9 @@ public class LightIndex {
 
         WORKER.execute(() -> {
             try {
-                Light[] lights = lit ? collectGlows(states, key, glows) : null;
                 int[] emitters = lit ? collectEmitters(states, glows) : null;
                 long[] bits = solid ? collectSolids(states, glows) : null;
+                int[] parts = solid ? collectParts(states, glows) : null;
                 int[] filters = tinted ? collectFilters(states) : null;
                 if (generation != GENERATION.get())
                     return;
@@ -294,14 +283,6 @@ public class LightIndex {
                         EMITTERS.remove(key);
                     else
                         EMITTERS.put(key, emitters);
-                    GLOW_VERSION.incrementAndGet();
-                }
-
-                if (!Arrays.equals(GLOWS.get(key), lights)) {
-                    if (lights == null)
-                        GLOWS.remove(key);
-                    else
-                        GLOWS.put(key, lights);
                     GLOW_VERSION.incrementAndGet();
                 }
 
@@ -326,6 +307,14 @@ public class LightIndex {
                     changed = true;
                 }
 
+                if (!Arrays.equals(PARTS.get(key), parts)) {
+                    if (parts == null)
+                        PARTS.remove(key);
+                    else
+                        PARTS.put(key, parts);
+                    changed = true;
+                }
+
                 if (changed)
                     SOLID_VERSION.incrementAndGet();
             } catch (RuntimeException e) {
@@ -334,9 +323,44 @@ public class LightIndex {
         });
     }
 
-    private static boolean occludes(BlockState state, Map<BlockState, Glow> glows) {
-        return (state.canOcclude() || state.is(Blocks.TINTED_GLASS)) && state.getLightEmission() == 0
-                && !glows.containsKey(state);
+    static int cover(BlockState state, Map<BlockState, Glow> glows) {
+        if (state.isAir() || state.getLightEmission() != 0 || glows.containsKey(state))
+            return 0;
+
+        boolean opaque = state.canOcclude() || state.is(Blocks.TINTED_GLASS)
+                || state.getBlock() instanceof DoorBlock || state.getBlock() instanceof TrapDoorBlock;
+        if (!opaque)
+            return 0;
+
+        return SHAPES.computeIfAbsent(state, LightIndex::octants);
+    }
+
+    private static int octants(BlockState state) {
+        try {
+            int mask = 0;
+
+            for (AABB box : state.getShape(EmptyBlockGetter.INSTANCE, BlockPos.ZERO).toAabbs())
+                mask |= octants(box.minX, box.minY, box.minZ, box.maxX, box.maxY, box.maxZ);
+            return mask;
+        } catch (RuntimeException e) {
+            return 255;
+        }
+    }
+
+    static int octants(double minX, double minY, double minZ, double maxX, double maxY, double maxZ) {
+        int mask = 0;
+
+        for (int i = 0; i < 8; i++) {
+            double x = (i & 1) * 0.5, y = (i >> 1 & 1) * 0.5, z = (i >> 2) * 0.5;
+            if (covers(minX, maxX, x) && covers(minY, maxY, y) && covers(minZ, maxZ, z))
+                mask |= 1 << i;
+        }
+
+        return mask;
+    }
+
+    private static boolean covers(double min, double max, double start) {
+        return Math.min(max, start + 0.5) - Math.max(min, start) >= 3 / 16.0;
     }
 
     static int filter(BlockState state) {
@@ -373,13 +397,31 @@ public class LightIndex {
         boolean any = false;
 
         for (int i = 0; i < 4096; i++) {
-            if (occludes(states.get(i & 15, i >> 8, i >> 4 & 15), glows)) {
+            if (cover(states.get(i & 15, i >> 8, i >> 4 & 15), glows) == 255) {
                 bits[i >> 6] |= 1L << (i & 63);
                 any = true;
             }
         }
 
         return any ? bits : null;
+    }
+
+    private static int[] collectParts(PalettedContainer<BlockState> states, Map<BlockState, Glow> glows) {
+        int[] found = new int[32];
+        int count = 0;
+
+        for (int i = 0; i < 4096; i++) {
+            int mask = cover(states.get(i & 15, i >> 8, i >> 4 & 15), glows);
+            if (mask == 0 || mask == 255)
+                continue;
+
+            if (count + 2 > found.length)
+                found = Arrays.copyOf(found, found.length * 2);
+            found[count++] = i;
+            found[count++] = mask;
+        }
+
+        return count == 0 ? null : Arrays.copyOf(found, count);
     }
 
     private static int[] collectEmitters(PalettedContainer<BlockState> states, Map<BlockState, Glow> glows) {
@@ -399,62 +441,5 @@ public class LightIndex {
         }
 
         return count == 0 ? null : Arrays.copyOf(found, count);
-    }
-
-    private static Light[] collectGlows(PalettedContainer<BlockState> states, long key, Map<BlockState, Glow> glows) {
-        int baseX = SectionPos.x(key) << 4, baseY = SectionPos.y(key) << 4, baseZ = SectionPos.z(key) << 4;
-        Cluster[] clusters = new Cluster[64];
-
-        for (int y = 0; y < 16; y++) {
-            for (int z = 0; z < 16; z++) {
-                for (int x = 0; x < 16; x++) {
-                    BlockState state = states.get(x, y, z);
-                    Glow glow = glows.get(state);
-                    if (glow == null)
-                        continue;
-
-                    int cell = (y >> 2) << 4 | (z >> 2) << 2 | x >> 2;
-                    if (clusters[cell] == null)
-                        clusters[cell] = new Cluster();
-                    clusters[cell].add(baseX + x + 0.5, baseY + y + 0.5, baseZ + z + 0.5, glow);
-                }
-            }
-        }
-
-        List<Light> lights = new ArrayList<>();
-
-        for (Cluster cluster : clusters) {
-            if (cluster != null)
-                lights.add(cluster.light());
-        }
-
-        return lights.isEmpty() ? null : lights.toArray(new Light[0]);
-    }
-
-    private static class Cluster {
-        double x, y, z;
-        float red, green, blue;
-        float weight, radius, strongest;
-        int pulse, flicker;
-
-        void add(double px, double py, double pz, Glow glow) {
-            float power = glow.intensity();
-            x += px * power;
-            y += py * power;
-            z += pz * power;
-            red += glow.red() * power;
-            green += glow.green() * power;
-            blue += glow.blue() * power;
-            weight += power;
-            radius = Math.max(radius, glow.radius());
-            strongest = Math.max(strongest, power);
-            pulse = Math.max(pulse, glow.behavior() >> 4);
-            flicker = Math.max(flicker, glow.behavior() & 15);
-        }
-
-        Light light() {
-            return Light.omni(x / weight, y / weight, z / weight, red / weight, green / weight, blue / weight,
-                    radius, Math.min(weight, strongest * 1.5f), pulse << 4 | flicker);
-        }
     }
 }

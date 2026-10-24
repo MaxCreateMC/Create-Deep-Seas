@@ -20,6 +20,8 @@
         { "name": "Pixelated", "type": "float", "count": 1, "values": [ 1.0 ] },
         { "name": "Strength", "type": "float", "count": 1, "values": [ 1.0 ] },
         { "name": "GameTime", "type": "float", "count": 1, "values": [ 0.0 ] },
-        { "name": "Translucent", "type": "float", "count": 1, "values": [ 0.0 ] }
+        { "name": "Translucent", "type": "float", "count": 1, "values": [ 0.0 ] },
+        { "name": "LightScale", "type": "float", "count": 1, "values": [ 1.0 ] },
+        { "name": "Jitter", "type": "float", "count": 2, "values": [ 0.0, 0.0 ] }
     ]
 }

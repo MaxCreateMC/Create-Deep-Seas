@@ -20,14 +20,13 @@ import net.neoforged.neoforge.fluids.capability.templates.FluidTank;
 import net.neoforged.neoforge.items.ItemStackHandler;
 import org.jetbrains.annotations.NotNull;
 import net.minecraft.core.particles.ParticleTypes;
-import net.minecraft.tags.FluidTags;
 
 public class ElectrolyzerBlockEntity extends KineticBlockEntity {
     private static final int FE_PER_RPM = 4;
     private static final int MAX_GENERATION = 1000;
     private static final ResourceLocation SHAFT = ResourceLocation.fromNamespaceAndPath("create", "shaft");
 
-    public final FluidTank waterTank = new FluidTank(4000, fluid -> fluid.getFluid().is(FluidTags.WATER));
+    public final FluidTank waterTank = new FluidTank(4000, fluid -> fluid.getFluid().is(CreateSubmarine.WATER_TAG));
     public final FluidTank oxygenTank = new FluidTank(4000,
             fluid -> fluid.getFluid().isSame(CreateSubmarine.OXYGEN.get()));
     public final EnergyStorage energyStorage = new EnergyStorage(10000, 1000, 1000);
@@ -72,7 +71,7 @@ public class ElectrolyzerBlockEntity extends KineticBlockEntity {
 
         @Override
         public int fill(FluidStack resource, FluidAction action) {
-            if (resource.getFluid().is(FluidTags.WATER))
+            if (resource.getFluid().is(CreateSubmarine.WATER_TAG))
                 return waterTank.fill(resource, action);
             return 0;
         }

@@ -1,5 +1,6 @@
 package com.maxenonyme.highseas;
 
+import com.maxenonyme.createsubmarine.CreateSubmarine;
 import com.maxenonyme.highseas.config.HighSeasConfig;
 import com.maxenonyme.createsubmarine.submarine.compartment.CompartmentDetector;
 import com.maxenonyme.createsubmarine.submarine.compartment.CompartmentTracker;
@@ -15,7 +16,6 @@ import dev.ryanhcode.sable.sublevel.ServerSubLevel;
 import dev.ryanhcode.sable.sublevel.SubLevel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.tags.FluidTags;
 import net.minecraft.util.Mth;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import org.joml.Quaterniond;
@@ -145,7 +145,7 @@ public class BoatBuoyancySystem {
         BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
         for (int cy = top; cy >= bottom; cy--) {
             pos.set(cx, cy, cz);
-            if (CompartmentTracker.realFluidState(level, pos).is(FluidTags.WATER)) {
+            if (CompartmentTracker.realFluidState(level, pos).is(CreateSubmarine.WATER_TAG)) {
                 return cy + 1.0;
             }
         }

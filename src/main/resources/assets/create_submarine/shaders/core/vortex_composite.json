@@ -2,10 +2,13 @@
     "vertex": "create_submarine:vortex_composite",
     "fragment": "create_submarine:vortex_composite",
     "samplers": [
-        { "name": "LightSampler" }
+        { "name": "LightSampler" },
+        { "name": "DepthSampler" }
     ],
     "uniforms": [
+        { "name": "InvProjMat", "type": "matrix4x4", "count": 16, "values": [ 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0 ] },
         { "name": "ScreenSize", "type": "float", "count": 2, "values": [ 1.0, 1.0 ] },
+        { "name": "LightScale", "type": "float", "count": 1, "values": [ 1.0 ] },
         { "name": "Strength", "type": "float", "count": 1, "values": [ 1.0 ] },
         { "name": "Bloom", "type": "float", "count": 1, "values": [ 0.0 ] }
     ]

@@ -196,7 +196,7 @@ public class RealisticHullAnalyzer {
                 if (index.get(pos.asLong()) >= 0)
                     continue;
                 FluidState fluid = CompartmentTracker.realFluidState(plot, pos);
-                if (!fluid.isEmpty() && (fluid.is(FluidTags.WATER) || fluid.is(FluidTags.LAVA))) {
+                if (!fluid.isEmpty() && (fluid.is(CreateSubmarine.WATER_TAG) || fluid.is(FluidTags.LAVA))) {
                     faceClass[6 * i + d] = RigidLatticeSolver.WET_INTERNAL;
                     continue;
                 }

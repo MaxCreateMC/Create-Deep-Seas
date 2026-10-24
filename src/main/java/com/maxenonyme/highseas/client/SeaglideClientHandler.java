@@ -1,5 +1,6 @@
 package com.maxenonyme.highseas.client;
 
+import com.maxenonyme.createsubmarine.CreateSubmarine;
 import com.maxenonyme.highseas.CreateHighSeas;
 import com.maxenonyme.highseas.item.SeaglideDrainPayload;
 import com.maxenonyme.highseas.item.SeaglideImpactPayload;
@@ -12,7 +13,6 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.util.Mth;
 import net.minecraft.sounds.SoundSource;
-import net.minecraft.tags.FluidTags;
 import net.minecraft.world.entity.Pose;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.Vec3;
@@ -299,7 +299,7 @@ public class SeaglideClientHandler {
             Vec3 at = from.add(flat.scale(step));
             for (int dy = 1; dy >= -3; dy--) {
                 probe.set(Mth.floor(at.x), Mth.floor(at.y) + dy, Mth.floor(at.z));
-                if (player.level().getFluidState(probe).is(FluidTags.WATER)) {
+                if (player.level().getFluidState(probe).is(CreateSubmarine.WATER_TAG)) {
                     return true;
                 }
             }

@@ -89,7 +89,7 @@ public class VortexCommand {
     }
 
     private static int styles(CommandContext<CommandSourceStack> context) {
-        String summary = "light " + lower(VortexConfig.LIGHT_STYLE.get())
+        String summary = "light " + lower(VortexConfig.lightStyle())
                 + ", halo " + lower(VortexConfig.HALO_STYLE.get())
                 + ", water " + lower(VortexConfig.WATER_STYLE.get())
                 + ", mist " + lower(VortexConfig.MIST_STYLE.get())

@@ -1,8 +1,8 @@
 package com.maxenonyme.vortexengine.atmosphere;
 
+import com.maxenonyme.createsubmarine.CreateSubmarine;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
-import net.minecraft.tags.FluidTags;
 import net.minecraft.util.Mth;
 import net.minecraft.world.phys.Vec3;
 
@@ -36,12 +36,12 @@ public record Sunlight(float x, float y, float strength, double surface) {
 
     private static double surface(ClientLevel level, Vec3 eye) {
         BlockPos.MutableBlockPos cursor = BlockPos.containing(eye).mutable();
-        if (!level.getFluidState(cursor).is(FluidTags.WATER))
+        if (!level.getFluidState(cursor).is(CreateSubmarine.WATER_TAG))
             return level.getSeaLevel();
 
         for (int i = 0; i < 96; i++) {
             cursor.move(0, 1, 0);
-            if (!level.getFluidState(cursor).is(FluidTags.WATER))
+            if (!level.getFluidState(cursor).is(CreateSubmarine.WATER_TAG))
                 return cursor.getY() - 0.1;
         }
 

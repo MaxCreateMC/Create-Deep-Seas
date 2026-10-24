@@ -1,5 +1,6 @@
 package com.maxenonyme.highseas.oar;
 
+import com.maxenonyme.createsubmarine.CreateSubmarine;
 import com.maxenonyme.createsubmarine.submarine.compartment.CompartmentTracker;
 import com.maxenonyme.createsubmarine.submarine.util.SablePhysicsHelper;
 import dev.ryanhcode.sable.api.sublevel.SubLevelContainer;
@@ -11,7 +12,6 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
-import net.minecraft.tags.FluidTags;
 import net.minecraft.util.Mth;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
@@ -193,7 +193,7 @@ public class OarPropulsionSystem {
             for (int dz = -1; dz <= 1; dz++) {
                 for (int dy = 0; dy >= -2; dy--) {
                     pos.set(px + dx, py + dy, pz + dz);
-                    if (CompartmentTracker.realFluidState(parent, pos).is(FluidTags.WATER))
+                    if (CompartmentTracker.realFluidState(parent, pos).is(CreateSubmarine.WATER_TAG))
                         return true;
                 }
             }

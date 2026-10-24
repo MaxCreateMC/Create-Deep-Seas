@@ -10,7 +10,6 @@ import dev.ryanhcode.sable.companion.math.BoundingBox3ic;
 import dev.ryanhcode.sable.companion.math.Pose3dc;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.tags.FluidTags;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
@@ -727,12 +726,12 @@ public class CompartmentTracker {
     private static boolean outsideIsWater(SubLevel sub, Level level, BlockPos plotPos) {
         Vector3d vec = new Vector3d(plotPos.getX() + 0.5, plotPos.getY() + 0.5, plotPos.getZ() + 0.5);
         sub.logicalPose().transformPosition(vec);
-        return realFluidState(level, BlockPos.containing(vec.x, vec.y, vec.z)).is(FluidTags.WATER);
+        return realFluidState(level, BlockPos.containing(vec.x, vec.y, vec.z)).is(CreateSubmarine.WATER_TAG);
     }
 
     private static boolean holdsWater(Level level, CompartmentDetector.Component comp) {
         for (BlockPos p : comp.internal()) {
-            if (level.isLoaded(p) && level.getFluidState(p).is(FluidTags.WATER))
+            if (level.isLoaded(p) && level.getFluidState(p).is(CreateSubmarine.WATER_TAG))
                 return true;
         }
 

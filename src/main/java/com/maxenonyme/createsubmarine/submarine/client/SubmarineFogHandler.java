@@ -1,11 +1,11 @@
 package com.maxenonyme.createsubmarine.submarine.client;
 
+import com.maxenonyme.createsubmarine.CreateSubmarine;
 import com.maxenonyme.createsubmarine.submarine.client.renderer.SubmarineWaterCullBuffer;
 import com.maxenonyme.createsubmarine.submarine.compartment.CompartmentTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
-import net.minecraft.tags.FluidTags;
 import net.minecraft.util.Mth;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
@@ -97,7 +97,7 @@ public class SubmarineFogHandler {
                 return false;
 
             BlockState state = section.getBlockState(x & 15, y & 15, z & 15);
-            return state.getFluidState().is(FluidTags.WATER);
+            return state.getFluidState().is(CreateSubmarine.WATER_TAG);
         } catch (RuntimeException e) {
             return false;
         }

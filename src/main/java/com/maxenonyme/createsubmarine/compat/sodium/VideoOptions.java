@@ -13,9 +13,14 @@ import net.caffeinemc.mods.sodium.api.config.structure.ConfigBuilder;
 import net.caffeinemc.mods.sodium.api.config.structure.EnumOptionBuilder;
 import net.caffeinemc.mods.sodium.api.config.structure.IntegerOptionBuilder;
 import net.caffeinemc.mods.sodium.api.config.structure.OptionPageBuilder;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.neoforged.fml.ModList;
+import net.neoforged.fml.config.ModConfig;
+import net.neoforged.fml.config.ModConfigs;
+import net.neoforged.neoforge.client.gui.ConfigurationScreen;
 import net.neoforged.neoforge.common.ModConfigSpec;
 
 import java.util.Locale;
@@ -49,70 +54,61 @@ public class VideoOptions implements ConfigEntryPoint {
         builder.registerModOptions("vortex_engine", "Vortex Engine", version)
                 .setNonTintedIcon(icon("vortex"))
                 .setColorTheme(builder.createColorTheme().setBaseThemeRGB(0xFFA040))
-                .addPage(lightsPage(builder))
-                .addPage(waterPage(builder));
+                .addPage(vortexPage(builder));
     }
 
-    private static OptionPageBuilder lightsPage(ConfigBuilder builder) {
+    private static OptionPageBuilder vortexPage(ConfigBuilder builder) {
         ModConfigSpec spec = VortexConfig.SPEC;
 
         return builder.createOptionPage()
-                .setName(Component.translatable(KEY + "page.lights"))
+                .setName(Component.translatable(KEY + "page.vortex"))
                 .addOptionGroup(builder.createOptionGroup()
                         .setName(Component.translatable(KEY + "group.vortex"))
                         .addOption(toggle(builder, spec, VortexConfig.ENABLED, "vortex_enabled", OptionImpact.HIGH))
-                        .addOption(toggle(builder, spec, VortexConfig.LIGHTS, "vortex_lights", OptionImpact.HIGH))
-                        .addOption(number(builder, spec, VortexConfig.BRIGHTNESS, "brightness", 10, 200, 10,
-                                OptionImpact.LOW, "percent"))
-                        .addOption(number(builder, spec, VortexConfig.REACH, "reach", 50, 200, 10,
-                                OptionImpact.LOW, "percent"))
-                        .addOption(number(builder, spec, VortexConfig.SATURATION, "saturation", 0, 200, 10,
-                                OptionImpact.LOW, "percent"))
-                        .addOption(toggle(builder, spec, VortexConfig.ANIMATED_LIGHTS, "animated_lights",
-                                OptionImpact.LOW))
                         .addOption(choice(builder, spec, VortexConfig.LIGHT_STYLE, VortexConfig.LightStyle.class,
-                                "light_style", OptionImpact.VARIES)))
+                                "light_style", OptionImpact.MEDIUM))
+                        .addOption(number(builder, spec, VortexConfig.BRIGHTNESS, "brightness", 10, 200, 10,
+                                OptionImpact.LOW, "percent")))
                 .addOptionGroup(builder.createOptionGroup()
-                        .setName(Component.translatable(KEY + "group.quality"))
-                        .addOption(number(builder, spec, VortexConfig.LIGHT_DISTANCE, "light_distance", 16, 256, 8,
-                                OptionImpact.MEDIUM, "blocks"))
-                        .addOption(number(builder, spec, VortexConfig.MAX_LIGHTS, "max_lights", 16, 8192, 16,
-                                OptionImpact.MEDIUM, "count"))
-                        .addOption(toggle(builder, spec, VortexConfig.PIXEL_LIGHTING, "pixel_lighting",
-                                OptionImpact.LOW))
+                        .setName(Component.translatable(KEY + "group.lighting"))
                         .addOption(toggle(builder, spec, VortexConfig.SHADOWS, "shadows", OptionImpact.MEDIUM))
-                        .addOption(toggle(builder, spec, VortexConfig.AUTO_GLOW, "auto_glow", OptionImpact.LOW))
-                        .addOption(toggle(builder, spec, VortexConfig.ALL_BLOCKS, "all_blocks", OptionImpact.HIGH))
                         .addOption(toggle(builder, spec, VortexConfig.BLOOM, "bloom", OptionImpact.LOW))
-                        .addOption(number(builder, spec, VortexConfig.BLOOM_STRENGTH, "bloom_strength", 0, 200, 10,
-                                OptionImpact.LOW, "percent")));
-    }
-
-    private static OptionPageBuilder waterPage(ConfigBuilder builder) {
-        ModConfigSpec spec = VortexConfig.SPEC;
-
-        return builder.createOptionPage()
-                .setName(Component.translatable(KEY + "page.water"))
+                        .addOption(toggle(builder, spec, VortexConfig.ALL_BLOCKS, "all_blocks", OptionImpact.HIGH)))
                 .addOptionGroup(builder.createOptionGroup()
                         .setName(Component.translatable(KEY + "group.water"))
                         .addOption(toggle(builder, spec, VortexConfig.HAZE, "haze", OptionImpact.MEDIUM))
-                        .addOption(number(builder, spec, VortexConfig.HALO_STRENGTH, "halo_strength", 0, 200, 10,
-                                OptionImpact.LOW, "percent"))
-                        .addOption(number(builder, spec, VortexConfig.SUNLIGHT, "sunlight", 0, 200, 10,
-                                OptionImpact.LOW, "percent"))
-                        .addOption(choice(builder, spec, VortexConfig.HALO_STYLE, VortexConfig.HaloStyle.class,
-                                "halo_style", OptionImpact.MEDIUM))
                         .addOption(choice(builder, spec, VortexConfig.WATER_STYLE, VortexConfig.WaterStyle.class,
                                 "water_style", OptionImpact.MEDIUM))
                         .addOption(choice(builder, spec, VortexConfig.MOTES_STYLE, VortexConfig.MotesStyle.class,
                                 "motes_style", OptionImpact.LOW)))
                 .addOptionGroup(builder.createOptionGroup()
-                        .setName(Component.translatable(KEY + "group.mist"))
-                        .addOption(toggle(builder, spec, VortexConfig.MIST, "mist", OptionImpact.MEDIUM))
-                        .addOption(choice(builder, spec, VortexConfig.MIST_STYLE, VortexConfig.MistStyle.class,
-                                "mist_style", OptionImpact.MEDIUM))
-                        .addOption(number(builder, spec, VortexConfig.MAX_PUFFS, "max_puffs", 64, 8000, 64,
-                                OptionImpact.MEDIUM, "count")));
+                        .setName(Component.translatable(KEY + "group.performance"))
+                        .addOption(choice(builder, spec, VortexConfig.LIGHT_RESOLUTION,
+                                VortexConfig.LightResolution.class, "light_resolution", OptionImpact.HIGH))
+                        .addOption(number(builder, spec, VortexConfig.LIGHT_DISTANCE, "light_distance", 16, 256, 8,
+                                OptionImpact.MEDIUM, "blocks")))
+                .addOptionGroup(builder.createOptionGroup()
+                        .setName(Component.translatable(KEY + "group.screen"))
+                        .addOption(toggle(builder, spec, VortexConfig.REFLECTIONS, "reflections", OptionImpact.MEDIUM))
+                        .addOption(toggle(builder, spec, VortexConfig.TEMPORAL, "temporal_accumulation",
+                                OptionImpact.LOW)))
+                .addOptionGroup(builder.createOptionGroup()
+                        .setName(Component.translatable(KEY + "group.advanced"))
+                        .addOption(builder.createExternalButtonOption(id("vortex_advanced"))
+                                .setName(Component.translatable(KEY + "vortex_advanced"))
+                                .setTooltip(Component.translatable(KEY + "vortex_advanced.tooltip"))
+                                .setScreenConsumer(VideoOptions::openAdvanced)));
+    }
+
+    private static void openAdvanced(Screen parent) {
+        for (ModConfig config : ModConfigs.getModConfigs(CreateSubmarine.MOD_ID)) {
+            if (config.getSpec() != VortexConfig.SPEC)
+                continue;
+
+            Minecraft.getInstance().setScreen(new ConfigurationScreen.ConfigurationSectionScreen(parent,
+                    ModConfig.Type.CLIENT, config, Component.translatable(KEY + "vortex_advanced")));
+            return;
+        }
     }
 
     private static OptionPageBuilder effectsPage(ConfigBuilder builder) {
