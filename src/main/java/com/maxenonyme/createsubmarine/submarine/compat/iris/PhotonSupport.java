@@ -17,7 +17,7 @@ class PhotonSupport {
 
     private static final String VL_START = """
 
-                float cdsHull = texture(CdsHullFar, uv).r;
+                float cdsHull = CdsHullReady > 0.5 ? texture(CdsHullFar, uv).r : 1.0;
                 if (cdsHull < 1.0) {
                     vec3 cdsDir = normalize(scene_pos - gbufferModelViewInverse[3].xyz + 1e-4);
                     if (depth1 > cdsHull) {
@@ -31,7 +31,7 @@ class PhotonSupport {
 
     private static final String WATER_DISTANCE_FUNCTION = """
             float cdsWaterDistance(float viewDistance, float backDistance) {
-                float hull = texture(CdsHullFar, uv).r;
+                float hull = CdsHullReady > 0.5 ? texture(CdsHullFar, uv).r : 1.0;
                 if (hull >= 1.0)
                     return viewDistance;
                 vec4 hullView = gbufferProjectionInverse * vec4(vec3(uv, hull) * 2.0 - 1.0, 1.0);
@@ -49,8 +49,8 @@ class PhotonSupport {
         Matcher blend = BLEND.matcher(result);
         if (blend.find()) {
             result = result.substring(0, blend.start()) + WATER_DISTANCE_FUNCTION + result.substring(blend.start());
-            result = AIR_BEHIND_GLASS.matcher(result)
-                    .replaceFirst("if (is_translucent && texture(CdsHullFar, uv).r >= 1.0) {$1");
+            result = AIR_BEHIND_GLASS.matcher(result).replaceFirst(
+                    "if (is_translucent && (CdsHullReady > 0.5 ? texture(CdsHullFar, uv).r : 1.0) >= 1.0) {$1");
             result = WATER_DISTANCE.matcher(result)
                     .replaceFirst("$1cdsWaterDistance(view_distance, min(length(back_position_view), far))");
             result = MINIMUM_WATER.matcher(result)

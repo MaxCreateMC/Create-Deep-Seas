@@ -9,7 +9,6 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.tags.FluidTags;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
@@ -66,7 +65,7 @@ public class BallastVentBlockEntity extends BlockEntity {
 
         @Override
         public boolean isFluidValid(int tank, @NotNull FluidStack stack) {
-            return stack.getFluid().is(FluidTags.WATER);
+            return stack.getFluid().is(CreateSubmarine.WATER_TAG);
         }
 
         @Override
@@ -134,7 +133,7 @@ public class BallastVentBlockEntity extends BlockEntity {
     private boolean isSubmerged(Level level, BlockPos pos) {
         SubLevelAccess subLevel = SableCompanion.INSTANCE.getContaining(level, pos);
         if (subLevel == null)
-            return level.getFluidState(pos).is(FluidTags.WATER);
+            return level.getFluidState(pos).is(CreateSubmarine.WATER_TAG);
         Vector3d worldPos = new Vector3d(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5);
         subLevel.logicalPose().transformPosition(worldPos);
         BlockPos wPos = BlockPos.containing(worldPos.x, worldPos.y, worldPos.z);
@@ -145,6 +144,6 @@ public class BallastVentBlockEntity extends BlockEntity {
         if (parentLevel == null)
             return false;
         return CompartmentTracker.realFluidState(parentLevel, wPos)
-                .is(FluidTags.WATER);
+                .is(CreateSubmarine.WATER_TAG);
     }
 }

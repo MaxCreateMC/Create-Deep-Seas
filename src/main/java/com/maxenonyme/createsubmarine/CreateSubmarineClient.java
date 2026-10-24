@@ -1,6 +1,6 @@
 package com.maxenonyme.createsubmarine;
 
-import com.maxenonyme.AbyssDimension.client.CameraShake;
+import com.maxenonyme.theabyss.client.CameraShake;
 import com.maxenonyme.createsubmarine.submarine.block.entity.CommandSubBlockEntity;
 import com.maxenonyme.createsubmarine.submarine.block.entity.renderer.ElectrolyzerBlockEntityRenderer;
 import com.maxenonyme.createsubmarine.submarine.client.SubLevelCrackRenderer;

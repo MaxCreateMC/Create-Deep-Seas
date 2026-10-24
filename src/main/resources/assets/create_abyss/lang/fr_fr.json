@@ -1,4 +1,5 @@
 {
+  "block.create_abyss.abyss_ceiling": "Plafond de l'Abyss",
   "block.create_abyss.deepslate_geothermal_vent": "Cheminée hydrothermale en ardoise des abîmes",
   "block.create_abyss.foam_rock_geothermal_vent": "Cheminée hydrothermale en roche moussue",
   "block.create_abyss.burning_sand": "Sable ardent",
@@ -27,7 +28,7 @@
   "entity.create_abyss.cookiecutter_shark": "Requin emporte-pièce",
   "item.create_abyss.amphistium_spawn_egg": "Œuf d'apparition d'Amphistium",
   "item.create_abyss.cookiecutter_shark_spawn_egg": "Œuf d'apparition de requin emporte-pièce",
-  "itemGroup.create_abyss.abyss_tab": "Abyss",
+  "itemGroup.create_abyss.abyss_tab": "The Abyss",
   "item.create_abyss.music_disc_seafoam": "Disque de musique",
   "jukebox_song.create_abyss.seafoam": "Caner Crebes - Seafoam",
   "item.create_abyss.music_disc_snells_window": "Disque de musique",

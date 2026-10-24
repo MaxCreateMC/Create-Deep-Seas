@@ -83,17 +83,18 @@ public class Atmosphere {
         boolean field = LightField.ready();
         boolean glowing = field && VortexConfig.HAZE.get()
                 && VortexConfig.HALO_STYLE.get() == VortexConfig.HaloStyle.GLOW_FOG;
-        boolean blocky = VortexConfig.LIGHT_STYLE.get() == VortexConfig.LightStyle.PIXEL;
+        boolean blocky = VortexConfig.lightStyle() == VortexConfig.LightStyle.PIXEL;
         float glow = 0;
 
         if (glowing)
-            glow = (underwater ? 0.05f : 0.0125f) * (blocky ? 1.6f : 1f);
+            glow = (underwater ? 0.05f : 0.0125f) * (blocky ? 1.6f : 1f) * VortexConfig.HALO_STRENGTH.get() / 100f;
         
         VortexConfig.WaterStyle water = VortexConfig.WATER_STYLE.get();
         float shafts = water != VortexConfig.WaterStyle.NONE && underwater && sun.strength() > 0 ? 0.035f : 0;
+        shafts *= VortexConfig.SUNLIGHT.get() / 100f;
         int beams = water == VortexConfig.WaterStyle.ALL_RAYS && underwater ? uploadBeams(event, eye) : 0;
         int mists = MistField.voxel() ? uploadMist(level, eye) : 0;
-        int motes = VortexConfig.MOTES_STYLE.get().ordinal();
+        int motes = underwater ? VortexConfig.MOTES_STYLE.get().ordinal() : 0;
 
         if (glow <= 0 && shafts <= 0 && mists == 0 && motes == 0 && beams == 0)
             return;
@@ -169,7 +170,7 @@ public class Atmosphere {
         float[] scores = new float[BEAMS];
         float[] places = new float[BEAMS * 4];
 
-        for (Light light : LightVolumes.shaftCandidates(eye)) {
+        for (Light light : LightVolumes.shaftCandidates()) {
             if (light.cone() > -0.99f || light.intensity() <= 0)
                 continue;
 

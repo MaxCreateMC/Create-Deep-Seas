@@ -1,10 +1,13 @@
 #version 150
 
 uniform sampler2D DepthSampler;
+uniform sampler2D OpaqueDepth;
 uniform sampler3D ShadowGrid;
 uniform mat4 InvProjMat;
 uniform mat4 InvViewMat;
 uniform vec2 ScreenSize;
+uniform float LightScale;
+uniform vec2 Jitter;
 uniform vec3 CameraFract;
 uniform vec3 WorldWrap;
 uniform ivec3 GridOffset;
@@ -19,6 +22,7 @@ uniform float HaloCap;
 uniform float HaloGain;
 uniform float FogStart;
 uniform float FogEnd;
+uniform float Translucent;
 
 flat in vec3 lightCenter;
 flat in vec3 lightColor;
@@ -78,27 +82,50 @@ ivec3 cellOf(vec3 point) {
     return ivec3(floor(point + CameraFract));
 }
 
-bool solid(ivec3 cell) {
+vec4 gridAt(ivec3 cell) {
     ivec3 grid = cell + GridOffset;
     if (any(lessThan(grid, ivec3(0))) || any(greaterThanEqual(grid, ivec3(128))))
-        return false;
-    return texelFetch(ShadowGrid, grid, 0).r > 0.5;
+        return vec4(0.0);
+    return texelFetch(ShadowGrid, grid, 0);
 }
 
-float shadow(vec3 from) {
+bool covered(vec4 grid, vec3 local) {
+    int code = int(grid.a * 255.0 + 0.5);
+    if (code == 255)
+        return true;
+    if (code != 1)
+        return false;
+
+    int bit = int(local.x >= 0.5) + int(local.y >= 0.5) * 2 + int(local.z >= 0.5) * 4;
+    return (int(grid.r * 255.0 + 0.5) >> bit & 1) != 0;
+}
+
+vec3 shadow(vec3 from) {
     ivec3 source = cellOf(lightCenter);
+    ivec3 start = cellOf(from);
+    ivec3 last = start;
     vec3 path = lightCenter - from;
+    vec3 through = vec3(1.0);
     int count = int(min(length(path) * 4.0, 64.0));
 
     for (int i = 1; i < count; i++) {
-        ivec3 cell = cellOf(from + path * (float(i) / float(count)));
+        vec3 point = from + path * (float(i) / float(count));
+        ivec3 cell = cellOf(point);
         if (cell == source)
             break;
-        if (solid(cell))
-            return 0.0;
+        if (cell == start)
+            continue;
+
+        vec4 grid = gridAt(cell);
+        if (covered(grid, point + CameraFract - vec3(cell)))
+            return vec3(0.0);
+
+        if (cell != last && grid.a < 0.002)
+            through *= vec3(1.0) - grid.rgb;
+        last = cell;
     }
 
-    return 1.0;
+    return through;
 }
 
 float caustic(vec3 point, float time) {
@@ -134,15 +161,38 @@ vec3 surfaceLight(vec3 world, vec3 normal, vec3 hue, float time) {
 
     if (Murk > 0.5)
         strength *= caustic(surface + CameraFract + WorldWrap, time);
-    if (Shadows > 0.5 && shadow(surface + normal * 0.1) <= 0.0)
+
+    vec3 through = Shadows > 0.5 ? shadow(surface + normal * 0.1) : vec3(1.0);
+    if (max(through.r, max(through.g, through.b)) <= 0.0)
         return vec3(0.0);
 
-    return hot(hue, strength) * strength * absorb(length(world) + dist);
+    return hot(hue, strength) * strength * through * absorb(length(world) + dist);
 }
 
 vec3 worldAt(vec2 uv, float depth) {
     vec4 view = InvProjMat * vec4(vec3(uv, depth) * 2.0 - 1.0, 1.0);
     return (InvViewMat * vec4(view.xyz / view.w, 1.0)).xyz;
+}
+
+vec3 worldNear(vec2 frag, vec2 offset) {
+    vec2 uv = (frag + offset) / ScreenSize;
+    return worldAt(uv, texture(DepthSampler, uv).r);
+}
+
+vec3 normalAt(vec2 frag, vec3 world) {
+    vec3 left = world - worldNear(frag, vec2(-1.0, 0.0));
+    vec3 right = worldNear(frag, vec2(1.0, 0.0)) - world;
+    vec3 down = world - worldNear(frag, vec2(0.0, -1.0));
+    vec3 up = worldNear(frag, vec2(0.0, 1.0)) - world;
+
+    vec3 across = dot(right, right) < dot(left, left) ? right : left;
+    vec3 along = dot(up, up) < dot(down, down) ? up : down;
+    float footprint = 16.0 * length(world) * InvProjMat[1][1] / ScreenSize.y;
+    if (max(dot(across, across), dot(along, along)) > footprint * footprint)
+        return -normalize(world);
+
+    vec3 normal = normalize(cross(across, along));
+    return dot(normal, world) > 0.0 ? -normal : normal;
 }
 
 float motes(vec3 eye, vec3 ray, float enter, float leave, float reach, float spread, float time) {
@@ -200,19 +250,18 @@ vec3 hazeLight(vec3 eye, vec3 ray, float limit, float spread, vec3 hue, float ti
 }
 
 void main() {
-    vec2 uv = gl_FragCoord.xy / ScreenSize;
+    vec2 frag = floor(gl_FragCoord.xy) * LightScale + 0.5 + Jitter;
+    vec2 uv = frag / ScreenSize;
     float depth = texture(DepthSampler, uv).r;
+    if (Translucent > 0.5 && depth >= texelFetch(OpaqueDepth, ivec2(frag), 0).r)
+        discard;
 
     vec3 world = worldAt(uv, depth);
-
-    vec3 normal = normalize(cross(dFdx(world), dFdy(world)));
-    if (dot(normal, world) > 0.0)
-        normal = -normal;
+    vec3 normal = normalAt(frag, world);
 
     float viewDistance = length(world);
     float time = GameTime * 1200.0;
     vec3 hue = lightColor / max(max(lightColor.r, lightColor.g), max(lightColor.b, 0.001));
-    hue = pow(hue, vec3(1.5));
 
     vec3 light = vec3(0.0);
     if (depth < 1.0)
@@ -221,7 +270,7 @@ void main() {
         float widest = max(2.0, floor(ScreenSize.y / 270.0 + 0.5));
         float texelPixels = floor(pixelsPerBlock(length(lightCenter)) / 16.0);
         float cell = Pixelated > 0.5 ? clamp(texelPixels, 1.0, widest) : 1.0;
-        vec2 cellUv = (floor(gl_FragCoord.xy / cell) + 0.5) * cell / ScreenSize;
+        vec2 cellUv = (floor(frag / cell) + 0.5) * cell / ScreenSize;
         float cellDepth = texture(DepthSampler, cellUv).r;
         vec3 eye = worldAt(cellUv, 0.0);
         vec3 cellWorld = worldAt(cellUv, cellDepth) - eye;

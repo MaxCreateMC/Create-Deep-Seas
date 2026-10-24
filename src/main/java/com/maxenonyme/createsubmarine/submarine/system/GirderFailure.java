@@ -20,7 +20,6 @@ import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
-import net.minecraft.tags.FluidTags;
 import dev.ryanhcode.sable.api.sublevel.SubLevelContainer;
 import dev.ryanhcode.sable.companion.math.BoundingBox3ic;
 import com.maxenonyme.createsubmarine.submarine.util.SubLevelRegistry;
@@ -330,7 +329,7 @@ public class GirderFailure {
                     continue;
                 Vector3dc at = piece.logicalPose().position();
                 BlockPos piecePos = BlockPos.containing(at.x(), at.y(), at.z());
-                if (!CompartmentTracker.realFluidState(level, piecePos).is(FluidTags.WATER) || !indoors(at))
+                if (!CompartmentTracker.realFluidState(level, piecePos).is(CreateSubmarine.WATER_TAG) || !indoors(at))
                     continue;
                 Object handle = SablePhysicsHelper.getHandle(piece);
                 if (handle == null)

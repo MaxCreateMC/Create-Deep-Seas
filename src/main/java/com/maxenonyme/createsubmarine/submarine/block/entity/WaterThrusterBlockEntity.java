@@ -12,7 +12,6 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.Connection;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.tags.FluidTags;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
@@ -24,7 +23,8 @@ import net.neoforged.neoforge.fluids.capability.templates.FluidTank;
 public class WaterThrusterBlockEntity extends BlockEntity implements BlockEntitySubLevelPropellerActor, BlockEntityPropeller {
     public static final int WATER_CAPACITY = 1000;
 
-    public final FluidTank waterTank = new FluidTank(WATER_CAPACITY, fluid -> fluid.getFluid().is(FluidTags.WATER)) {
+    public final FluidTank waterTank = new FluidTank(WATER_CAPACITY, fluid -> fluid.getFluid()
+            .is(CreateSubmarine.WATER_TAG)) {
         @Override
         protected void onContentsChanged() {
             setChanged();

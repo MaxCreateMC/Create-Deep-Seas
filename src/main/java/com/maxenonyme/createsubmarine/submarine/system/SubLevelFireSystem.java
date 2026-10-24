@@ -1,5 +1,6 @@
 package com.maxenonyme.createsubmarine.submarine.system;
 
+import com.maxenonyme.createsubmarine.CreateSubmarine;
 import com.maxenonyme.createsubmarine.submarine.compartment.CompartmentTracker;
 import dev.ryanhcode.sable.api.sublevel.SubLevelContainer;
 import dev.ryanhcode.sable.companion.math.BoundingBox3ic;
@@ -10,7 +11,6 @@ import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
-import net.minecraft.tags.FluidTags;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.block.BaseFireBlock;
 import net.minecraft.world.level.block.Blocks;
@@ -69,7 +69,7 @@ public class SubLevelFireSystem {
                                     continue;
                                 subLevel.logicalPose().transformPosition(point.set(m.getX() + 0.5, m.getY() + 0.5, m.getZ() + 0.5));
                                 BlockPos world = BlockPos.containing(point.x, point.y, point.z);
-                                if (!CompartmentTracker.realFluidState(level, world).is(FluidTags.WATER))
+                                if (!CompartmentTracker.realFluidState(level, world).is(CreateSubmarine.WATER_TAG))
                                     continue;
                                 level.setBlock(m, Blocks.AIR.defaultBlockState(), 3);
                                 level.playSound(null, world, SoundEvents.FIRE_EXTINGUISH, SoundSource.BLOCKS, 0.5f,

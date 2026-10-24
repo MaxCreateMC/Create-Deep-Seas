@@ -8,10 +8,14 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Pseudo
-@Mixin(targets = "net.irisshaders.iris.pipeline.CompositeRenderer", remap = false)
+@Mixin(targets = {
+        "net.irisshaders.iris.pipeline.CompositeRenderer",
+        "net.irisshaders.iris.pipeline.FinalPassRenderer"
+}, remap = false)
 public abstract class IrisCompositeRendererMixin {
 
-    @Inject(method = "renderAll", at = @At("HEAD"), remap = false, require = 0)
+    @Inject(method = { "renderAll", "renderFinalPass" }, at = @At(value = "INVOKE",
+            target = "Lnet/irisshaders/iris/pathways/FullScreenQuadRenderer;renderQuad()V"), remap = false, require = 0)
     private void createsubmarine$bindHull(CallbackInfo ci) {
         ShaderpackSupport.bindHull();
     }

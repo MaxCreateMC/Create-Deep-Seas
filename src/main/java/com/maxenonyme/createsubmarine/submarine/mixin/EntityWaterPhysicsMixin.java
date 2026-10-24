@@ -1,12 +1,12 @@
 package com.maxenonyme.createsubmarine.submarine.mixin;
 
+import com.maxenonyme.createsubmarine.CreateSubmarine;
 import com.maxenonyme.createsubmarine.submarine.compartment.CompartmentTracker;
 import com.maxenonyme.createsubmarine.submarine.util.SubLevelRegistry;
 import dev.ryanhcode.sable.companion.SableCompanion;
 import dev.ryanhcode.sable.companion.SubLevelAccess;
 import dev.ryanhcode.sable.sublevel.SubLevel;
 import net.minecraft.core.BlockPos;
-import net.minecraft.tags.FluidTags;
 import net.minecraft.tags.TagKey;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
@@ -67,7 +67,7 @@ public abstract class EntityWaterPhysicsMixin {
         Entity entity = (Entity) (Object) this;
         BlockPos eye = BlockPos.containing(entity.getX(), entity.getEyeY(), entity.getZ());
         FluidState fs = entity.level().getFluidState(eye);
-        if (fs.is(FluidTags.WATER)
+        if (fs.is(CreateSubmarine.WATER_TAG)
                 && entity.getEyeY() < eye.getY() + fs.getHeight(entity.level(), eye)) {
             ci.cancel();
         }
@@ -162,7 +162,7 @@ public abstract class EntityWaterPhysicsMixin {
                 
                 if (subLevel != null) {
                     FluidState fs = subLevel.getFluidState(localBlockPos);
-                    if (fs.is(FluidTags.WATER)) {
+                    if (fs.is(CreateSubmarine.WATER_TAG)) {
                         inside = false;
                     } else {
                         double[] probes = { y + 0.15, y + entity.getBbHeight() * 0.5 };
@@ -170,7 +170,7 @@ public abstract class EntityWaterPhysicsMixin {
                             Vector3d local = new Vector3d(x, probe, z);
                             ship.logicalPose().transformPositionInverse(local);
                             BlockPos cell = BlockPos.containing(local.x, local.y, local.z);
-                            if (subLevel.getFluidState(cell).is(FluidTags.WATER)) {
+                            if (subLevel.getFluidState(cell).is(CreateSubmarine.WATER_TAG)) {
                                 inside = false;
                                 break;
                             }

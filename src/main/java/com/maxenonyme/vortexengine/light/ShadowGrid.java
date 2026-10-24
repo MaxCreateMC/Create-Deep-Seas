@@ -4,6 +4,8 @@ import com.maxenonyme.createsubmarine.CreateSubmarine;
 import com.maxenonyme.createsubmarine.submarine.client.VeilUploadGuard;
 import com.maxenonyme.vortexengine.VortexProfiler;
 import com.mojang.blaze3d.platform.GlStateManager;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.SectionPos;
 import net.minecraft.util.Mth;
 import net.minecraft.world.phys.Vec3;
@@ -29,8 +31,8 @@ public class ShadowGrid {
         return t;
     });
 
-    private record Built(int x, int y, int z, int version, int glowVersion, byte[] cells, long[][] sections,
-            byte[] emission, int[][] emitters, byte[] heights) {
+    private record Built(int x, int y, int z, int version, int glowVersion, long hulls, byte[] cells,
+            long[][] sections, int[][] filters, int[][] parts, byte[] emission, int[][] emitters, byte[] heights) {
     }
 
     private static CompletableFuture<Built> pending;
@@ -47,17 +49,23 @@ public class ShadowGrid {
     private static int heightTexture;
     private static int builtVersion = -1;
     private static int builtGlowVersion = -1;
+    private static long builtHulls;
     private static long[][] builtSections;
+    private static int[][] builtFilters;
+    private static int[][] builtParts;
     private static int[][] builtEmitters;
+    private static boolean lit;
+    private static Box builtBox;
+    private static Box frameBox;
     private static byte[] builtCells;
     private static byte[] builtEmission;
     private static int[] injected = new int[256];
     private static int injectedCount;
     private static int originX, originY, originZ;
-    private static boolean withField;
     private static boolean ready;
+    private static int generation;
 
-    static void update(Vec3 camera, boolean field) {
+    static void update(Vec3 camera) {
         if (incoming != null) {
             uploadSlices();
             return;
@@ -81,12 +89,17 @@ public class ShadowGrid {
         int glowVersion = LightIndex.glowVersion();
         boolean moved = !ready || x != originX || y != originY || z != originZ;
 
-        boolean stale = moved || field != withField
+        ClientLevel level = Minecraft.getInstance().level;
+        SubLevelSolids.Snapshot hulls = level == null ? new SubLevelSolids.Snapshot(List.of(), 0L)
+                : SubLevelSolids.snapshot(level, x, y, z, SIZE);
+
+        boolean stale = moved || hulls.signature() != builtHulls
                 || version != builtVersion && touched(false)
-                || field && glowVersion != builtGlowVersion && touched(true);
+                || glowVersion != builtGlowVersion && touched(true);
 
         if (stale) {
-            pending = CompletableFuture.supplyAsync(() -> build(x, y, z, version, glowVersion, field), WORKER);
+            pending = CompletableFuture.supplyAsync(() -> build(x, y, z, version, glowVersion, hulls),
+                    WORKER);
         } else {
             builtVersion = version;
             builtGlowVersion = glowVersion;
@@ -102,7 +115,9 @@ public class ShadowGrid {
                     long section = SectionPos.asLong((originX >> 4) + sx, (originY >> 4) + sy, (originZ >> 4) + sz);
                     boolean changed = glows
                             ? LightIndex.emitters(section) != builtEmitters[i]
-                            : LightIndex.solids(section) != builtSections[i];
+                            : LightIndex.solids(section) != builtSections[i]
+                                    || LightIndex.filters(section) != builtFilters[i]
+                                    || LightIndex.parts(section) != builtParts[i];
                     if (changed)
                         return true;
 
@@ -116,6 +131,14 @@ public class ShadowGrid {
 
     public static boolean ready() {
         return ready;
+    }
+
+    static boolean lit() {
+        return lit;
+    }
+
+    static Box litBox() {
+        return Box.union(builtBox, frameBox);
     }
 
     public static boolean hasField() {
@@ -132,6 +155,10 @@ public class ShadowGrid {
 
     public static int heights() {
         return heightTexture;
+    }
+
+    static int generation() {
+        return generation;
     }
 
     public static int originX() {
@@ -154,11 +181,12 @@ public class ShadowGrid {
 
     static int pack(float red, float green, float blue, float radius, float intensity, int behavior) {
         float top = Math.max(Math.max(red, green), Math.max(blue, 0.001f));
-        int r = Math.round(Mth.clamp(red / top, 0, 1) * 255);
-        int g = Math.round(Mth.clamp(green / top, 0, 1) * 255);
-        int b = Math.round(Mth.clamp(blue / top, 0, 1) * 255);
+        int r = Math.round(Mth.clamp(Tuning.saturate(red, top) / top, 0, 1) * 255);
+        int g = Math.round(Mth.clamp(Tuning.saturate(green, top) / top, 0, 1) * 255);
+        int b = Math.round(Mth.clamp(Tuning.saturate(blue, top) / top, 0, 1) * 255);
 
-        float reach = Mth.clamp(radius * (1.0f + 0.55f * intensity), 1, 15);
+        float reach = Mth.clamp(radius * Tuning.reach() * (1.0f + 0.55f * intensity), 1, 15);
+        behavior = Tuning.behavior(behavior);
         int rhythm = ((behavior >> 4) > 0 ? 1 : 0) | ((behavior & 15) > 0 ? 2 : 0);
         int code = Math.round(reach / 15 * 62) << 2 | rhythm;
         return r << 24 | g << 16 | b << 8 | code + 1;
@@ -168,14 +196,12 @@ public class ShadowGrid {
         if (!hasField() || injectedCount == 0 && lights.isEmpty())
             return 0;
 
-        if (texel == null)
-            texel = MemoryUtil.memAlloc(4);
-
         VeilUploadGuard.reset();
         GL11.glPixelStorei(GL11.GL_UNPACK_ALIGNMENT, 1);
         GL11.glBindTexture(GL12.GL_TEXTURE_3D, emissionTexture);
 
         int writes = injectedCount;
+        frameBox = null;
 
         for (int i = 0; i < injectedCount; i++) {
             int index = injected[i] * 4;
@@ -192,8 +218,9 @@ public class ShadowGrid {
             if (cx < 0 || cy < 0 || cz < 0 || cx >= SIZE || cy >= SIZE || cz >= SIZE)
                 continue;
 
+            frameBox = Box.union(frameBox, Box.around(cx, cy, cz, 16, SIZE));
             int index = cx + cy * SIZE + cz * SIZE * SIZE;
-            if (builtCells[index] != 0 || injectedCount == injected.length)
+            if (builtCells[index * 4 + 3] == (byte) 255 || injectedCount == injected.length)
                 continue;
 
             write(index, pack(light.red(), light.green(), light.blue(), light.radius(), light.intensity(),
@@ -207,7 +234,14 @@ public class ShadowGrid {
         return writes;
     }
 
-    private static void write(int index, int packed) {
+    static byte[] cells() {
+        return builtCells;
+    }
+
+    static void write(int index, int packed) {
+        if (texel == null)
+            texel = MemoryUtil.memAlloc(4);
+
         texel.clear();
         texel.put((byte) (packed >>> 24)).put((byte) (packed >>> 16)).put((byte) (packed >>> 8)).put((byte) packed);
         texel.flip();
@@ -216,14 +250,17 @@ public class ShadowGrid {
         GL12.glTexSubImage3D(GL12.GL_TEXTURE_3D, 0, cx, cy, cz, 1, 1, 1, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, texel);
     }
 
-    private static Built build(int x, int y, int z, int version, int glowVersion, boolean field) {
+    private static Built build(int x, int y, int z, int version, int glowVersion,
+            SubLevelSolids.Snapshot hulls) {
         long started = System.nanoTime();
 
         try {
-            byte[] cells = new byte[SIZE * SIZE * SIZE];
-            byte[] emission = field ? new byte[SIZE * SIZE * SIZE * 4] : null;
+            byte[] cells = new byte[SIZE * SIZE * SIZE * 4];
+            byte[] emission = new byte[SIZE * SIZE * SIZE * 4];
             long[][] sections = new long[SIZE * SIZE * SIZE / 4096][];
-            int[][] emitters = field ? new int[sections.length][] : null;
+            int[][] filters = new int[sections.length][];
+            int[][] parts = new int[sections.length][];
+            int[][] emitters = new int[sections.length][];
             int i = 0;
 
             for (int sx = 0; sx < SIZE / 16; sx++) {
@@ -233,36 +270,37 @@ public class ShadowGrid {
                         long[] bits = LightIndex.solids(section);
                         sections[i] = bits;
                         if (bits != null)
-                            fill(cells, bits, sx << 4, sy << 4, sz << 4);
+                            GridCells.fill(cells, bits, sx << 4, sy << 4, sz << 4);
 
-                        if (field) {
-                            int[] found = LightIndex.emitters(section);
-                            emitters[i] = found;
-                            if (found != null)
-                                splat(emission, found, sx << 4, sy << 4, sz << 4);
-                        }
+                        int[] tints = LightIndex.filters(section);
+                        filters[i] = tints;
+                        if (tints != null)
+                            GridCells.tint(cells, tints, sx << 4, sy << 4, sz << 4);
+
+                        int[] shapes = LightIndex.parts(section);
+                        parts[i] = shapes;
+                        if (shapes != null)
+                            GridCells.shape(cells, shapes, sx << 4, sy << 4, sz << 4);
+
+                        int[] found = LightIndex.emitters(section);
+                        emitters[i] = found;
+                        if (found != null)
+                            splat(emission, found, sx << 4, sy << 4, sz << 4);
 
                         i++;
                     }
                 }
             }
 
+            SubLevelSolids.stamp(cells, hulls.hulls(), x, y, z, SIZE);
+
             byte[] heights = heights(cells);
             VortexProfiler.recordBuild(System.nanoTime() - started);
-            return new Built(x, y, z, version, glowVersion, cells, sections, emission, emitters, heights);
+            return new Built(x, y, z, version, glowVersion, hulls.signature(), cells, sections, filters, parts,
+                    emission, emitters, heights);
         } catch (RuntimeException e) {
             CreateSubmarine.LOGGER.warn("Couldn't build the Vortex shadow grid", e);
             return null;
-        }
-    }
-
-    private static void fill(byte[] cells, long[] bits, int baseX, int baseY, int baseZ) {
-        for (int i = 0; i < 4096; i++) {
-            if ((bits[i >> 6] >>> (i & 63) & 1) == 0)
-                continue;
-
-            int cx = baseX + (i & 15), cy = baseY + (i >> 8), cz = baseZ + (i >> 4 & 15);
-            cells[cx + cy * SIZE + cz * SIZE * SIZE] = (byte) 255;
         }
     }
 
@@ -286,7 +324,7 @@ public class ShadowGrid {
         for (int cz = 0; cz < SIZE; cz++) {
             for (int cx = 0; cx < SIZE; cx++) {
                 for (int cy = SIZE - 1; cy >= 0; cy--) {
-                    if (cells[cx + cy * SIZE + cz * SIZE * SIZE] != 0) {
+                    if (cells[(cx + cy * SIZE + cz * SIZE * SIZE) * 4 + 3] != 0) {
                         heights[cx + cz * SIZE] = (byte) (cy + 1);
                         break;
                     }
@@ -299,7 +337,7 @@ public class ShadowGrid {
 
     private static void receive(Built built) {
         if (staging == null)
-            staging = MemoryUtil.memAlloc(SIZE * SIZE * SIZE);
+            staging = MemoryUtil.memAlloc(SIZE * SIZE * SIZE * 4);
         staging.clear();
         staging.put(built.cells()).flip();
 
@@ -324,12 +362,12 @@ public class ShadowGrid {
         GL11.glPixelStorei(GL11.GL_UNPACK_ALIGNMENT, 1);
 
         if (backTexture == 0)
-            backTexture = create3D(GL30.GL_R8, GL11.GL_RED, GL11.GL_LINEAR);
+            backTexture = create3D(GL11.GL_RGBA8, GL11.GL_RGBA, GL11.GL_LINEAR);
         GL11.glBindTexture(GL12.GL_TEXTURE_3D, backTexture);
-        staging.limit((incomingSlice + count) * slab).position(incomingSlice * slab);
-        GL12.glTexSubImage3D(GL12.GL_TEXTURE_3D, 0, 0, 0, incomingSlice, SIZE, SIZE, count, GL11.GL_RED,
+        staging.limit((incomingSlice + count) * slab * 4).position(incomingSlice * slab * 4);
+        GL12.glTexSubImage3D(GL12.GL_TEXTURE_3D, 0, 0, 0, incomingSlice, SIZE, SIZE, count, GL11.GL_RGBA,
                 GL11.GL_UNSIGNED_BYTE, staging);
-        long bytes = (long) count * slab;
+        long bytes = (long) count * slab * 4;
 
         if (built.emission() != null) {
             if (backEmission == 0)
@@ -370,12 +408,36 @@ public class ShadowGrid {
         originZ = built.z();
         builtVersion = built.version();
         builtGlowVersion = built.glowVersion();
+        builtHulls = built.hulls();
         builtSections = built.sections();
+        builtFilters = built.filters();
+        builtParts = built.parts();
         builtEmitters = built.emitters();
+        lit = false;
+        builtBox = null;
+        frameBox = null;
+        if (builtEmitters != null) {
+            int i = 0;
+
+            for (int sx = 0; sx < SIZE / 16; sx++) {
+                for (int sy = 0; sy < SIZE / 16; sy++) {
+                    for (int sz = 0; sz < SIZE / 16; sz++) {
+                        if (builtEmitters[i++] == null)
+                            continue;
+
+                        lit = true;
+                        builtBox = Box.union(builtBox, new Box(Math.max(0, sx * 16 - 16), Math.max(0, sy * 16 - 16),
+                                Math.max(0, sz * 16 - 16), Math.min(SIZE, sx * 16 + 32), Math.min(SIZE, sy * 16 + 32),
+                                Math.min(SIZE, sz * 16 + 32)));
+                    }
+                }
+            }
+        }
+
         builtCells = built.cells();
         builtEmission = built.emission();
-        withField = built.emission() != null;
         injectedCount = 0;
+        generation++;
         ready = true;
     }
 

@@ -24,7 +24,13 @@ bool inside(ivec3 cell) {
 }
 
 bool solid(ivec3 cell) {
-    return texelFetch(ShadowGrid, cell, 0).r > 0.5;
+    return texelFetch(ShadowGrid, cell, 0).a > 0.5;
+}
+
+vec4 filtered(ivec3 cell, vec4 light) {
+    vec4 grid = texelFetch(ShadowGrid, cell, 0);
+    vec3 through = grid.a > 0.002 ? vec3(1.0 - grid.g) : vec3(1.0) - grid.rgb;
+    return vec4(light.rgb * through, light.a * max(through.r, max(through.g, through.b)));
 }
 
 vec4 previous(ivec3 cell) {
@@ -54,14 +60,13 @@ vec4 source(ivec3 cell) {
 
     int code = int(emitted.a * 255.0 + 0.5) - 1;
     float reach = float(code >> 2) / 62.0 * 15.0;
-    float strength = rhythm(cell, code);
 
     if (Mode < 1.5) {
-        float energy = FAINT * exp(0.61 + 0.85 * reach) * strength;
+        float energy = FAINT * exp(0.61 + 0.85 * reach) * rhythm(cell, code);
         return vec4(emitted.rgb * energy, energy);
     }
 
-    return vec4(emitted.rgb, reach * STEP * strength);
+    return vec4(emitted.rgb, reach * STEP);
 }
 
 vec4 soft(ivec3 cell) {
@@ -113,5 +118,5 @@ void main() {
         return;
     }
 
-    fragColor = Mode < 1.5 ? soft(cell) : vanilla(cell);
+    fragColor = filtered(cell, Mode < 1.5 ? soft(cell) : vanilla(cell));
 }

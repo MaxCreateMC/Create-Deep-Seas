@@ -1,5 +1,6 @@
 package com.maxenonyme.createsubmarine.submarine.system;
 
+import com.maxenonyme.createsubmarine.CreateSubmarine;
 import com.maxenonyme.createsubmarine.submarine.config.HullStrengthConfig;
 import com.maxenonyme.createsubmarine.submarine.compartment.CompartmentDetector;
 import com.maxenonyme.createsubmarine.submarine.compartment.CompartmentTracker;
@@ -24,6 +25,7 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.BaseFireBlock;
+import net.minecraft.world.level.material.FlowingFluid;
 import net.minecraft.world.level.material.FluidState;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import org.joml.Vector3d;
@@ -63,7 +65,6 @@ public class SubmarinePressureSystem {
     private static final float OVERPRESSURE_RAMP = 20f;
     private static final float OVERPRESSURE_CAP = 3f;
     private static final int IMPLODE_MARGIN = 5;
-    private static final int MAX_WATER_SCAN = 400;
     private static final ResourceLocation SOUND_METAL_STRESS = ResourceLocation
             .withDefaultNamespace("entity.iron_golem.repair");
     private static int tickCounter = 0;
@@ -513,7 +514,8 @@ public class SubmarinePressureSystem {
 
         BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
         cursor.set(x, startY, z);
-        if (CompartmentTracker.realFluidState(chunk, cursor).isEmpty())
+        FluidState start = CompartmentTracker.realFluidState(chunk, cursor);
+        if (start.isEmpty() || falling(start))
             return DRY;
 
         int surfaceY = Integer.MIN_VALUE;
@@ -523,6 +525,9 @@ public class SubmarinePressureSystem {
         for (int y = startY; y < top; y++) {
             cursor.set(x, y, z);
             FluidState fluid = CompartmentTracker.realFluidState(chunk, cursor);
+            if (falling(fluid))
+                break;
+
             if (!fluid.isEmpty()) {
                 surfaceY = y;
                 sum += LiquidDensity.of(fluid.getType());
@@ -533,6 +538,10 @@ public class SubmarinePressureSystem {
         }
 
         return new LiquidColumn(surfaceY, count == 0 ? 1.0 : sum / count);
+    }
+
+    private static boolean falling(FluidState fluid) {
+        return !fluid.isSource() && fluid.hasProperty(FlowingFluid.FALLING) && fluid.getValue(FlowingFluid.FALLING);
     }
 
     private static void burnInLava(UUID id, Level plotLevel, Level oceanLevel, SubLevelAccess subLevel) {
@@ -832,7 +841,7 @@ public class SubmarinePressureSystem {
 
         for (BlockPos p : comp.internal()) {
             BlockState state = level.getBlockState(p);
-            boolean water = state.getFluidState().is(FluidTags.WATER);
+            boolean water = state.getFluidState().is(CreateSubmarine.WATER_TAG);
             if (!state.isAir() && !water)
                 continue;
 

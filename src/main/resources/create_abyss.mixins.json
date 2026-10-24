@@ -1,9 +1,11 @@
 {
   "required": true,
   "minVersion": "0.8",
-  "package": "com.maxenonyme.AbyssDimension.mixin",
+  "package": "com.maxenonyme.theabyss.mixin",
   "compatibilityLevel": "JAVA_21",
-  "mixins": [],
+  "mixins": [
+    "AbyssFluidPickerMixin"
+  ],
   "client": [
     "AbyssSpecialEffectsMixin",
     "LightTextureMixin"

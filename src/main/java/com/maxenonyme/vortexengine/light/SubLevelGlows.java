@@ -3,6 +3,7 @@ package com.maxenonyme.vortexengine.light;
 import com.maxenonyme.createsubmarine.CreateSubmarine;
 import com.maxenonyme.createsubmarine.submarine.compartment.PlotSnapshot;
 import dev.ryanhcode.sable.api.sublevel.SubLevelContainer;
+import dev.ryanhcode.sable.companion.math.BoundingBox3ic;
 import dev.ryanhcode.sable.companion.math.Pose3dc;
 import dev.ryanhcode.sable.sublevel.ClientSubLevel;
 import dev.ryanhcode.sable.sublevel.SubLevel;
@@ -61,6 +62,10 @@ public class SubLevelGlows {
 
         for (SubLevel sub : container.getAllSubLevels()) {
             if (!(sub instanceof ClientSubLevel subLevel) || subLevel.isRemoved() || subLevel.getPlot() == null)
+                continue;
+
+            BoundingBox3ic bounds = subLevel.getPlot().getBoundingBox();
+            if (bounds.minX() == bounds.maxX() && bounds.minY() == bounds.maxY() && bounds.minZ() == bounds.maxZ())
                 continue;
 
             UUID id = subLevel.getUniqueId();

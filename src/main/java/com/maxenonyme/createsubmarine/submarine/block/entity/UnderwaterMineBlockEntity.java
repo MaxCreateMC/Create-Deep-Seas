@@ -10,7 +10,6 @@ import com.maxenonyme.createsubmarine.submarine.util.SubLevelRegistry;
 import dev.ryanhcode.sable.companion.SableCompanion;
 import dev.ryanhcode.sable.companion.SubLevelAccess;
 import net.minecraft.core.BlockPos;
-import net.minecraft.tags.FluidTags;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
@@ -238,13 +237,13 @@ public class UnderwaterMineBlockEntity extends BlockEntity {
         double localWaterSurfaceY = -999.0;
 
         FluidState fluidState = CompartmentTracker.realFluidState(parentLevel, parentPos);
-        if (fluidState.is(FluidTags.WATER)) {
+        if (fluidState.is(CreateSubmarine.WATER_TAG)) {
             float h = fluidState.getHeight(parentLevel, parentPos);
             localWaterSurfaceY = parentPos.getY() + h + countWaterAbove(parentLevel, parentPos);
         } else {
             BlockPos belowPos = parentPos.below();
             FluidState belowFluid = CompartmentTracker.realFluidState(parentLevel, belowPos);
-            if (belowFluid.is(FluidTags.WATER)) {
+            if (belowFluid.is(CreateSubmarine.WATER_TAG)) {
                 float h = belowFluid.getHeight(parentLevel, belowPos);
                 localWaterSurfaceY = belowPos.getY() + h + countWaterAbove(parentLevel, belowPos);
             }
@@ -304,7 +303,8 @@ public class UnderwaterMineBlockEntity extends BlockEntity {
         parentLevel.sendParticles(ParticleTypes.FLASH, worldX, worldY, worldZ, 3, 0.5, 0.5, 0.5, 0.0);
 
         double maxDist = 40.0;
-        boolean mineInWater = CompartmentTracker.realFluidState(parentLevel, BlockPos.containing(worldX, worldY, worldZ)).is(FluidTags.WATER);
+        boolean mineInWater = CompartmentTracker.realFluidState(parentLevel, BlockPos.containing(worldX, worldY, worldZ))
+                .is(CreateSubmarine.WATER_TAG);
 
         for (ServerPlayer player : parentLevel.players()) {
             double dist = player.distanceToSqr(worldX, worldY, worldZ);
@@ -474,7 +474,7 @@ public class UnderwaterMineBlockEntity extends BlockEntity {
         BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
         for (int y = pos.getY() + 1; y < pos.getY() + 1 + MAX_WATER_SCAN; y++) {
             cursor.set(pos.getX(), y, pos.getZ());
-            if (CompartmentTracker.realFluidState(level, cursor).is(FluidTags.WATER)) {
+            if (CompartmentTracker.realFluidState(level, cursor).is(CreateSubmarine.WATER_TAG)) {
                 depth++;
             } else {
                 break;

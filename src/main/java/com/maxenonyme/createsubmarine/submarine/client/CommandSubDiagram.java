@@ -71,7 +71,7 @@ public class CommandSubDiagram {
             Map.Entry<CommandSubBlockEntity, Frames> entry = it.next();
             CommandSubBlockEntity be = entry.getKey();
             Frames frames = entry.getValue();
-            if (mc.level == null || be.isRemoved() || be.getLevel() != mc.level || now - frames.lastSeen > FORGET_NANOS) {
+            if (mc.level == null || be.stale() || be.getLevel() != mc.level || now - frames.lastSeen > FORGET_NANOS) {
                 frames.free();
                 it.remove();
                 continue;

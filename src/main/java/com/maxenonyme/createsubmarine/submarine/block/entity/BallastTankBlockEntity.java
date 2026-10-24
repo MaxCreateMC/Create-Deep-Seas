@@ -46,7 +46,6 @@ import dev.ryanhcode.sable.sublevel.plot.LevelPlot;
 import java.util.concurrent.ConcurrentHashMap;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.tags.FluidTags;
 import net.minecraft.world.level.material.FluidState;
 import net.minecraft.world.level.material.Fluids;
 import org.joml.Quaterniond;
@@ -282,7 +281,7 @@ public class BallastTankBlockEntity extends BlockEntity
 
             @Override
             public boolean isFluidValid(int tank, @NotNull FluidStack stack) {
-                return stack.getFluid().is(FluidTags.WATER);
+                return stack.getFluid().is(CreateSubmarine.WATER_TAG);
             }
 
             @Override
@@ -386,14 +385,14 @@ public class BallastTankBlockEntity extends BlockEntity
 
         FluidState fluidState = CompartmentTracker
                 .realFluidState(parentLevel, parentPos);
-        if (fluidState.is(FluidTags.WATER)) {
+        if (fluidState.is(CreateSubmarine.WATER_TAG)) {
             float h = fluidState.getHeight(parentLevel, parentPos);
             localWaterSurfaceY = parentPos.getY() + h + countWaterAbove(parentLevel, parentPos);
         } else {
             BlockPos belowPos = parentPos.below();
             FluidState belowFluid = CompartmentTracker
                     .realFluidState(parentLevel, belowPos);
-            if (belowFluid.is(FluidTags.WATER)) {
+            if (belowFluid.is(CreateSubmarine.WATER_TAG)) {
                 float h = belowFluid.getHeight(parentLevel, belowPos);
                 localWaterSurfaceY = belowPos.getY() + h + countWaterAbove(parentLevel, belowPos);
             }
@@ -545,7 +544,7 @@ public class BallastTankBlockEntity extends BlockEntity
         for (int y = pos.getY() + 1; y < pos.getY() + 1 + 200; y++) {
             cursor.set(pos.getX(), y, pos.getZ());
             if (CompartmentTracker.realFluidState(level, cursor)
-                    .is(FluidTags.WATER)) {
+                    .is(CreateSubmarine.WATER_TAG)) {
                 depth++;
             } else {
                 break;

@@ -441,6 +441,10 @@ public class CommandSubBlockEntity extends BlockEntity {
             LOADED_ON_CLIENT.add(this);
     }
 
+    public boolean stale() {
+        return isRemoved() || level == null || level.getBlockEntity(worldPosition) != this;
+    }
+
     @Override
     public void setRemoved() {
         super.setRemoved();

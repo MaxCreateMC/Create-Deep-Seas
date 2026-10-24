@@ -10,7 +10,6 @@ import dev.ryanhcode.sable.companion.math.BoundingBox3ic;
 import dev.ryanhcode.sable.companion.math.Pose3dc;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.tags.FluidTags;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
@@ -67,6 +66,7 @@ public class CompartmentTracker {
     private static final Set<UUID> STRUCTURE_DIRTY = ConcurrentHashMap.newKeySet();
     private static final Map<UUID, Set<BlockPos>> PLUGS = new ConcurrentHashMap<>();
     private static final Map<UUID, Set<BlockPos>> SUNKEN = new ConcurrentHashMap<>();
+    private static final ThreadLocal<Boolean> TRUTH = ThreadLocal.withInitial(() -> false);
     private static volatile AABB globalBounds = null;
     private static volatile AABB sealedBounds = null;
     private static volatile Long2ObjectOpenHashMap<SealedEntry[]> sealedGrid;
@@ -725,12 +725,12 @@ public class CompartmentTracker {
     private static boolean outsideIsWater(SubLevel sub, Level level, BlockPos plotPos) {
         Vector3d vec = new Vector3d(plotPos.getX() + 0.5, plotPos.getY() + 0.5, plotPos.getZ() + 0.5);
         sub.logicalPose().transformPosition(vec);
-        return realFluidState(level, BlockPos.containing(vec.x, vec.y, vec.z)).is(FluidTags.WATER);
+        return realFluidState(level, BlockPos.containing(vec.x, vec.y, vec.z)).is(CreateSubmarine.WATER_TAG);
     }
 
     private static boolean holdsWater(Level level, CompartmentDetector.Component comp) {
         for (BlockPos p : comp.internal()) {
-            if (level.isLoaded(p) && level.getFluidState(p).is(FluidTags.WATER))
+            if (level.isLoaded(p) && level.getFluidState(p).is(CreateSubmarine.WATER_TAG))
                 return true;
         }
 
@@ -976,10 +976,16 @@ public class CompartmentTracker {
 
     @Nullable
     public static BlockState getLiedBlockState(Level level, BlockPos worldPos, BlockState real) {
-        if (real.isAir() || sealedBounds == null || findSealedSublevel(level, worldPos) == null)
+        if (real.isAir() || sealedBounds == null || real.getFluidState().isEmpty() && !real.blocksMotion())
+            return real;
+        if (findSealedSublevel(level, worldPos) == null || TRUTH.get())
             return real;
 
         return Blocks.AIR.defaultBlockState();
+    }
+
+    public static void tellTruth(boolean truth) {
+        TRUTH.set(truth);
     }
 
     @Nullable

@@ -33,3 +33,8 @@ replay_pid*
 /.eclipse
 /sodium_shaders
 /Wiki
+
+# Local scratch/tooling output
+/classpath.txt
+/test_battery.csv
+/worldgen_preview/

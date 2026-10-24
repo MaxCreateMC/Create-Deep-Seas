@@ -1,5 +1,70 @@
 # Changelog
 
+## [3.4.6]
+
+### Changes
+- Added Light Resolution to the Vortex Engine video settings (`lightResolution`): half and quarter resolution are much lighter on the graphics card and keep the edges of blocks sharp
+- In the Pixel light style, distant glowing blocks are merged into fewer lights
+- Every ship, boat and other Sable sub-level now casts shadows and tints the coloured light of the Vortex Engine, not only the submarine you are in
+- Added Reflections to the Vortex Engine video settings (`reflections`, off by default): water, glass and other see-through blocks reflect the scene and the sky
+- The shadows of the Vortex Engine now follow the shape of blocks: slabs, stairs, doors and trapdoors cast a matching shadow, and thin blocks like shafts, fences or carpets no longer cast the shadow of a full cube
+- Players and mobs now cast shadows in the coloured light of the Vortex Engine
+- Added Temporal Accumulation to the Vortex Engine video settings (`temporalAccumulation`, off by default): the light is blended over several frames, smoothing its grain and its edges at half or quarter resolution
+- The Vortex Engine video settings now fit on one page with the most useful settings, named like the settings of a shader pack (Shadows, Bloom, Volumetric Light, Light Shafts); every other setting is behind the Advanced Settings button
+- Create Deep Seas and Create High Seas now treat the salt, river and spring water of TerraFirmaCraft as water, through the new `create_submarine:water` fluid tag that other mods can add to (#129)
+
+### Bug Fixes
+- Fixed black shadows flickering on kelp, lianas and other thin blocks lit by the Vortex Engine
+- Fixed boats floating in singleplayer but barely floating, sinking or capsizing on servers with `selfRighting` having no effect, and their dry holds counting as flooded on servers, so players drowned and items floated inside: every other dimension of the server wiped the holds of the boats each tick (#131)
+- Fixed sails still pushing the ship when lowered, which also made anchored ships dip their bow into the water
+- Fixed a thick fog covering the world with Complementary, and the sea fog showing outside of ships with Iris Flywheel Compat or Iris Veil Compat (#128, #130, thanks to SpacEagle17)
+- Fixed death messages showing a translation key when a diver was crushed, gave in to the pressure or suffocated while fleeing a mob (#127)
+
+### Removed
+- Removed the Volumes, Vanilla and Hybrid light styles of the Vortex Engine; Flood and Pixel remain and get every feature of the engine. A config set to a removed style falls back to Flood
+
+## [3.4.5]
+
+### Changes
+- The hulls of submarines and boats now stop the coloured light of the Vortex Engine, the Sonar's included, instead of letting it shine through; glass still lets it through
+- Stained glass and stained glass panes now tint the coloured light of the Vortex Engine passing through them, in the world and in ship hulls, and Tinted Glass blocks it like Minecraft's light
+- Glass, water, ice and other see-through blocks now catch the coloured light of the Vortex Engine on their surface
+- Added Light From Every Block to the Vortex Engine video settings (`allBlocks`, off by default): torches, lanterns, Sea Lanterns and the glowing blocks of other mods cast coloured light again
+- The coloured light of the Vortex Engine now keeps the colour of its source: a white light lights in white instead of drifting towards pink or another tint
+- The colour of a glowing block is now read from every texture of its model and taken from its brightest and most common colour, so a Campfire lights in yellow-orange instead of the pale colour of its logs, and a Soul Campfire in cyan
+
+### Bug Fixes
+- Fixed the depth on the Onboard Computer getting stuck around 400 m; below that depth the hull also never felt more than 400 m of water (#126)
+- Fixed the sea around a ship with a dry hold losing water for good: flowing water near the hull drained itself, leaving holes in the water behind moving boats and blue cubes around a breached hull. Holes left in existing worlds fill up again when the water next to them updates (#126, #124)
+- Fixed blocks of light from dynamic light mods leaving a trail behind moving ships (#124)
+- Fixed a broken Onboard Computer leaving its screen floating in the air after leaving and re-entering the area, and an old copy of the computer drawing a wrong depth and a shifted ship diagram over the real one (#124)
+- Fixed a crash when the Onboard Computer drew the diagram of a ship with a 2×2 Submarine Propeller (#121)
+- Fixed the Vortex Engine pixel light style failing to load on NVIDIA graphics cards (#125)
+- Fixed a thick greenish water fog covering the whole world with Complementary, BSL, Bliss or Photon on graphics cards with few texture units, since 3.4.2
+- Fixed players being crushed instantly while swimming up a waterfall, and ships counting a waterfall above them as hundreds of metres of water: falling water no longer adds to the depth, only still water does
+- Added the `diverPressure` server option to turn off the pressure damage on players
+
+### Removed
+- The Vortex Engine only lights from blocks for now: removed the bioluminescent wakes behind swimming mobs and players (`wakeStyle`), the light of the Submarine Staff held in hand, and the light of single glowing blocks thrown around as physics objects
+
+## [3.4.4]
+
+### Changes
+- The Vortex Engine now only lights the blocks of Create Deep Seas, Create High Seas and Create Abyss, and the moving lights of the Sonar and the Industrial Alarm. Vanilla blocks and blocks from other mods (torches, lanterns, Sea Lanterns, Power Grid lights and the rest) keep plain Minecraft light, which removes most of the engine's cost in a normal world
+- The Vortex Engine only spreads light around the light sources instead of through its whole 128 block volume, no longer rebuilds and uploads its block grid while no light of the mod, moving light or water is around, and only builds the bloom when bloom is on
+
+### Bug Fixes
+- Fixed the Vortex Engine keeping the graphics card busy with no light or water around, for example in a flat world: the light spreading stops when no glowing block is near, and the caustics, plankton and their full-screen passes only run under water
+
+## [3.4.3]
+
+### Changes
+- Halved the brightness of glowing blocks in the Vortex Engine (torches, lanterns, Sea Lanterns, Magma Blocks and the rest), in every light style; the new Light Brightness setting (Vortex Engine video settings, `brightness`, 10 to 200%) tunes it. Also added Light Reach, Light Saturation, Animated Lights, Bloom Strength, Glow in Water and Sunlight Under Water to the same settings
+
+### Bug Fixes
+- Fixed the vanilla light style of the Vortex Engine flashing in steps around torches, fire and glowing plants: lights now stay steady in that style
+- The photosensitive mode texts no longer mention the old Veil lights
+
 ## [3.4.2]
 
 ### Changes

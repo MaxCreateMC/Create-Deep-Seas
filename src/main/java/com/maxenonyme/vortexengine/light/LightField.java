@@ -38,6 +38,9 @@ public class LightField {
     private static int originX, originY, originZ;
     private static int mode = -1;
     private static boolean ready;
+    private static Box box;
+    private static Box stale;
+    private static int staleFrames;
 
     public static void onRegisterShaders(RegisterShadersEvent event) {
         try {
@@ -102,6 +105,19 @@ public class LightField {
         int shiftX = fresh ? 0 : ShadowGrid.originX() - originX;
         int shiftY = fresh ? 0 : ShadowGrid.originY() - originY;
         int shiftZ = fresh ? 0 : ShadowGrid.originZ() - originZ;
+
+        if (fresh) {
+            box = null;
+            stale = null;
+            staleFrames = 0;
+        } else if ((shiftX | shiftY | shiftZ) != 0 && box != null) {
+            stale = Box.union(stale, box);
+            staleFrames = 2;
+            box = box.moved(-shiftX, -shiftY, -shiftZ, SIZE);
+        }
+
+        box = Box.union(box, ShadowGrid.litBox());
+        Box region = staleFrames > 0 ? Box.union(box, stale) : box;
         mode = wanted;
         originX = ShadowGrid.originX();
         originY = ShadowGrid.originY();
@@ -111,7 +127,9 @@ public class LightField {
         RenderSystem.disableDepthTest();
         RenderSystem.depthMask(false);
         GlStateManager._glBindFramebuffer(GL30.GL_FRAMEBUFFER, framebuffer);
-        GlStateManager._viewport(0, 0, SIZE, SIZE);
+        if (region != null)
+            GlStateManager._viewport(region.minX(), region.minY(), region.maxX() - region.minX(),
+                    region.maxY() - region.minY());
 
         bind(LightVolumes.SHADOW_UNIT, ShadowGrid.texture());
         bind(UNIT, textures[current]);
@@ -129,11 +147,16 @@ public class LightField {
         VertexBuffer screen = quad();
         screen.bind();
 
-        for (int z = 0; z < SIZE; z++) {
-            GL30.glFramebufferTextureLayer(GL30.GL_FRAMEBUFFER, GL30.GL_COLOR_ATTACHMENT0, target, 0, z);
-            GL20.glUniform1i(slice, z);
-            screen.draw();
+        if (region != null) {
+            for (int z = region.minZ(); z < region.maxZ(); z++) {
+                GL30.glFramebufferTextureLayer(GL30.GL_FRAMEBUFFER, GL30.GL_COLOR_ATTACHMENT0, target, 0, z);
+                GL20.glUniform1i(slice, z);
+                screen.draw();
+            }
         }
+
+        if (staleFrames > 0 && --staleFrames == 0)
+            stale = null;
 
         VertexBuffer.unbind();
         propagate.clear();

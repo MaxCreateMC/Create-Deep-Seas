@@ -36,6 +36,8 @@ public class SodiumWaterOcclusionBridge {
     private static final Set<Integer> STARVED = ConcurrentHashMap.newKeySet();
     private static int maxTextureUnits;
 
+    private static final Map<Integer, Integer> HULL_READY = new ConcurrentHashMap<>();
+
     private static Object irisApi;
     private static Method shadowPass;
     private static boolean irisResolved;
@@ -68,10 +70,12 @@ public class SodiumWaterOcclusionBridge {
     public static Set<Integer> reserveUnits(int program, Set<Integer> reserved) {
         UNIFORM_CACHE.remove(program);
         STARVED.remove(program);
+        HULL_READY.remove(program);
 
         int close = GL20.glGetUniformLocation(program, UNIFORM_CLOSE_SAMPLER);
         int far = GL20.glGetUniformLocation(program, UNIFORM_FAR_SAMPLER);
         int hull = GL20.glGetUniformLocation(program, ShaderpackSupport.HULL_SAMPLER);
+        int ready = GL20.glGetUniformLocation(program, ShaderpackSupport.HULL_READY);
         if (close < 0 && far < 0 && hull < 0)
             return reserved;
 
@@ -95,7 +99,20 @@ public class SodiumWaterOcclusionBridge {
 
         if (hull >= 0)
             GL41.glProgramUniform1i(program, hull, FAR_TEXTURE_UNIT);
+        if (hull >= 0 && ready >= 0)
+            HULL_READY.put(program, ready);
+
         return units;
+    }
+
+    public static boolean holdsHull(int program) {
+        return HULL_READY.containsKey(program);
+    }
+
+    public static void setHullReady(int program, boolean ready) {
+        Integer location = HULL_READY.get(program);
+        if (location != null)
+            GL41.glProgramUniform1f(program, location, ready ? 1f : 0f);
     }
 
     private static int samplerUnits(int program) {
@@ -140,7 +157,7 @@ public class SodiumWaterOcclusionBridge {
         }
 
         if (renderingShadows()) {
-            GL20.glUniform1f(u.enabled, 0.0f); 
+            GL20.glUniform1f(u.enabled, 0.0f);
             return;
         }
 

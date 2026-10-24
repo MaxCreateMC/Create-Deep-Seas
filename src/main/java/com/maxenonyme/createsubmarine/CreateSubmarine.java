@@ -182,6 +182,9 @@ public class CreateSubmarine {
         public static final TagKey<Fluid> OXYGEN_TAG = TagKey
                         .create(Registries.FLUID, ResourceLocation.fromNamespaceAndPath(MOD_ID, "oxygen"));
 
+        public static final TagKey<Fluid> WATER_TAG = TagKey
+                        .create(Registries.FLUID, ResourceLocation.fromNamespaceAndPath(MOD_ID, "water"));
+
         public static final DeferredHolder<FluidType, FluidType> OXYGEN_TYPE = FLUID_TYPES
                         .register("oxygen",
                                         () -> new FluidType(FluidType.Properties.create()

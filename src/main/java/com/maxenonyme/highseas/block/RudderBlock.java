@@ -6,7 +6,6 @@ import net.createmod.catnip.placement.IPlacementHelper;
 import net.createmod.catnip.placement.PlacementHelpers;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.tags.FluidTags;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.ItemInteractionResult;
 import net.minecraft.world.entity.Entity;
@@ -29,6 +28,7 @@ import org.jetbrains.annotations.Nullable;
 
 import com.simibubi.create.content.decoration.copycat.WaterloggedCopycatBlock;
 import com.simibubi.create.content.decoration.copycat.CopycatBlockEntity;
+import com.maxenonyme.createsubmarine.CreateSubmarine;
 import com.maxenonyme.createsubmarine.submarine.compartment.CompartmentTracker;
 import com.maxenonyme.highseas.CreateHighSeas;
 import net.minecraft.world.level.BlockAndTintGetter;
@@ -169,7 +169,7 @@ public class RudderBlock extends WaterloggedCopycatBlock implements BlockSubLeve
         pose.transformPosition(LIFT_POS, TEMP);
         BlockPos globalPos = BlockPos.containing(TEMP.x(), TEMP.y(), TEMP.z());
 
-        if (!CompartmentTracker.realFluidState(subLevel.getLevel(), globalPos).is(FluidTags.WATER)) {
+        if (!CompartmentTracker.realFluidState(subLevel.getLevel(), globalPos).is(CreateSubmarine.WATER_TAG)) {
             BlockSubLevelLiftProvider.resetVectors();
             return;
         }

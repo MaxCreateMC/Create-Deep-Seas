@@ -27,7 +27,6 @@ import net.neoforged.neoforge.fluids.capability.IFluidHandler;
 import net.neoforged.neoforge.fluids.capability.templates.EmptyFluidHandler;
 import org.jetbrains.annotations.NotNull;
 
-import net.minecraft.tags.FluidTags;
 import net.minecraft.world.level.block.LiquidBlock;
 import net.minecraft.world.level.material.FluidState;
 import net.minecraft.world.level.material.Fluids;
@@ -123,7 +122,7 @@ public class DecompressionChamberBlockEntity extends BlockEntity {
     private boolean isSubmerged(Level level, BlockPos pos) {
         SubLevelAccess subLevel = SableCompanion.INSTANCE.getContaining(level, pos);
         if (subLevel == null)
-            return level.getFluidState(pos).is(FluidTags.WATER);
+            return level.getFluidState(pos).is(CreateSubmarine.WATER_TAG);
         Vector3d worldPos = new Vector3d(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5);
         subLevel.logicalPose().transformPosition(worldPos);
         BlockPos wPos = BlockPos.containing(worldPos.x, worldPos.y, worldPos.z);
@@ -134,7 +133,7 @@ public class DecompressionChamberBlockEntity extends BlockEntity {
         if (parentLevel == null)
             return false;
         return CompartmentTracker.realFluidState(parentLevel, wPos)
-                .is(FluidTags.WATER);
+                .is(CreateSubmarine.WATER_TAG);
     }
 
     private CompartmentDetector.Component findChamberCompartment(UUID id) {
@@ -236,7 +235,7 @@ public class DecompressionChamberBlockEntity extends BlockEntity {
         if (state.isAir())
             return 0;
         FluidState fs = level.getFluidState(p);
-        if (fs.is(FluidTags.WATER)) {
+        if (fs.is(CreateSubmarine.WATER_TAG)) {
             return fs.getAmount();
         }
         return -1;
@@ -324,7 +323,8 @@ public class DecompressionChamberBlockEntity extends BlockEntity {
             BlockPos hole = worldPosition.relative(dir);
             BlockState state = level.getBlockState(hole);
 
-            boolean isBlocked = !state.isAir() && !state.getFluidState().is(FluidTags.WATER) && state.getFluidState().isEmpty();
+            boolean isBlocked = !state.isAir() && !state.getFluidState().is(CreateSubmarine.WATER_TAG)
+                    && state.getFluidState().isEmpty();
             if (isBlocked)
                 continue;
 
@@ -443,7 +443,8 @@ public class DecompressionChamberBlockEntity extends BlockEntity {
         for (Direction dir : priorityFaces) {
             BlockPos blockPos = worldPosition.relative(dir);
             BlockState blockState = level.getBlockState(blockPos);
-            if (blockState.isAir() || blockState.getFluidState().is(FluidTags.WATER) || !blockState.getFluidState().isEmpty()) {
+            if (blockState.isAir() || blockState.getFluidState().is(CreateSubmarine.WATER_TAG)
+                    || !blockState.getFluidState().isEmpty()) {
                 activeHole = blockPos;
                 break;
             }
@@ -493,18 +494,20 @@ public class DecompressionChamberBlockEntity extends BlockEntity {
 
     private boolean isEmptyCell(BlockPos p) {
         BlockState state = level.getBlockState(p);
-        return state.isAir() || (!state.getFluidState().isEmpty() && !state.getFluidState().is(FluidTags.WATER));
+        return state.isAir() || (!state.getFluidState().isEmpty()
+                && !state.getFluidState().is(CreateSubmarine.WATER_TAG));
     }
 
     private boolean isWaterCell(BlockPos p) {
-        return level.getFluidState(p).is(FluidTags.WATER);
+        return level.getFluidState(p).is(CreateSubmarine.WATER_TAG);
     }
 
     private boolean isVentBlocked() {
         for (Direction dir : getHolesFaces()) {
             BlockPos hole = worldPosition.relative(dir);
             BlockState state = level.getBlockState(hole);
-            if (state.isAir() || state.getFluidState().is(FluidTags.WATER) || !state.getFluidState().isEmpty()) {
+            if (state.isAir() || state.getFluidState().is(CreateSubmarine.WATER_TAG)
+                    || !state.getFluidState().isEmpty()) {
                 return false;
             }
         }
@@ -624,7 +627,7 @@ public class DecompressionChamberBlockEntity extends BlockEntity {
 
         @Override
         public boolean isFluidValid(int tank, @NotNull FluidStack stack) {
-            return stack.getFluid().is(FluidTags.WATER);
+            return stack.getFluid().is(CreateSubmarine.WATER_TAG);
         }
 
         @Override
@@ -695,7 +698,7 @@ public class DecompressionChamberBlockEntity extends BlockEntity {
 
         @Override
         public boolean isFluidValid(int tank, @NotNull FluidStack stack) {
-            return stack.getFluid().is(FluidTags.WATER);
+            return stack.getFluid().is(CreateSubmarine.WATER_TAG);
         }
 
         @Override

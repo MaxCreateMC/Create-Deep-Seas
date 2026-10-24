@@ -1,12 +1,15 @@
 #version 150
 
 uniform sampler2D DepthSampler;
+uniform sampler2D OpaqueDepth;
 uniform sampler2D Heights;
 uniform sampler3D ShadowGrid;
 uniform sampler3D Field;
 uniform mat4 InvProjMat;
 uniform mat4 InvViewMat;
 uniform vec2 ScreenSize;
+uniform float LightScale;
+uniform vec2 Jitter;
 uniform vec3 CameraFract;
 uniform vec3 WorldWrap;
 uniform ivec3 GridOffset;
@@ -20,6 +23,7 @@ uniform vec3 SunDir;
 uniform vec3 SunColor;
 uniform float SurfaceY;
 uniform float GameTime;
+uniform float Translucent;
 
 out vec4 fragColor;
 
@@ -27,15 +31,14 @@ const float FAINT = 0.0001;
 
 vec4 fieldAt(vec3 point) {
     vec3 grid = (point + CameraFract + vec3(GridOffset)) / 128.0;
-    float open = 1.0 - texture(ShadowGrid, grid).r;
+    float open = 1.0 - texture(ShadowGrid, grid).a;
     if (open < 0.02)
         return vec4(0.0);
     return texture(Field, grid) / open;
 }
 
-vec3 vivid(vec3 hue) {
-    hue /= max(max(hue.r, hue.g), max(hue.b, 0.001));
-    return pow(hue, vec3(1.5));
+vec3 hueOf(vec3 hue) {
+    return hue / max(max(hue.r, hue.g), max(hue.b, 0.001));
 }
 
 vec3 glowOf(vec4 field) {
@@ -43,11 +46,11 @@ vec3 glowOf(vec4 field) {
         if (field.a <= FAINT)
             return vec3(0.0);
         float level = clamp(log(field.a / FAINT) / 10.2, 0.0, 1.0);
-        return vivid(field.rgb / field.a) * pow(level, 1.5);
+        return hueOf(field.rgb / field.a) * pow(level, 1.5);
     }
 
     float level = floor(field.a * 15.0 + 0.5) / 15.0;
-    return vivid(field.rgb) * level * 0.8;
+    return hueOf(field.rgb) * level * 0.8;
 }
 
 float facing(vec3 point, vec3 normal) {
@@ -123,6 +126,27 @@ vec3 worldAt(vec2 uv, float depth) {
     return (InvViewMat * vec4(view.xyz / view.w, 1.0)).xyz;
 }
 
+vec3 worldNear(vec2 frag, vec2 offset) {
+    vec2 uv = (frag + offset) / ScreenSize;
+    return worldAt(uv, texture(DepthSampler, uv).r);
+}
+
+vec3 normalAt(vec2 frag, vec3 world) {
+    vec3 left = world - worldNear(frag, vec2(-1.0, 0.0));
+    vec3 right = worldNear(frag, vec2(1.0, 0.0)) - world;
+    vec3 down = world - worldNear(frag, vec2(0.0, -1.0));
+    vec3 up = worldNear(frag, vec2(0.0, 1.0)) - world;
+
+    vec3 across = dot(right, right) < dot(left, left) ? right : left;
+    vec3 along = dot(up, up) < dot(down, down) ? up : down;
+    float footprint = 16.0 * length(world) * InvProjMat[1][1] / ScreenSize.y;
+    if (max(dot(across, across), dot(along, along)) > footprint * footprint)
+        return -normalize(world);
+
+    vec3 normal = normalize(cross(across, along));
+    return dot(normal, world) > 0.0 ? -normal : normal;
+}
+
 vec3 axis(vec3 normal) {
     vec3 size = abs(normal);
     if (size.x >= size.y && size.x >= size.z)
@@ -133,16 +157,14 @@ vec3 axis(vec3 normal) {
 }
 
 void main() {
-    vec2 uv = gl_FragCoord.xy / ScreenSize;
+    vec2 frag = floor(gl_FragCoord.xy) * LightScale + 0.5 + Jitter;
+    vec2 uv = frag / ScreenSize;
     float depth = texture(DepthSampler, uv).r;
-    if (depth >= 1.0)
+    if (depth >= 1.0 || Translucent > 0.5 && depth >= texelFetch(OpaqueDepth, ivec2(frag), 0).r)
         discard;
 
     vec3 world = worldAt(uv, depth);
-    vec3 normal = normalize(cross(dFdx(world), dFdy(world)));
-    if (dot(normal, world) > 0.0)
-        normal = -normal;
-    normal = axis(normal);
+    vec3 normal = axis(normalAt(frag, world));
 
     float range = length(world);
     vec3 point = world;

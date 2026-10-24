@@ -1,7 +1,7 @@
 package com.maxenonyme.createsubmarine.submarine.client;
 
 import com.google.gson.JsonSyntaxException;
-import com.maxenonyme.AbyssDimension.client.CameraShake;
+import com.maxenonyme.theabyss.client.CameraShake;
 import com.maxenonyme.createsubmarine.CreateSubmarine;
 import com.maxenonyme.createsubmarine.submarine.network.ImplosionFxPayload;
 import com.mojang.blaze3d.pipeline.RenderTarget;

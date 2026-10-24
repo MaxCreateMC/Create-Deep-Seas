@@ -2,6 +2,7 @@ package com.maxenonyme.createsubmarine.submarine.client.renderer;
 
 import dev.ryanhcode.sable.render.water_occlusion.WaterOcclusionRenderer;
 
+import com.maxenonyme.createsubmarine.CreateSubmarine;
 import com.maxenonyme.createsubmarine.submarine.compartment.CompartmentTracker;
 import com.maxenonyme.createsubmarine.submarine.compartment.PlotSnapshot;
 import com.maxenonyme.createsubmarine.submarine.compat.sodium.SodiumWaterOcclusionBridge;
@@ -33,7 +34,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import net.minecraft.core.Direction;
-import net.minecraft.tags.FluidTags;
 import net.minecraft.world.level.EmptyBlockGetter;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.LiquidBlock;
@@ -53,7 +53,7 @@ public class SubmarineWaterCullBuffer {
     private static final boolean SODIUM = ModList.get().isLoaded("sodium");
     private static final Predicate<BlockState> HIDDEN_IN_HULL = state -> !state.isAir() && !state.is(Blocks.WATER);
     private static final Predicate<BlockState> OTHER_FLUID = state -> !state.getFluidState().isEmpty()
-            && !state.getFluidState().is(FluidTags.WATER);
+            && !state.getFluidState().is(CreateSubmarine.WATER_TAG);
 
     private static final ExecutorService WORKER = Executors.newSingleThreadExecutor(r -> {
         Thread t = new Thread(r, "Deep Seas water culling");

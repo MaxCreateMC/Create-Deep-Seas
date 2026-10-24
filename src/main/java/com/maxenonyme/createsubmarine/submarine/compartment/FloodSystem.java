@@ -1,5 +1,6 @@
 package com.maxenonyme.createsubmarine.submarine.compartment;
 
+import com.maxenonyme.createsubmarine.CreateSubmarine;
 import com.maxenonyme.createsubmarine.submarine.config.SubmarineConfig;
 import com.maxenonyme.createsubmarine.submarine.system.SubmarineSinkingSystem;
 import dev.ryanhcode.sable.api.physics.handle.RigidBodyHandle;
@@ -12,7 +13,6 @@ import dev.ryanhcode.sable.sublevel.SubLevel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.tags.FluidTags;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
@@ -287,7 +287,8 @@ public class FloodSystem {
                 Boolean under = drowned.computeIfAbsent(domain.vents[i], vent -> {
                     point.set(vent.getX() + 0.5, vent.getY() + 0.1, vent.getZ() + 0.5);
                     pose.transformPosition(point);
-                    return CompartmentTracker.realFluidState(level, BlockPos.containing(point.x, point.y, point.z)).is(FluidTags.WATER);
+                    return CompartmentTracker.realFluidState(level, BlockPos.containing(point.x, point.y, point.z))
+                            .is(CreateSubmarine.WATER_TAG);
                 });
                 if (!under)
                     continue;
@@ -339,7 +340,7 @@ public class FloodSystem {
             BlockPos wp = BlockPos.containing(point.x, point.y, point.z);
             if (!level.isLoaded(wp))
                 continue;
-            if (CompartmentTracker.realFluidState(level, wp).is(FluidTags.WATER)) {
+            if (CompartmentTracker.realFluidState(level, wp).is(CreateSubmarine.WATER_TAG)) {
                 double surface = surface(level, wp, surfaces);
                 inletY[inlets] = point.y;
                 inletSurface[inlets] = surface;
@@ -568,12 +569,14 @@ public class FloodSystem {
         BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos(from.getX(), from.getY(), from.getZ());
         int top = level.getHeight(Heightmap.Types.WORLD_SURFACE, from.getX(), from.getZ());
         double result;
-        if (top > from.getY() && CompartmentTracker.realFluidState(level, cursor.setY(top - 1)).is(FluidTags.WATER)) {
+        if (top > from.getY()
+                && CompartmentTracker.realFluidState(level, cursor.setY(top - 1)).is(CreateSubmarine.WATER_TAG)) {
             result = top;
         } else {
             int y = from.getY();
             int limit = Math.min(level.getMaxBuildHeight(), from.getY() + SURFACE_REACH);
-            while (y + 1 < limit && CompartmentTracker.realFluidState(level, cursor.setY(y + 1)).is(FluidTags.WATER))
+            while (y + 1 < limit
+                    && CompartmentTracker.realFluidState(level, cursor.setY(y + 1)).is(CreateSubmarine.WATER_TAG))
                 y++;
             result = y + 1;
         }

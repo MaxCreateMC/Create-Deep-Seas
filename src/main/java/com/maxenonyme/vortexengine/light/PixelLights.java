@@ -13,6 +13,7 @@ import com.mojang.blaze3d.vertex.MeshData;
 import com.mojang.blaze3d.vertex.Tesselator;
 import com.mojang.blaze3d.vertex.VertexFormat;
 import net.minecraft.client.renderer.ShaderInstance;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.SectionPos;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
@@ -31,7 +32,9 @@ import java.nio.IntBuffer;
 import java.nio.ShortBuffer;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class PixelLights {
 
@@ -116,10 +119,31 @@ public class PixelLights {
         builtDistance = distance;
 
         List<Source> found = new ArrayList<>();
-        for (LightIndex.Emitter emitter : LightIndex.emittersNear(camera, distance))
-            found.add(new Source(emitter.x(), emitter.y(), emitter.z(), emitter.packed(),
-                    Light.seedOf(emitter.x(), emitter.y(), emitter.z())));
+        Map<Long, Source> middle = new HashMap<>();
+        Map<Long, Source> far = new HashMap<>();
+
+        for (LightIndex.Emitter emitter : LightIndex.emittersNear(camera, distance)) {
+            Source source = new Source(emitter.x(), emitter.y(), emitter.z(), emitter.packed(),
+                    Light.seedOf(emitter.x(), emitter.y(), emitter.z()));
+            double away = Math.sqrt(camera.distanceToSqr(source.x(), source.y(), source.z()));
+            if (away < 24) {
+                found.add(source);
+                continue;
+            }
+
+            int shift = away < 48 ? 1 : 2;
+            long cell = BlockPos.asLong(Mth.floor(source.x()) >> shift, Mth.floor(source.y()) >> shift,
+                    Mth.floor(source.z()) >> shift);
+            (shift == 1 ? middle : far).merge(cell, source, PixelLights::brighter);
+        }
+
+        found.addAll(middle.values());
+        found.addAll(far.values());
         fixed = found;
+    }
+
+    private static Source brighter(Source a, Source b) {
+        return (a.packed() & 255) >= (b.packed() & 255) ? a : b;
     }
 
     private static void bin(List<Source> sources, Vec3 camera, Matrix4f view, Matrix4f projection,
@@ -288,8 +312,13 @@ public class PixelLights {
         GlStateManager._texParameter(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
     }
 
-    static void draw(Vec3 camera, RenderTarget main, Matrix4f view, Matrix4f projection) {
-        shader.setSampler("DepthSampler", main.getDepthTextureId());
+    static void draw(Vec3 camera, LightVolumes.Layer layer, Matrix4f view, Matrix4f projection) {
+        shader.setSampler("DepthSampler", layer.scene().getDepthTextureId());
+        shader.setSampler("OpaqueDepth", layer.opaqueDepth());
+        shader.safeGetUniform("Translucent").set(layer.translucent() ? 1f : 0f);
+        shader.safeGetUniform("LightScale").set((float) LightVolumes.lightScale());
+        shader.safeGetUniform("Jitter").set(LightVolumes.jitterX(layer.translucent()),
+                LightVolumes.jitterY(layer.translucent()));
         shader.setSampler("LightData", dataTexture);
         shader.setSampler("Tiles", tileTexture);
         shader.setSampler("Indices", indexTexture);
@@ -303,7 +332,7 @@ public class PixelLights {
         shader.safeGetUniform("TileSize").set(TILE);
         shader.safeGetUniform("Shadows").set(ShadowGrid.ready() && VortexConfig.SHADOWS.get() ? 1f : 0f);
         shader.safeGetUniform("Pixelated").set(VortexConfig.PIXEL_LIGHTING.get() ? 1f : 0f);
-        shader.safeGetUniform("Strength").set(1.4f);
+        shader.safeGetUniform("Strength").set(0.7f * layer.share() * VortexConfig.BRIGHTNESS.get() / 100f);
 
         LightField.bind(LightVolumes.SHADOW_UNIT, ShadowGrid.texture());
         RenderSystem.disableCull();

@@ -1,4 +1,5 @@
 {
+  "block.create_abyss.abyss_ceiling": "Abyss Ceiling",
   "block.create_abyss.deepslate_geothermal_vent": "Deepslate Geothermal Vent",
   "block.create_abyss.foam_rock_geothermal_vent": "Foam Rock Geothermal Vent",
   "block.create_abyss.burning_sand": "Burning Sand",
@@ -27,7 +28,7 @@
   "entity.create_abyss.cookiecutter_shark": "Cookiecutter Shark",
   "item.create_abyss.amphistium_spawn_egg": "Amphistium Spawn Egg",
   "item.create_abyss.cookiecutter_shark_spawn_egg": "Cookiecutter Shark Spawn Egg",
-  "itemGroup.create_abyss.abyss_tab": "Abyss",
+  "itemGroup.create_abyss.abyss_tab": "The Abyss",
   "item.create_abyss.music_disc_seafoam": "Music Disc",
   "jukebox_song.create_abyss.seafoam": "Caner Crebes - Seafoam",
   "item.create_abyss.music_disc_snells_window": "Music Disc",

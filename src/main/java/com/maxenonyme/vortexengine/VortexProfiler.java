@@ -57,11 +57,9 @@ public class VortexProfiler {
     }
 
     public enum Counter {
-        FIXED_LIGHTS("Fixed lights drawn as volumes"),
         BEAMS("Moving lights drawn as volumes"),
         SPREAD("Moving lights spread in the field"),
         TEXEL_WRITES("Emission texels written"),
-        WAKES("Wakes"),
         MIST_VOLUMES("Voxel mist volumes"),
         PUFFS("Mist puffs drawn"),
         PIXEL_LIGHTS("Lights in the pixel pass");
@@ -214,7 +212,7 @@ public class VortexProfiler {
         }
 
         lastFrame = now;
-        LIGHT_FRAMES.merge(VortexConfig.LIGHT_STYLE.get(), 1, Integer::sum);
+        LIGHT_FRAMES.merge(VortexConfig.lightStyle(), 1, Integer::sum);
         MIST_FRAMES.merge(VortexConfig.MIST_STYLE.get(), 1, Integer::sum);
         if (event.getCamera().getFluidInCamera() == FogType.WATER)
             wetFrames++;
@@ -294,9 +292,9 @@ public class VortexProfiler {
         line(out, "Settings");
         line(out, "- Vortex usable: %s%s", VortexLights.usable() ? "yes" : "no",
                 IrisCompat.isShaderPackActive() ? " (shader pack active)" : "");
-        line(out, "- Styles: light %s, halo %s, water %s, mist %s, motes %s, wake %s",
-                VortexConfig.LIGHT_STYLE.get(), VortexConfig.HALO_STYLE.get(), VortexConfig.WATER_STYLE.get(),
-                VortexConfig.MIST_STYLE.get(), VortexConfig.MOTES_STYLE.get(), VortexConfig.WAKE_STYLE.get());
+        line(out, "- Styles: light %s, halo %s, water %s, mist %s, motes %s",
+                VortexConfig.lightStyle(), VortexConfig.HALO_STYLE.get(), VortexConfig.WATER_STYLE.get(),
+                VortexConfig.MIST_STYLE.get(), VortexConfig.MOTES_STYLE.get());
         line(out, "- pixelLighting %s, shadows %s, haze %s, autoGlow %s, bloom %s, mist %s",
                 VortexConfig.PIXEL_LIGHTING.get(), VortexConfig.SHADOWS.get(), VortexConfig.HAZE.get(),
                 VortexConfig.AUTO_GLOW.get(), VortexConfig.BLOOM.get(), VortexConfig.MIST.get());
@@ -421,14 +419,14 @@ public class VortexProfiler {
     private static long memory(RenderTarget main) {
         long bytes = 0;
         if (ShadowGrid.ready())
-            bytes += 128L * 128 * 128;
+            bytes += 128L * 128 * 128 * 4;
         if (ShadowGrid.hasField())
             bytes += 128L * 128 * 128 * 4 + 128 * 128;
         if (LightField.ready())
             bytes += 2L * 128 * 128 * 128 * 8;
 
         long screen = (long) main.width * main.height * 4;
-        return bytes + screen * 4 / 3 + screen / 4 + screen;
+        return bytes + screen * 4 / 3 + screen / 4 + screen * 2;
     }
 
     private static String version() {

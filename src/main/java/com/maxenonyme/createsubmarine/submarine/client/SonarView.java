@@ -164,7 +164,7 @@ public class SonarView {
     }
 
     private static boolean forgotten(Minecraft mc, CommandSubBlockEntity be, SonarScan scan, long now) {
-        return mc.level == null || be.isRemoved() || be.getLevel() != mc.level || now - scan.lastSeen > FORGET_NANOS;
+        return mc.level == null || be.stale() || be.getLevel() != mc.level || now - scan.lastSeen > FORGET_NANOS;
     }
 
     private static void draw(Minecraft mc, ClientSubLevel sub, BlockPos sonarPos, SonarScan scan, float partialTicks,

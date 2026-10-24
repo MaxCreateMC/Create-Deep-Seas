@@ -5,7 +5,7 @@ import net.neoforged.neoforge.common.ModConfigSpec;
 public class VortexConfig {
 
     public enum LightStyle {
-        VOLUMES, FLOOD, VANILLA, HYBRID, PIXEL
+        FLOOD, PIXEL
     }
 
     public enum HaloStyle {
@@ -24,19 +24,30 @@ public class VortexConfig {
         NONE, PLANKTON, SNOW
     }
 
-    public enum WakeStyle {
-        NONE, GLOW
+    public enum LightResolution {
+        FULL, HALF, QUARTER
     }
 
     public static final ModConfigSpec SPEC;
     public static final ModConfigSpec.BooleanValue ENABLED;
     public static final ModConfigSpec.BooleanValue LIGHTS;
+    public static final ModConfigSpec.IntValue BRIGHTNESS;
+    public static final ModConfigSpec.IntValue REACH;
+    public static final ModConfigSpec.IntValue SATURATION;
+    public static final ModConfigSpec.BooleanValue ANIMATED_LIGHTS;
+    public static final ModConfigSpec.IntValue HALO_STRENGTH;
+    public static final ModConfigSpec.IntValue SUNLIGHT;
+    public static final ModConfigSpec.IntValue BLOOM_STRENGTH;
     public static final ModConfigSpec.IntValue LIGHT_DISTANCE;
     public static final ModConfigSpec.IntValue MAX_LIGHTS;
     public static final ModConfigSpec.BooleanValue PIXEL_LIGHTING;
+    public static final ModConfigSpec.EnumValue<LightResolution> LIGHT_RESOLUTION;
+    public static final ModConfigSpec.BooleanValue TEMPORAL;
+    public static final ModConfigSpec.BooleanValue REFLECTIONS;
     public static final ModConfigSpec.BooleanValue SHADOWS;
     public static final ModConfigSpec.BooleanValue HAZE;
     public static final ModConfigSpec.BooleanValue AUTO_GLOW;
+    public static final ModConfigSpec.BooleanValue ALL_BLOCKS;
     public static final ModConfigSpec.BooleanValue BLOOM;
     public static final ModConfigSpec.BooleanValue MIST;
     public static final ModConfigSpec.IntValue MAX_PUFFS;
@@ -45,7 +56,6 @@ public class VortexConfig {
     public static final ModConfigSpec.EnumValue<WaterStyle> WATER_STYLE;
     public static final ModConfigSpec.EnumValue<MistStyle> MIST_STYLE;
     public static final ModConfigSpec.EnumValue<MotesStyle> MOTES_STYLE;
-    public static final ModConfigSpec.EnumValue<WakeStyle> WAKE_STYLE;
 
 
 // ya plusieurs mode pour le rendu, je ne sais pas encore lequel choisir
@@ -67,6 +77,22 @@ public class VortexConfig {
                         "the Industrial Alarm and the Submarine Staff. Off while an Iris shader pack is in use.")
                 .define("lights", true);
 
+        BRIGHTNESS = builder
+                .comment("Brightness of the coloured light, in percent of the default.")
+                .defineInRange("brightness", 100, 10, 200);
+
+        REACH = builder
+                .comment("How far the light of each glowing block reaches, in percent of the default.")
+                .defineInRange("reach", 100, 50, 200);
+
+        SATURATION = builder
+                .comment("How strong the colours of the light are, in percent. 0 gives white light.")
+                .defineInRange("saturation", 100, 0, 200);
+
+        ANIMATED_LIGHTS = builder
+                .comment("Torches, fire and lava flicker, glowing plants pulse. Off for steady light.")
+                .define("animatedLights", true);
+
         LIGHT_DISTANCE = builder
                 .comment("How far from the camera, in blocks, coloured lights are drawn.")
                 .defineInRange("lightDistance", 64, 16, 256);
@@ -81,6 +107,17 @@ public class VortexConfig {
                         "Turn off for a smooth gradient.")
                 .define("pixelLighting", true);
 
+        LIGHT_RESOLUTION = builder
+                .comment("Resolution the coloured light is worked out at before it is scaled up to the screen.",
+                        "HALF and QUARTER cost four and sixteen times less on the graphics card; the edges of",
+                        "blocks stay sharp and the pixel steps up close keep their size.")
+                .defineEnum("lightResolution", LightResolution.FULL);
+
+        TEMPORAL = builder
+                .comment("Each frame shifts the light slightly and blends it with the previous frames, smoothing its",
+                        "grain and its edges, most of all at half or quarter resolution.")
+                .define("temporalAccumulation", false);
+
         SHADOWS = builder
                 .comment("Solid blocks stop coloured light and cast shadows, within 64 blocks of the camera.",
                         "Costs more on the graphics card.")
@@ -91,13 +128,37 @@ public class VortexConfig {
                 .define("haze", true);
 
         AUTO_GLOW = builder
-                .comment("Every block that gives off light, or has glowing parts, glows in a colour taken",
-                        "from its own texture. Definitions in assets/<namespace>/vortex/glow/*.json override it.")
+                .comment("Every block of the mod that gives off light, or has glowing parts, glows in a colour",
+                        "taken from its own texture. Definitions in assets/<namespace>/vortex/glow/*.json override it.")
                 .define("autoGlow", true);
+
+        ALL_BLOCKS = builder
+                .comment("Every block that gives off light casts coloured light, vanilla blocks and blocks from",
+                        "other mods included (torches, lanterns, Sea Lanterns...), in the colour of its own texture.",
+                        "Off: only the blocks of Create Deep Seas, Create High Seas and Create Abyss do.")
+                .define("allBlocks", false);
 
         BLOOM = builder
                 .comment("Lit areas spill a soft, pixelated glow around them, out of the water too.")
                 .define("bloom", true);
+
+        BLOOM_STRENGTH = builder
+                .comment("Strength of the bloom, in percent of the default.")
+                .defineInRange("bloomStrength", 100, 0, 200);
+
+        HALO_STRENGTH = builder
+                .comment("Strength of the glow of lights in the water around them, in percent of the default.")
+                .defineInRange("haloStrength", 100, 0, 200);
+
+        SUNLIGHT = builder
+                .comment("Strength of the sun shafts and caustics under the water, in percent of the default.")
+                .defineInRange("sunlight", 100, 0, 200);
+        builder.pop();
+
+        builder.push("effects");
+        REFLECTIONS = builder
+                .comment("Water, glass and the other see-through blocks reflect the scene around them.")
+                .define("reflections", false);
         builder.pop();
 
         builder.push("mist");
@@ -114,12 +175,8 @@ public class VortexConfig {
         builder.push("styles");
         LIGHT_STYLE = builder
                 .comment("How coloured light reaches the blocks around it. Switch in game with /vortex style.",
-                        "VOLUMES: one sphere of light per source, with sharp shadows (the first version).",
                         "FLOOD: light spreads block by block and blends its colours, wrapping around corners",
                         "and never through walls, like Complementary or Rethinking Voxels.",
-                        "VANILLA: the same spreading, but falling off one step per block like Minecraft's light.",
-                        "HYBRID: FLOOD for the soft bounce, plus sharp shadows from the lights close to you,",
-                        "like Rethinking Voxels.",
                         "PIXEL: every glowing block is its own light, falling off one level per block like",
                         "Minecraft's light, in texture pixels, with block shadows and a halo of glowing cubes.")
                 .defineEnum("lightStyle", LightStyle.FLOOD);
@@ -128,7 +185,6 @@ public class VortexConfig {
                 .comment("How light shows in the water around its source.",
                         "CORE: a small halo around each source (the first version).",
                         "GLOW_FOG: the water itself glows where the light reaches, stopped by walls.",
-                        "Needs the FLOOD or VANILLA light style, otherwise CORE is used.",
                         "NONE: no halo.")
                 .defineEnum("haloStyle", HaloStyle.GLOW_FOG);
 
@@ -142,26 +198,24 @@ public class VortexConfig {
         MIST_STYLE = builder
                 .comment("How mist from /vortex mist is drawn.",
                         "PUFFS: large smoke puffs that hug the ground (the first version).",
-                        "VOXEL: a volume of small cubes of fog, lit by every coloured light around.",
-                        "Needs the FLOOD or VANILLA light style, otherwise PUFFS is used.")
+                        "VOXEL: a volume of small cubes of fog, lit by every coloured light around.")
                 .defineEnum("mistStyle", MistStyle.VOXEL);
 
         MOTES_STYLE = builder
                 .comment("Tiny specks floating in the water, one pixel wide.",
                         "PLANKTON: glowing plankton that twinkles in the colour of the light around it.",
-                        "SNOW: marine snow slowly sinking, caught by sunlight and coloured lights.",
-                        "Needs the FLOOD or VANILLA light style.")
+                        "SNOW: marine snow slowly sinking, caught by sunlight and coloured lights.")
                 .defineEnum("motesStyle", MotesStyle.PLANKTON);
-
-        WAKE_STYLE = builder
-                .comment("Bioluminescent wakes.",
-                        "GLOW: the water lights up blue behind anything swimming through it, other players,",
-                        "mobs and fish, and the plankton around them glows.",
-                        "Your own wake stays dark so it never hides the scene.",
-                        "Needs the FLOOD, VANILLA or HYBRID light style.")
-                .defineEnum("wakeStyle", WakeStyle.GLOW);
         builder.pop();
 
         SPEC = builder.build();
+    }
+
+    public static LightStyle lightStyle() {
+        try {
+            return LIGHT_STYLE.get();
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            return LightStyle.FLOOD;
+        }
     }
 }
