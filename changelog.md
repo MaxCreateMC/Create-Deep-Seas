@@ -69,6 +69,7 @@
 
 ### Changes
 - The billowing sails under Iris shader packs can be switched off in the video settings (High Seas page)
+- Updated the Simplified Chinese translation and translated Create High Seas into Simplified Chinese (#97, thanks @M1zukiii)
 
 ### Bug Fixes
 - Fixed Iris turning off heavy shader packs such as IterationRP on GPUs with few texture units since 3.4.0: the hull culling now only takes texture units in the programs that use it, and steps aside when the pack needs them all (#119)
@@ -76,6 +77,7 @@
 - Fixed blocks near a sail bending with it under shader packs whose terrain programs have no texture coordinates
 - Closing a sonar screen no longer leaves its terrain scan running in the background
 - Fixed a removed ship's hull analysis being cached again when it finished after the ship was gone
+- Fixed the server freezing until the watchdog stopped it when a water, pressure or autopilot check hit a chunk that was still loading (#111, thanks @anenigmabeyondwords)
 
 ## [3.4.1]
 
@@ -137,7 +139,7 @@
   - **Faster in danger:** on by default, the alarm speeds up the deeper the hull is past its limit, like before. Turned off, it keeps the exact rhythm you set.
 - **Repair Command:** Operators can run `/submarine repair` while standing in or on a submarine to fix it on the spot: every hull block the pressure tore out (beams that blew out included) is put back, every crack is sealed, the water let in by progressive flooding is drained, and broken beams stop weakening the hull around them.
 - **Deep Seas Config Button:** The pause menu and the title screen get a Pressure Goggles button under Create's, which opens the Create Deep Seas config straight away.
-- **Oxygen From Other Mods:** The Oxygen Diffuser now takes any fluid in the `#c:oxygen` tag, so oxygen from other mods can be used.
+- **Oxygen From Other Mods:** The Oxygen Diffuser now takes any fluid in the `#c:oxygen` tag, so oxygen from other mods can be used (#85, thanks @ax-ten).
 - **Anchor Recipe:** The Anchor can now be crafted from four Iron Sheets, a Chain, an Iron Block and an Iron Ingot.
 - **Seaglide Flight:** Holding Left-Click with a Seaglide while gliding with an elytra now pulls you through the air, at a quarter of the speed of a firework rocket, as long as you have food. It drains hunger twice as fast as swimming. Its speed in the air is set by the new `seaglideFlightSpeed` server option (0.425 blocks per tick, about 8.5 blocks per second, by default).
 - **Music Disc:** A new music disc, KANDELWICK - Hidden Between Fluent Waters. It is very rare loot (1.5% per chest) in buried treasure, shipwrecks, ocean ruins, temples, mineshafts, dungeons, strongholds, mansions, ancient cities, bastions, Nether fortresses, End cities and other structures, villages excepted. It can also be crafted from a Nautilus Shell surrounded by four Prismarine Shards and four Prismarine Crystals. While it plays in a Jukebox, on land or aboard a ship, every player within 8 blocks gets Water Breathing.

@@ -56,7 +56,6 @@ import net.minecraft.tags.FluidTags;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.LevelChunkSection;
-import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.neoforged.neoforge.event.level.BlockEvent;
 import net.neoforged.neoforge.network.PacketDistributor;
 import com.maxenonyme.createsubmarine.submarine.network.ImplosionFxPayload;
@@ -508,10 +507,8 @@ public class SubmarinePressureSystem {
         int z = (int) Math.round(subCenter.z());
         int startY = (int) Math.round(subCenter.y());
 
-        int top = level.getMaxBuildHeight();
-        ChunkAccess chunk = level.getChunk(
-                x >> 4, z >> 4,
-                ChunkStatus.FULL, false);
+        int top = Math.min(startY + MAX_WATER_SCAN, level.getMaxBuildHeight());
+        ChunkAccess chunk = level.getChunkSource().getChunkNow(x >> 4, z >> 4);
         if (chunk == null)
             return DRY;
 
