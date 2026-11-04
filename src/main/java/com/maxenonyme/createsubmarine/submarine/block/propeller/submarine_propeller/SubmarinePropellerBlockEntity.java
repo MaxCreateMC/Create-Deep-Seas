@@ -76,7 +76,7 @@ public class SubmarinePropellerBlockEntity extends BasePropellerBlockEntity {
     public double getThrust() {
         if (groupMaster == null)
             return super.getThrust();
-        return isGroupMaster() ? groupThrust : 0;
+        return isGroupMaster() && isSubmerged() ? groupThrust : 0;
     }
 
     @Override
@@ -206,6 +206,7 @@ public class SubmarinePropellerBlockEntity extends BasePropellerBlockEntity {
         if (parentLevel == null && ship instanceof SubLevel sl) {
             parentLevel = sl.getLevel();
         }
+
         if (parentLevel == null) {
             return false;
         }
@@ -242,6 +243,7 @@ public class SubmarinePropellerBlockEntity extends BasePropellerBlockEntity {
                     memberThrust += prop.getConfigThrust();
             }
         }
+
         if (isGroupMaster()) {
             SubmarinePropellerBlockEntity fastest = this;
             for (BlockPos member : members) {
@@ -273,6 +275,7 @@ public class SubmarinePropellerBlockEntity extends BasePropellerBlockEntity {
         if (this.prop != null) {
             this.prop.pushEntities();
         }
+
         if (level != null && level.isClientSide()) {
             if (isSubmerged()) {
                 spawnSubmarineBubbles();

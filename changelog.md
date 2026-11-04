@@ -1,5 +1,24 @@
 # Changelog
 
+## [3.4.7]
+
+### Changes
+- Added the `ballastRighting` server option to set how hard ballast tanks pull a submarine back upright, 0 turns it off (#137)
+
+### Bug Fixes
+- Fixed servers crashing with "Body has been removed" when a ship with sails or a rudder was removed
+- Fixed lag spikes each time a Vista camera feed refreshed near a submarine with an oxygenated hull (#138)
+- Fixed 2x2 and 3x3 Submarine Propellers launching the submarine when they left the water
+- Fixed the Boat Engine pushing from above its propeller and still pushing with its propeller out of the water
+- Fixed the Oar of Boat moving a ship while standing on a block next to it instead of on board
+- Fixed the underwater sun shafts and caustics of the Vortex Engine jumping to another place when swimming under a block
+- Fixed sun shafts and caustics showing under water that the sky does not reach, such as below a bedrock ceiling or very deep down
+- Fixed sun shafts, caustics and plankton showing on the land around you while swimming in a waterfall
+- Fixed a sail made taller after being rigged no longer lowering all the way when its halyard runs to a winch on another part of the ship
+- Fixed the frame rate dropping sharply with many single-block sub-levels loaded
+- Fixed sails tilting the ship towards the wind: the wind now only pushes the ship forward (#139)
+- Fixed sailing ships slowly turning to one side with the rudder straight
+
 ## [3.4.6]
 
 ### Changes
@@ -9,11 +28,13 @@
 - Added Reflections to the Vortex Engine video settings (`reflections`, off by default): water, glass and other see-through blocks reflect the scene and the sky
 - The shadows of the Vortex Engine now follow the shape of blocks: slabs, stairs, doors and trapdoors cast a matching shadow, and thin blocks like shafts, fences or carpets no longer cast the shadow of a full cube
 - Players and mobs now cast shadows in the coloured light of the Vortex Engine
+- The Vortex Engine switch now takes effect after a restart, and turning it off removes the engine from the game entirely instead of only hiding what it draws
 - Added Temporal Accumulation to the Vortex Engine video settings (`temporalAccumulation`, off by default): the light is blended over several frames, smoothing its grain and its edges at half or quarter resolution
 - The Vortex Engine video settings now fit on one page with the most useful settings, named like the settings of a shader pack (Shadows, Bloom, Volumetric Light, Light Shafts); every other setting is behind the Advanced Settings button
 - Create Deep Seas and Create High Seas now treat the salt, river and spring water of TerraFirmaCraft as water, through the new `create_submarine:water` fluid tag that other mods can add to (#129)
 
 ### Bug Fixes
+- Fixed the buttons of the photosensitivity warning being out of reach in a small window or with a large GUI scale; a long message now scrolls with the mouse wheel
 - Fixed black shadows flickering on kelp, lianas and other thin blocks lit by the Vortex Engine
 - Fixed boats floating in singleplayer but barely floating, sinking or capsizing on servers with `selfRighting` having no effect, and their dry holds counting as flooded on servers, so players drowned and items floated inside: every other dimension of the server wiped the holds of the boats each tick (#131)
 - Fixed sails still pushing the ship when lowered, which also made anchored ships dip their bow into the water

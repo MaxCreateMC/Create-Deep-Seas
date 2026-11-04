@@ -20,6 +20,7 @@ public class SubmarineConfig {
         public static final ModConfigSpec.DoubleValue BALLAST_LIFT_PER_TANK;
         public static final ModConfigSpec.DoubleValue FLOATER_LIFT;
         public static final ModConfigSpec.DoubleValue BALLAST_VERTICAL_SPEED;
+        public static final ModConfigSpec.DoubleValue BALLAST_RIGHTING;
         public static final ModConfigSpec.DoubleValue BALLAST_TRANSFER_RATE_MULTIPLIER;
         public static final ModConfigSpec.DoubleValue WATER_THRUSTER_POWER_MULTIPLIER;
         public static final ModConfigSpec.DoubleValue SUBMARINE_PROPELLER_POWER_MULTIPLIER;
@@ -182,6 +183,10 @@ public class SubmarineConfig {
                                 .comment("Maximum vertical speed (blocks per tick) ballast tanks drive the submarine at when diving or ascending.",
                                                 "Higher = faster dive and climb. The old fixed value was 2.0.")
                                 .defineInRange("ballastVerticalSpeed", 2.0, 0.1, 20.0);
+                BALLAST_RIGHTING = server
+                                .comment("How hard ballast tanks pull a tilted submarine back upright.",
+                                                "0 = no righting, the ship leans with its weight like with floaters.")
+                                .defineInRange("ballastRighting", 1.0, 0.0, 10.0);
                 BALLAST_TRANSFER_RATE_MULTIPLIER = server
                                 .comment("Multiplier on the ballast vent fill/drain transfer rate.",
                                                 "Lower = slower filling/emptying, higher = faster.")

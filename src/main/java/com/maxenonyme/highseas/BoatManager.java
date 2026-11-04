@@ -12,6 +12,7 @@ import dev.ryanhcode.sable.sublevel.SubLevel;
 import dev.ryanhcode.sable.sublevel.plot.LevelPlot;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Player;
@@ -67,8 +68,8 @@ public class BoatManager {
     private record Survey(CompartmentDetector.Result cover, List<Probe> probes) {
     }
 
-    private static final Map<UUID, Boat> CLIENT = new HashMap<>();
-    private static final Map<UUID, Boat> SERVER = new HashMap<>();
+    private static final Map<ResourceKey<Level>, Map<UUID, Boat>> CLIENT = new HashMap<>();
+    private static final Map<ResourceKey<Level>, Map<UUID, Boat>> SERVER = new HashMap<>();
 
     private static final Map<UUID, SubLevel> BOATS = new ConcurrentHashMap<>();
 
@@ -111,7 +112,8 @@ public class BoatManager {
         if (container == null)
             return;
 
-        Map<UUID, Boat> boats = client ? CLIENT : SERVER;
+        Map<UUID, Boat> boats = (client ? CLIENT : SERVER)
+                .computeIfAbsent(level.dimension(), k -> new HashMap<>());
         long now = level.getGameTime();
         UUID nearest = nearestSub(level, container);
         boolean busy = false;
@@ -220,17 +222,22 @@ public class BoatManager {
         }
     }
 
-    private static void forgetMissing(Map<UUID, Boat> boats, Set<UUID> seen) {
-        Iterator<Map.Entry<UUID, Boat>> it = boats.entrySet().iterator();
+    private static void forgetMissing(Map<ResourceKey<Level>, Map<UUID, Boat>> sides, Set<UUID> seen) {
+        for (Iterator<Map<UUID, Boat>> dims = sides.values().iterator(); dims.hasNext(); ) {
+            Map<UUID, Boat> boats = dims.next();
 
-        while (it.hasNext()) {
-            Map.Entry<UUID, Boat> e = it.next();
-            if (!seen.contains(e.getKey())) {
-                if (e.getValue().registered)
-                    CompartmentTracker.remove(e.getKey());
-                BOATS.remove(e.getKey());
-                it.remove();
+            for (Iterator<Map.Entry<UUID, Boat>> it = boats.entrySet().iterator(); it.hasNext(); ) {
+                Map.Entry<UUID, Boat> e = it.next();
+                if (!seen.contains(e.getKey())) {
+                    if (e.getValue().registered)
+                        CompartmentTracker.remove(e.getKey());
+                    BOATS.remove(e.getKey());
+                    it.remove();
+                }
             }
+
+            if (boats.isEmpty())
+                dims.remove();
         }
     }
 
@@ -424,13 +431,14 @@ public class BoatManager {
     }
 
     public static void clearSide(boolean client) {
-        Map<UUID, Boat> boats = client ? CLIENT : SERVER;
+        Map<ResourceKey<Level>, Map<UUID, Boat>> sides = client ? CLIENT : SERVER;
 
-        for (Map.Entry<UUID, Boat> e : boats.entrySet())
-            if (e.getValue().registered)
-                CompartmentTracker.remove(e.getKey());
+        for (Map<UUID, Boat> boats : sides.values())
+            for (Map.Entry<UUID, Boat> e : boats.entrySet())
+                if (e.getValue().registered)
+                    CompartmentTracker.remove(e.getKey());
 
-        boats.clear();
+        sides.clear();
     }
 
     public static void clearAll() {

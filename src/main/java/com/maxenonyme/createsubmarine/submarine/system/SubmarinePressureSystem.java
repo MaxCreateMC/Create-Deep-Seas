@@ -507,7 +507,7 @@ public class SubmarinePressureSystem {
         int z = (int) Math.round(subCenter.z());
         int startY = (int) Math.round(subCenter.y());
 
-        int top = Math.min(startY + MAX_WATER_SCAN, level.getMaxBuildHeight());
+        int top = level.getMaxBuildHeight();
         ChunkAccess chunk = level.getChunkSource().getChunkNow(x >> 4, z >> 4);
         if (chunk == null)
             return DRY;

@@ -30,7 +30,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import dev.ryanhcode.sable.physics.config.dimension_physics.DimensionPhysicsData;
 import com.maxenonyme.highseas.BoatBuoyancySystem;
 import dev.ryanhcode.sable.companion.math.BoundingBox3ic;
 import com.maxenonyme.highseas.config.HighSeasConfig;
@@ -43,7 +42,6 @@ public class SailWindSystem {
     private static final double SERVER_STEP = 0.05;
     private static final double MAX_ACCEL = 3.0;
     private static final double REFERENCE_LENGTH = 8.0;
-    private static final double SAIL_DRAG = 1.75;
     private static final double MAX_HIDDEN_DRAG = 8.0;
     private static final double HIDDEN_DRAG_BLEND = 0.08;
 
@@ -64,7 +62,6 @@ public class SailWindSystem {
         double canvas;
         double rigged;
         double weighted;
-        double dragXX, dragXZ, dragZZ;
 
         Drive(Vector3d keel, boolean afloat) {
             this.keel = keel;
@@ -107,7 +104,7 @@ public class SailWindSystem {
         if (rudder == null)
             rudder = chainRudder(root);
         if (rudder != null) {
-            Vec3 center = new Vec3((bb.minX() + bb.maxX()) * 0.5, (bb.minY() + bb.maxY()) * 0.5, (bb.minZ() + bb.maxZ()) * 0.5);
+            Vec3 center = new Vec3((bb.minX() + bb.maxX() + 1) * 0.5, (bb.minY() + bb.maxY() + 1) * 0.5, (bb.minZ() + bb.maxZ() + 1) * 0.5);
             Vector3d fwd = SailForce.forward(orient, rudder, center, bb.maxX() - bb.minX(), bb.maxZ() - bb.minZ(), rootSails);
             if (fwd != null)
                 return fwd;
@@ -162,6 +159,7 @@ public class SailWindSystem {
         } catch (RuntimeException e) {
             return null;
         }
+
         for (SubLevel s : chain) {
             if (s == root)
                 continue;
@@ -256,18 +254,6 @@ public class SailWindSystem {
         }
         double speedRatio = Mth.clamp(Math.abs(forwardSpeed) / WindConfig.SAIL_SPEED_REFERENCE, 0.0, 1.0);
 
-        for (SailGroup group : sails) {
-            if (group.axis() == Direction.Axis.Y)
-                continue;
-            Vec3 point = group.localCenter();
-            double drag = group.area() * DimensionPhysicsData.getAirPressure(parentLevel,
-                    sailPose.transformPosition(new Vector3d(point.x, point.y, point.z)));
-            Vec3 ln = group.localNormal();
-            Vector3d normal = sailPose.orientation().transform(new Vector3d(ln.x, ln.y, ln.z));
-            drive.dragXX += drag * normal.x * normal.x;
-            drive.dragXZ += drag * normal.x * normal.z;
-            drive.dragZZ += drag * normal.z * normal.z;
-        }
         UUID sourceId = sailSource.getUniqueId();
         for (SailGroup group : sails) {
             if (group.axis() == Direction.Axis.Y)
@@ -281,6 +267,7 @@ public class SailWindSystem {
 
             pull(parentLevel, sailSource, sailPose, group, ramp * (1.0 - reefed / 0.9), speedRatio, drive);
         }
+
         for (DecayingSail ds : SailWindRegistry.getDecayingSails(sourceId, gameTime)) {
             if (ds.group().axis() == Direction.Axis.Y)
                 continue;
@@ -321,8 +308,7 @@ public class SailWindSystem {
         double speed = velocity == null ? 0.0 : velocity.x() * dir.x + velocity.z() * dir.z;
         double response = HighSeasConfig.sailResponseTime * Mth.clamp(Math.sqrt(length / REFERENCE_LENGTH), 0.7, 2.0);
         UUID id = root.getUniqueId();
-        double sailDrag = drive.dragXX * dir.x * dir.x + 2.0 * drive.dragXZ * dir.x * dir.z + drive.dragZZ * dir.z * dir.z;
-        double drag = BoatBuoyancySystem.forwardDrag(id, speed) + SAIL_DRAG * sailDrag * speed / hullMass;
+        double drag = BoatBuoyancySystem.forwardDrag(id, speed);
 
         Trim trim = TRIMS.get(id);
         if (trim == null) {
