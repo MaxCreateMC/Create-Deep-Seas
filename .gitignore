@@ -33,6 +33,7 @@ replay_pid*
 /.eclipse
 /sodium_shaders
 /Wiki
+/archive
 
 # Local scratch/tooling output
 /classpath.txt
