@@ -382,7 +382,7 @@ public class BoatSailBlock extends RotatedPillarBlock implements IWrenchable, Bl
 
     @Override
     public float sable$getParallelDragScalar() {
-        return 1.75f;
+        return 0;
     }
 
     @Override

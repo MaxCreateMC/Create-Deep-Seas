@@ -9,6 +9,7 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.TitleScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.FormattedCharSequence;
+import net.minecraft.util.Mth;
 import net.neoforged.neoforge.client.event.ScreenEvent;
 import net.neoforged.neoforge.client.gui.ConfigurationScreen;
 import net.neoforged.fml.ModList;
@@ -31,6 +32,8 @@ public class DeepSeasSafetyScreen extends Screen {
     private List<FormattedCharSequence> messageLines = List.of();
     private int panelX, panelY, panelW, panelH;
     private int signTop, titleY, bodyY;
+    private int visibleLines;
+    private int scroll;
     private Checkbox photosensitive;
 
     public DeepSeasSafetyScreen(Screen titleScreen) {
@@ -56,8 +59,10 @@ public class DeepSeasSafetyScreen extends Screen {
         panelW = Math.min(380, this.width - 40);
         messageLines = this.font.split(Component.translatable("create_submarine.safety.message"), panelW - 28);
 
-        int bodyH = messageLines.size() * (this.font.lineHeight + 2);
-        panelH = 14 + SIGN_H + 10 + this.font.lineHeight + 10 + bodyH + 12 + 20 + 12;
+        int lineStep = this.font.lineHeight + 2;
+        int bodyH = messageLines.size() * lineStep;
+        int fullH = 14 + SIGN_H + 10 + this.font.lineHeight + 10 + bodyH + 12 + 20 + 12;
+        panelH = Math.min(fullH, this.height - 6 - 14 - 20 - 6);
 
         int blockH = panelH + 14 + 20;
         panelX = (this.width - panelW) / 2;
@@ -66,7 +71,10 @@ public class DeepSeasSafetyScreen extends Screen {
         signTop = panelY + 14;
         titleY = signTop + SIGN_H + 10;
         bodyY = titleY + this.font.lineHeight + 10;
-        int checkboxY = bodyY + bodyH + 12;
+        int checkboxY = panelY + panelH - 12 - 20;
+
+        visibleLines = Math.max(1, (checkboxY - 12 - bodyY) / lineStep);
+        scroll = Mth.clamp(scroll, 0, Math.max(0, messageLines.size() - visibleLines));
 
         boolean current = SubmarineConfig.PHOTOSENSITIVE_MODE.get();
         photosensitive = Checkbox.builder(Component.translatable("create_submarine.safety.checkbox"), this.font)
@@ -104,10 +112,22 @@ public class DeepSeasSafetyScreen extends Screen {
         g.drawCenteredString(this.font, this.title, centerX, titleY, TITLE_COLOR);
 
         int ty = bodyY;
-        for (FormattedCharSequence line : messageLines) {
-            g.drawCenteredString(this.font, line, centerX, ty, BODY_COLOR);
+        int last = Math.min(messageLines.size(), scroll + visibleLines);
+
+        for (int i = scroll; i < last; i++) {
+            g.drawCenteredString(this.font, messageLines.get(i), centerX, ty, BODY_COLOR);
             ty += this.font.lineHeight + 2;
         }
+
+        if (last < messageLines.size())
+            g.drawCenteredString(this.font, "...", centerX, ty, BODY_COLOR);
+    }
+
+    @Override
+    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+        int limit = Math.max(0, messageLines.size() - visibleLines);
+        scroll = Mth.clamp(scroll - (int) Math.signum(scrollY), 0, limit);
+        return true;
     }
 
     private static void drawSign(GuiGraphics g, int centerX, int top) {

@@ -154,7 +154,7 @@ public class Halyard {
         return best;
     }
 
-    private static void refresh(HalyardBlockEntity bridle, UUID sub) {
+    private static void refresh(HalyardBlockEntity bridle, UUID sub, ServerLevel level, ServerRopeStrand strand) {
         Geometry g = geometry(bridle.getLevel(), bridle.getBlockPos());
         if (g == null)
             return;
@@ -165,13 +165,39 @@ public class Halyard {
             FurlState.dropReef(sub, bridle.group);
             ReefSyncPayload.broadcast(sub);
         }
+
+        BlockState state = bridle.getBlockState();
+        Vec3 end = farEnd(level, bridle, strand);
+        double before = end == null ? 0.0 : end.distanceTo(Sable.HELPER.projectOutOfSubLevel(level, bridle.halyardAnchor(state, 0.0f)));
+
         bridle.headY = g.head();
         bridle.footY = g.foot();
         bridle.edge = g.edge();
         bridle.plane = g.plane();
         bridle.group = g.group();
         bridle.applied = -1.0f;
+
+        if (end != null && bridle.rest >= 0.0) {
+            double grown = end.distanceTo(Sable.HELPER.projectOutOfSubLevel(level, bridle.halyardAnchor(state, 0.0f))) - before;
+            if (grown > SLACK) {
+                bridle.rest += grown;
+                resize(level, strand, length(strand) + grown);
+                bridle.setChanged();
+            }
+        }
+
         bridle.notifyUpdate();
+    }
+
+    private static Vec3 farEnd(ServerLevel level, HalyardBlockEntity bridle, ServerRopeStrand strand) {
+        for (RopeAttachment attachment : strand.getAttachments()) {
+            BlockPos at = attachment.blockAttachment();
+            if (at.equals(bridle.getBlockPos()))
+                continue;
+            RopeStrandHolderBehavior holder = RopeItem.getRopeHolder(level, at);
+            return holder == null ? null : Sable.HELPER.projectOutOfSubLevel(level, holder.getAttachmentPoint());
+        }
+        return null;
     }
 
     private static boolean holds(Level level, BlockPos pos) {
@@ -201,6 +227,7 @@ public class Halyard {
             bridle.applied = -1.0f;
             bridle.setChanged();
         }
+
         if (!attached) {
             if (bridle.rest >= 0.0 && sub != null) {
                 FurlState.dropReef(sub, bridle.group);
@@ -216,10 +243,10 @@ public class Halyard {
             return;
         if (bridle.ship == null && sub != null) {
             bridle.ship = sub;
-            refresh(bridle, sub);
+            refresh(bridle, sub, server, strand);
             bridle.setChanged();
         } else if (server.getGameTime() % REFRESH == 0) {
-            refresh(bridle, sub);
+            refresh(bridle, sub, server, strand);
         }
         double length = length(strand);
         boolean driven = bridle.lastLength >= 0.0 && Math.abs(length - bridle.lastLength) > MOVED;
@@ -249,6 +276,7 @@ public class Halyard {
                     low = i / 16.0f;
                 }
             }
+
             if (nearest > winch.distanceTo(bridle.halyardAnchor(state, 0.0f)) - 0.25) {
                 winch = null;
                 low = 1.0f;
@@ -265,6 +293,7 @@ public class Halyard {
             resize(server, strand, shortest);
             length = shortest;
         }
+
         if (winch == null) {
             bridle.reef = (float) Mth.clamp((bridle.rest - length) / travel, 0.0, 1.0);
         } else {
@@ -342,6 +371,7 @@ public class Halyard {
             points--;
             extension += ServerRopeStrand.SEGMENT_LENGTH;
         }
+
         if (extension > ServerRopeStrand.SEGMENT_LENGTH) {
             RopeAttachment start = strand.getAttachment(RopeAttachmentPoint.START);
             RopeStrandHolderBehavior holder = start == null ? null : RopeItem.getRopeHolder(level, start.blockAttachment());

@@ -87,7 +87,7 @@ public class WindDebugRenderer {
             Quaterniondc orientation = pose.orientation();
             BoundingBox3ic bb = ship.getPlot().getBoundingBox();
             Vec3 rudder = RudderDetector.centroid(ship.getPlot());
-            Vec3 rcenter = new Vec3((bb.minX() + bb.maxX()) * 0.5, (bb.minY() + bb.maxY()) * 0.5, (bb.minZ() + bb.maxZ()) * 0.5);
+            Vec3 rcenter = new Vec3((bb.minX() + bb.maxX() + 1) * 0.5, (bb.minY() + bb.maxY() + 1) * 0.5, (bb.minZ() + bb.maxZ() + 1) * 0.5);
             Vector3d forward = SailForce.forward(orientation, rudder, rcenter, bb.maxX() - bb.minX(), bb.maxZ() - bb.minZ(), groups);
 
             for (SailGroup group : groups) {
@@ -131,6 +131,17 @@ public class WindDebugRenderer {
                         }
                     }
                 }
+            }
+
+            double dx = pose.position().x() - ship.lastPose().position().x();
+            double dz = pose.position().z() - ship.lastPose().position().z();
+            double speed = Math.sqrt(dx * dx + dz * dz) * 20.0;
+            if (speed > 0.05) {
+                Vector3d top = new Vector3d(rcenter.x, bb.maxY() + 1.5, rcenter.z);
+                pose.transformPosition(top);
+                Vec3 start = new Vec3(top.x, top.y, top.z);
+                Vec3 heading = new Vec3(dx, 0.0, dz).normalize();
+                drawArrow(lines, matrix, start, start.add(heading.scale(Mth.clamp(speed * 0.5, 1.0, 8.0))), heading, 0.0f, 0.0f, 0.0f);
             }
         }
 

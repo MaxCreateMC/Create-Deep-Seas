@@ -6,7 +6,8 @@
         { "name": "OpaqueDepth" },
         { "name": "LightData" },
         { "name": "Tiles" },
-        { "name": "Indices" }
+        { "name": "Indices" },
+        { "name": "Boxes" }
     ],
     "uniforms": [
         { "name": "InvProjMat", "type": "matrix4x4", "count": 16, "values": [ 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0 ] },
@@ -14,13 +15,14 @@
         { "name": "ScreenSize", "type": "float", "count": 2, "values": [ 1.0, 1.0 ] },
         { "name": "CameraFract", "type": "float", "count": 3, "values": [ 0.0, 0.0, 0.0 ] },
         { "name": "GridOffset", "type": "int", "count": 3, "values": [ 0, 0, 0 ] },
-        { "name": "ShadowGrid", "type": "int", "count": 1, "values": [ 5 ] },
+        { "name": "ShadowGrid", "type": "int", "count": 1, "values": [ 6 ] },
         { "name": "TileSize", "type": "int", "count": 1, "values": [ 32 ] },
         { "name": "Shadows", "type": "float", "count": 1, "values": [ 1.0 ] },
         { "name": "Pixelated", "type": "float", "count": 1, "values": [ 1.0 ] },
         { "name": "Strength", "type": "float", "count": 1, "values": [ 1.0 ] },
         { "name": "GameTime", "type": "float", "count": 1, "values": [ 0.0 ] },
         { "name": "Translucent", "type": "float", "count": 1, "values": [ 0.0 ] },
+        { "name": "BoxCount", "type": "int", "count": 1, "values": [ 0 ] },
         { "name": "LightScale", "type": "float", "count": 1, "values": [ 1.0 ] },
         { "name": "Jitter", "type": "float", "count": 2, "values": [ 0.0, 0.0 ] }
     ]

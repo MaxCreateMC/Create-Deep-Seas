@@ -131,17 +131,23 @@ vec3 worldNear(vec2 frag, vec2 offset) {
     return worldAt(uv, texture(DepthSampler, uv).r);
 }
 
+bool thin(vec3 before, vec3 after, float footprint) {
+    float shortest = min(dot(before, before), dot(after, after));
+    return shortest > footprint * footprint && dot(before, after) < 0.0;
+}
+
 vec3 normalAt(vec2 frag, vec3 world) {
     vec3 left = world - worldNear(frag, vec2(-1.0, 0.0));
     vec3 right = worldNear(frag, vec2(1.0, 0.0)) - world;
     vec3 down = world - worldNear(frag, vec2(0.0, -1.0));
     vec3 up = worldNear(frag, vec2(0.0, 1.0)) - world;
 
+    float footprint = 16.0 * length(world) * InvProjMat[1][1] / ScreenSize.y;
+    if (thin(left, right, footprint) || thin(down, up, footprint))
+        return -normalize(world);
+
     vec3 across = dot(right, right) < dot(left, left) ? right : left;
     vec3 along = dot(up, up) < dot(down, down) ? up : down;
-    float footprint = 16.0 * length(world) * InvProjMat[1][1] / ScreenSize.y;
-    if (max(dot(across, across), dot(along, along)) > footprint * footprint)
-        return -normalize(world);
 
     vec3 normal = normalize(cross(across, along));
     return dot(normal, world) > 0.0 ? -normal : normal;

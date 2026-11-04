@@ -176,6 +176,7 @@ public class BallastTankBlockEntity extends BlockEntity
         for (BallastTankBlockEntity be : getCluster()) {
             clusterPositions.add(be.getBlockPos());
         }
+
         for (BallastTankBlockEntity be : getCluster()) {
             for (Direction direction : Direction.values()) {
                 BlockPos n = be.getBlockPos().relative(direction);
@@ -474,15 +475,19 @@ public class BallastTankBlockEntity extends BlockEntity
     }
 
     private static void rightHull(SubLevelAccess sub, Object handle) {
+        double gain = RIGHTING_GAIN * SubmarineConfig.BALLAST_RIGHTING.get();
+        if (gain <= 0)
+            return;
+
         Vector3dc spin = SablePhysicsHelper.getAngularVelocity(handle);
         if (spin == null)
             return;
         Vector3d up = sub.logicalPose().orientation().transform(new Vector3d(0, 1, 0));
         Vector3d tilt = up.cross(0, 1, 0, new Vector3d());
         Vector3d correction = new Vector3d(
-                (tilt.x * RIGHTING_RATE - spin.x()) * RIGHTING_GAIN,
+                (tilt.x * RIGHTING_RATE - spin.x()) * gain,
                 0,
-                (tilt.z * RIGHTING_RATE - spin.z()) * RIGHTING_GAIN);
+                (tilt.z * RIGHTING_RATE - spin.z()) * gain);
         if (correction.lengthSquared() < 1e-8)
             return;
         SablePhysicsHelper.addAngularVelocity(handle, correction);
@@ -622,6 +627,7 @@ public class BallastTankBlockEntity extends BlockEntity
                     count++;
                 }
             }
+
             if (count > 0) {
                 centerPos.div(count);
                 Vector3d recordVec = totalForce.mul(20.0 * timeStep);
