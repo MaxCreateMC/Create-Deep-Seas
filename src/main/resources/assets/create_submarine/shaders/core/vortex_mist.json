@@ -13,7 +13,7 @@
         { "name": "ScreenSize", "type": "float", "count": 2, "values": [ 1.0, 1.0 ] },
         { "name": "CameraFract", "type": "float", "count": 3, "values": [ 0.0, 0.0, 0.0 ] },
         { "name": "GridOffset", "type": "int", "count": 3, "values": [ 0, 0, 0 ] },
-        { "name": "ShadowGrid", "type": "int", "count": 1, "values": [ 5 ] },
+        { "name": "ShadowGrid", "type": "int", "count": 1, "values": [ 6 ] },
         { "name": "Field", "type": "int", "count": 1, "values": [ 8 ] },
         { "name": "FieldMode", "type": "float", "count": 1, "values": [ 0.0 ] },
         { "name": "LightCount", "type": "int", "count": 1, "values": [ 0 ] },

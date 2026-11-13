@@ -18,9 +18,21 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @Pseudo
 @Mixin(value = SingleBlockSubLevelWrapper.class, remap = false)
 public abstract class SingleBlockSubLevelLightMixin {
+
+    @Unique
+    private static final List<ClientSubLevel> createsubmarine$hulls = new ArrayList<>();
+    @Unique
+    private static ClientLevel createsubmarine$hullLevel;
+    @Unique
+    private static long createsubmarine$hullTick = Long.MIN_VALUE;
+    @Unique
+    private static int createsubmarine$hullCount = -1;
 
     @Unique
     private int createsubmarine$blockLight = -1;
@@ -35,8 +47,26 @@ public abstract class SingleBlockSubLevelLightMixin {
         SubLevelContainer container = SubLevelContainer.getContainer(level);
         if (container == null)
             return;
-        for (SubLevel other : container.getAllSubLevels()) {
-            if (!(other instanceof ClientSubLevel hull) || hull.getPlot() == null)
+
+        List<? extends SubLevel> all = container.getAllSubLevels();
+        if (level != createsubmarine$hullLevel || level.getGameTime() != createsubmarine$hullTick
+                || all.size() != createsubmarine$hullCount) {
+            createsubmarine$hullLevel = level;
+            createsubmarine$hullTick = level.getGameTime();
+            createsubmarine$hullCount = all.size();
+            createsubmarine$hulls.clear();
+
+            for (SubLevel other : all) {
+                if (!(other instanceof ClientSubLevel hull) || hull.getPlot() == null)
+                    continue;
+                BoundingBox3ic bounds = hull.getPlot().getBoundingBox();
+                if ((long) (bounds.maxX() - bounds.minX() + 1) * (bounds.maxY() - bounds.minY() + 1) * (bounds.maxZ() - bounds.minZ() + 1) >= 9)
+                    createsubmarine$hulls.add(hull);
+            }
+        }
+
+        for (ClientSubLevel hull : createsubmarine$hulls) {
+            if (hull.isRemoved() || hull.getPlot() == null)
                 continue;
             BoundingBox3ic bounds = hull.getPlot().getBoundingBox();
             if ((long) (bounds.maxX() - bounds.minX() + 1) * (bounds.maxY() - bounds.minY() + 1) * (bounds.maxZ() - bounds.minZ() + 1) < 9)

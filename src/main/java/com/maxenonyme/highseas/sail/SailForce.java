@@ -16,6 +16,12 @@ public class SailForce {
                                    int spanX, int spanZ, List<SailGroup> sails) {
         if (rudderLocal != null && centerLocal != null) {
             Vector3d fwd = new Vector3d(centerLocal.x - rudderLocal.x, 0.0, centerLocal.z - rudderLocal.z);
+            if (Math.abs(fwd.x) >= Math.abs(fwd.z)) {
+                fwd.z = 0.0;
+            } else {
+                fwd.x = 0.0;
+            }
+
             orientation.transform(fwd);
             fwd.y = 0;
             if (fwd.lengthSquared() >= 1.0e-6) {
@@ -43,6 +49,7 @@ public class SailForce {
             tmp.normalize();
             dir.add(tmp.mul(group.area()));
         }
+
         if (dir.lengthSquared() < 1.0e-9) {
             return null;
         }
@@ -74,6 +81,7 @@ public class SailForce {
             orientation.transform(tmp);
             sign += (tmp.x * keel.x + tmp.z * keel.z) * group.area();
         }
+
         if (sign < 0) {
             keel.negate();
         }

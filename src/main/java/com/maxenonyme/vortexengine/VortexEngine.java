@@ -17,13 +17,13 @@ public class VortexEngine {
         if (!installed())
             return;
 
-        modContainer.registerConfig(ModConfig.Type.CLIENT, VortexConfig.SPEC, "create_submarine-vortex.toml");
+        modContainer.registerConfig(ModConfig.Type.CLIENT, VortexConfig.SPEC, VortexStartup.FILE);
 
-        if (FMLEnvironment.dist.isClient())
+        if (FMLEnvironment.dist.isClient() && VortexStartup.enabled())
             VortexClient.init(modEventBus);
     }
 
     public static boolean enabled() {
-        return VortexConfig.SPEC.isLoaded() && VortexConfig.ENABLED.get();
+        return installed() && VortexStartup.enabled() && VortexConfig.SPEC.isLoaded();
     }
 }

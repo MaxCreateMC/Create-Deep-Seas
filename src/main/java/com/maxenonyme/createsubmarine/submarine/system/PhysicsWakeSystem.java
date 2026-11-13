@@ -27,7 +27,7 @@ public class PhysicsWakeSystem {
             for (SubLevel subLevel : serverContainer.getAllSubLevels()) {
                 if (!(subLevel instanceof ServerSubLevel serverSub))
                     continue;
-                if (serverSub.getPlot() == null)
+                if (serverSub.isRemoved() || serverSub.getPlot() == null)
                     continue;
 
                 boolean hasForces = !SailWindRegistry.getSails(serverSub, event.getServer().getTickCount()).isEmpty()

@@ -21,6 +21,7 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.neoforged.neoforge.fluids.FluidStack;
 import net.neoforged.neoforge.fluids.capability.IFluidHandler;
@@ -242,10 +243,17 @@ public class DecompressionChamberBlockEntity extends BlockEntity {
     }
 
     private void setWaterLevel(BlockPos p, int newLevel) {
+        BlockState state = level.getBlockState(p);
+        if (state.hasProperty(BlockStateProperties.WATERLOGGED)) {
+            level.setBlock(p, state.setValue(BlockStateProperties.WATERLOGGED, newLevel >= 8), STILL);
+            return;
+        }
+
         GlobalPos globalPos = GlobalPos.of(level.dimension(), p);
         if (newLevel <= 0) {
             CHAMBER_WATER_BLOCKS.remove(globalPos);
             level.setBlock(p, Blocks.AIR.defaultBlockState(), STILL);
+            dryHullAround(p);
         } else if (newLevel >= 8) {
             CHAMBER_WATER_BLOCKS.remove(globalPos);
             level.setBlock(p,
@@ -258,6 +266,18 @@ public class DecompressionChamberBlockEntity extends BlockEntity {
         }
         if (level instanceof ServerLevel serverLevel)
             serverLevel.getFluidTicks().clearArea(new BoundingBox(p));
+    }
+
+    private void dryHullAround(BlockPos pos) {
+        for (Direction dir : Direction.values()) {
+            BlockPos hullPos = pos.relative(dir);
+            if (!cachedCompartment.hull().contains(hullPos))
+                continue;
+
+            BlockState state = level.getBlockState(hullPos);
+            if (state.hasProperty(BlockStateProperties.WATERLOGGED) && state.getValue(BlockStateProperties.WATERLOGGED))
+                level.setBlock(hullPos, state.setValue(BlockStateProperties.WATERLOGGED, false), STILL);
+        }
     }
 
     private void processChamber() {

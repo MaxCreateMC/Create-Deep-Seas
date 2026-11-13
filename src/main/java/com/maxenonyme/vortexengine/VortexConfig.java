@@ -66,8 +66,9 @@ public class VortexConfig {
 
         builder.push("vortex");
         ENABLED = builder
-                .comment("Master switch of the Vortex Engine.",
-                        "Turning it off disables everything the engine draws or computes.")
+                .comment("Master switch of the Vortex Engine, read when the game starts.",
+                        "Turning it off removes the whole engine from the game after a restart.")
+                .gameRestart()
                 .define("enabled", true);
         builder.pop();
 

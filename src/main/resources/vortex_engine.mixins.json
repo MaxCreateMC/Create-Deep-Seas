@@ -2,6 +2,7 @@
   "required": true,
   "minVersion": "0.8",
   "package": "com.maxenonyme.vortexengine.mixin",
+  "plugin": "com.maxenonyme.vortexengine.VortexMixinPlugin",
   "compatibilityLevel": "JAVA_21",
   "client": [
     "LevelChunkGlowMixin"

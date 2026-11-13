@@ -76,6 +76,7 @@ public class SailCollisionSystem {
                     rigged.add(ship.getUniqueId());
                 }
             }
+
             if (ships.isEmpty()) {
                 continue;
             }
@@ -130,6 +131,7 @@ public class SailCollisionSystem {
                 subLevel.logicalPose().transformPosition(worldPos);
                 entityPose = subLevel.logicalPose();
             }
+
             for (ShipSails ship : ships) {
                 if (pushEntity(player, worldPos, entityPose, ship)) {
                     break;
@@ -160,6 +162,7 @@ public class SailCollisionSystem {
             if (g.axis() == Direction.Axis.Y) {
                 continue;
             }
+
             if (FurlState.amount(ship.getUniqueId(), g.min()) > 0.9f) {
                 continue;
             }
@@ -176,6 +179,7 @@ public class SailCollisionSystem {
             lmaxY = Math.max(lmaxY, mx.getY() + 1 + pad);
             lmaxZ = Math.max(lmaxZ, mx.getZ() + 1 + pad);
         }
+
         if (panels.isEmpty()) {
             return null;
         }
@@ -268,6 +272,7 @@ public class SailCollisionSystem {
                 }
                 entity.setDeltaMovement(v.x, v.y, v.z);
             }
+
             if (entity instanceof ServerPlayer sp) {
                 sp.hurtMarked = true;
             }
@@ -352,7 +357,7 @@ public class SailCollisionSystem {
         BoundingBox3ic bb = root.getPlot().getBoundingBox();
         List<SailGroup> rootSails = SailWindRegistry.getSails(root, gameTime);
         Vec3 rudder = SailWindRegistry.getRudder(root.getUniqueId());
-        Vec3 center = new Vec3((bb.minX() + bb.maxX()) * 0.5, (bb.minY() + bb.maxY()) * 0.5, (bb.minZ() + bb.maxZ()) * 0.5);
+        Vec3 center = new Vec3((bb.minX() + bb.maxX() + 1) * 0.5, (bb.minY() + bb.maxY() + 1) * 0.5, (bb.minZ() + bb.maxZ() + 1) * 0.5);
         return SailForce.forward(root.logicalPose().orientation(), rudder, center,
                 bb.maxX() - bb.minX(), bb.maxZ() - bb.minZ(), rootSails);
     }

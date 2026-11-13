@@ -3,7 +3,7 @@
     "fragment": "create_submarine:vortex_propagate",
     "samplers": [],
     "uniforms": [
-        { "name": "ShadowGrid", "type": "int", "count": 1, "values": [ 5 ] },
+        { "name": "ShadowGrid", "type": "int", "count": 1, "values": [ 6 ] },
         { "name": "Previous", "type": "int", "count": 1, "values": [ 8 ] },
         { "name": "Emission", "type": "int", "count": 1, "values": [ 9 ] },
         { "name": "Slice", "type": "int", "count": 1, "values": [ 0 ] },

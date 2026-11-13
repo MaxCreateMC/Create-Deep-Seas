@@ -320,6 +320,7 @@ public class PixelLights {
         shader.safeGetUniform("Jitter").set(LightVolumes.jitterX(layer.translucent()),
                 LightVolumes.jitterY(layer.translucent()));
         shader.setSampler("LightData", dataTexture);
+        EntityShadows.bind(shader);
         shader.setSampler("Tiles", tileTexture);
         shader.setSampler("Indices", indexTexture);
         shader.safeGetUniform("InvProjMat").set(new Matrix4f(projection).invert());

@@ -5,6 +5,7 @@ uniform sampler2D OpaqueDepth;
 uniform sampler2D LightData;
 uniform isampler2D Tiles;
 uniform isampler2D Indices;
+uniform sampler2D Boxes;
 uniform sampler3D ShadowGrid;
 uniform mat4 InvProjMat;
 uniform mat4 InvViewMat;
@@ -19,6 +20,7 @@ uniform float Pixelated;
 uniform float Strength;
 uniform float GameTime;
 uniform float Translucent;
+uniform int BoxCount;
 
 out vec4 fragColor;
 
@@ -96,6 +98,29 @@ vec3 passing(vec3 from, vec3 to) {
     return through;
 }
 
+bool boxed(vec3 from, vec3 to) {
+    vec3 path = to - from;
+    vec3 inverse = 1.0 / mix(path, vec3(0.00001), vec3(equal(path, vec3(0.0))));
+
+    for (int i = 0; i < 16; i++) {
+        if (i >= BoxCount)
+            break;
+
+        vec3 bottom = texelFetch(Boxes, ivec2(i, 0), 0).xyz;
+        vec3 low = (bottom - from) * inverse;
+        vec3 high = (texelFetch(Boxes, ivec2(i, 1), 0).xyz - from) * inverse;
+        vec3 near = min(low, high);
+        vec3 far = max(low, high);
+        float enter = max(max(near.x, near.y), near.z);
+        float leave = min(min(far.x, far.y), far.z);
+        bool feet = from.y < bottom.y + 0.25;
+        if (enter < leave && leave > 0.0 && enter < 1.0 && (enter > 0.0 || feet))
+            return true;
+    }
+
+    return false;
+}
+
 float rhythm(int code, float seed) {
     float time = GameTime * 1200.0;
     float pulse = (code & 1) != 0 ? 1.0 - 0.45 * (0.5 - 0.5 * cos(time * 0.9 + seed * 6.2832)) : 1.0;
@@ -116,17 +141,23 @@ vec3 worldNear(vec2 frag, vec2 offset) {
     return worldAt(uv, texture(DepthSampler, uv).r);
 }
 
+bool thin(vec3 before, vec3 after, float footprint) {
+    float shortest = min(dot(before, before), dot(after, after));
+    return shortest > footprint * footprint && dot(before, after) < 0.0;
+}
+
 vec3 normalAt(vec2 frag, vec3 world) {
     vec3 left = world - worldNear(frag, vec2(-1.0, 0.0));
     vec3 right = worldNear(frag, vec2(1.0, 0.0)) - world;
     vec3 down = world - worldNear(frag, vec2(0.0, -1.0));
     vec3 up = worldNear(frag, vec2(0.0, 1.0)) - world;
 
+    float footprint = 16.0 * length(world) * InvProjMat[1][1] / ScreenSize.y;
+    if (thin(left, right, footprint) || thin(down, up, footprint))
+        return -normalize(world);
+
     vec3 across = dot(right, right) < dot(left, left) ? right : left;
     vec3 along = dot(up, up) < dot(down, down) ? up : down;
-    float footprint = 16.0 * length(world) * InvProjMat[1][1] / ScreenSize.y;
-    if (max(dot(across, across), dot(along, along)) > footprint * footprint)
-        return -normalize(world);
 
     vec3 normal = normalize(cross(across, along));
     return dot(normal, world) > 0.0 ? -normal : normal;
@@ -173,6 +204,9 @@ void main() {
         vec3 span = abs(toLight);
         float level = place.w + 0.5 - (span.x + span.y + span.z);
         if (level < 1.0 || dot(toLight, normal) < -0.25)
+            continue;
+
+        if (Shadows > 0.5 && boxed(point, place.xyz))
             continue;
 
         vec3 through = Shadows > 0.5 ? passing(point, place.xyz) : vec3(1.0);

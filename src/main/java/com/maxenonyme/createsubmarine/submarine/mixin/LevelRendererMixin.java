@@ -1,8 +1,10 @@
 package com.maxenonyme.createsubmarine.submarine.mixin;
 
+import com.mojang.blaze3d.pipeline.RenderTarget;
 import dev.ryanhcode.sable.render.water_occlusion.WaterOcclusionRenderer;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Camera;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.GameRenderer;
 import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.LevelRenderer;
@@ -21,6 +23,11 @@ public class LevelRendererMixin {
             CallbackInfo ci) {
 
         if (!WaterOcclusionRenderer.isEnabled())
+            return;
+
+        Minecraft mc = Minecraft.getInstance();
+        RenderTarget target = mc.getMainRenderTarget();
+        if (target.width != mc.getWindow().getWidth() || target.height != mc.getWindow().getHeight())
             return;
 
         WaterOcclusionRenderer renderer = SableClient.WATER_OCCLUSION_RENDERER;

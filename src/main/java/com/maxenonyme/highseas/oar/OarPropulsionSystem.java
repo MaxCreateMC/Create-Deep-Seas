@@ -4,6 +4,8 @@ import com.maxenonyme.createsubmarine.CreateSubmarine;
 import com.maxenonyme.createsubmarine.submarine.compartment.CompartmentTracker;
 import com.maxenonyme.createsubmarine.submarine.util.SablePhysicsHelper;
 import dev.ryanhcode.sable.api.sublevel.SubLevelContainer;
+import dev.ryanhcode.sable.companion.SableCompanion;
+import dev.ryanhcode.sable.companion.SubLevelAccess;
 import dev.ryanhcode.sable.companion.math.BoundingBox3ic;
 import dev.ryanhcode.sable.sublevel.SubLevel;
 import dev.ryanhcode.sable.sublevel.plot.LevelPlot;
@@ -106,6 +108,10 @@ public class OarPropulsionSystem {
 
         SubLevel subLevel = resolveBoat(level, player);
         if (subLevel == null)
+            return false;
+
+        SubLevelAccess aboard = SableCompanion.INSTANCE.getTrackingOrVehicleSubLevel(player);
+        if (aboard == null || !aboard.getUniqueId().equals(subLevel.getUniqueId()))
             return false;
 
         if (CompartmentTracker.isInSealedExact(level, player.position())

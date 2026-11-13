@@ -1,6 +1,7 @@
 package com.maxenonyme.vortexengine.light;
 
 import com.maxenonyme.createsubmarine.CreateSubmarine;
+import com.maxenonyme.createsubmarine.submarine.client.SubmarineFogHandler;
 import com.maxenonyme.vortexengine.VortexConfig;
 import com.maxenonyme.vortexengine.VortexProfiler;
 import com.maxenonyme.vortexengine.atmosphere.Sunlight;
@@ -45,7 +46,7 @@ public class LightVolumes {
             { 1, 0, 2, 3 }, { 4, 5, 7, 6 }
     };
     private static final VertexFormat FORMAT = DefaultVertexFormat.NEW_ENTITY;
-    public static final int SHADOW_UNIT = 5;
+    public static final int SHADOW_UNIT = 6;
 
     record Layer(RenderTarget scene, int opaqueDepth, float share, boolean translucent) {
     }
@@ -120,7 +121,7 @@ public class LightVolumes {
         boolean pixel = VortexConfig.lightStyle() == VortexConfig.LightStyle.PIXEL;
 
         List<Light> spread = buildMoving(event, camera, distance);
-        boolean underwater = event.getCamera().getFluidInCamera() == FogType.WATER;
+        boolean underwater = seaward(event);
         boolean needed = !movingAll.isEmpty() || !spread.isEmpty() || rays && underwater
                 || LightIndex.emittersWithin(camera, Math.max(distance, 64) + 16);
 
@@ -281,12 +282,14 @@ public class LightVolumes {
         boolean haze = !translucent && VortexConfig.HAZE.get()
                 && VortexConfig.HALO_STYLE.get() != VortexConfig.HaloStyle.NONE;
         boolean underwater = event.getCamera().getFluidInCamera() == FogType.WATER;
+        boolean seaward = seaward(event);
 
         shader.setSampler("DepthSampler", scene.getDepthTextureId());
         shader.setSampler("OpaqueDepth", layer.opaqueDepth());
         shader.safeGetUniform("Translucent").set(translucent ? 1f : 0f);
         shader.safeGetUniform("LightScale").set((float) lightScale());
         shader.safeGetUniform("Jitter").set(jitterX(translucent), jitterY(translucent));
+        EntityShadows.bind(shader);
         shader.safeGetUniform("InvProjMat").set(new Matrix4f(projection).invert());
         shader.safeGetUniform("InvViewMat").set(new Matrix4f(view).invert());
         shader.safeGetUniform("ScreenSize").set((float) scene.width, (float) scene.height);
@@ -305,6 +308,7 @@ public class LightVolumes {
         shader.safeGetUniform("HaloGain").set(VortexConfig.HALO_STRENGTH.get() / 100f);
         shader.safeGetUniform("FadeRange").set(Math.max(fadeRange, 12));
         shader.safeGetUniform("Murk").set(underwater ? 1f : 0.2f);
+        shader.safeGetUniform("WaterTint").set(seaward ? 1f : 0f);
 
         shader.safeGetUniform("ShadowGrid").set(SHADOW_UNIT);
         shader.safeGetUniform("GridOffset").set(Mth.floor(camera.x) - ShadowGrid.originX(),
@@ -342,7 +346,7 @@ public class LightVolumes {
 
         boolean fieldSurface = LightField.ready() && !PixelLights.ready();
         boolean caustics = !translucent && VortexConfig.WATER_STYLE.get() != VortexConfig.WaterStyle.NONE
-                && underwater && ShadowGrid.ready();
+                && seaward && ShadowGrid.ready();
 
         if (PixelLights.ready()) {
             VortexProfiler.begin(VortexProfiler.Pass.SURFACE);
@@ -352,7 +356,7 @@ public class LightVolumes {
 
         if (fieldSurface || caustics) {
             VortexProfiler.begin(VortexProfiler.Pass.SURFACE);
-            drawField(event, camera, layer, underwater, fieldSurface);
+            drawField(event, camera, layer, seaward, fieldSurface);
             VortexProfiler.end(VortexProfiler.Pass.SURFACE);
         }
 
@@ -473,6 +477,10 @@ public class LightVolumes {
         builder.addVertex(1, 1, 0);
         builder.addVertex(-1, 1, 0);
         return builder.buildOrThrow();
+    }
+
+    private static boolean seaward(RenderLevelStageEvent event) {
+        return event.getCamera().getFluidInCamera() == FogType.WATER || SubmarineFogHandler.shouldFog();
     }
 
     static int lightScale() {

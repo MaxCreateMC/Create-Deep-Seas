@@ -7,6 +7,7 @@ import com.maxenonyme.vortexengine.VortexConfig;
 import com.maxenonyme.vortexengine.VortexEngine;
 import net.caffeinemc.mods.sodium.api.config.ConfigEntryPoint;
 import net.caffeinemc.mods.sodium.api.config.ConfigEntryPointForge;
+import net.caffeinemc.mods.sodium.api.config.option.OptionFlag;
 import net.caffeinemc.mods.sodium.api.config.option.OptionImpact;
 import net.caffeinemc.mods.sodium.api.config.structure.BooleanOptionBuilder;
 import net.caffeinemc.mods.sodium.api.config.structure.ConfigBuilder;
@@ -64,7 +65,8 @@ public class VideoOptions implements ConfigEntryPoint {
                 .setName(Component.translatable(KEY + "page.vortex"))
                 .addOptionGroup(builder.createOptionGroup()
                         .setName(Component.translatable(KEY + "group.vortex"))
-                        .addOption(toggle(builder, spec, VortexConfig.ENABLED, "vortex_enabled", OptionImpact.HIGH))
+                        .addOption(toggle(builder, spec, VortexConfig.ENABLED, "vortex_enabled", OptionImpact.HIGH)
+                                .setFlags(OptionFlag.REQUIRES_GAME_RESTART))
                         .addOption(choice(builder, spec, VortexConfig.LIGHT_STYLE, VortexConfig.LightStyle.class,
                                 "light_style", OptionImpact.MEDIUM))
                         .addOption(number(builder, spec, VortexConfig.BRIGHTNESS, "brightness", 10, 200, 10,

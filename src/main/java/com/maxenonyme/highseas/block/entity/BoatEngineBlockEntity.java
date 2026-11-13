@@ -50,8 +50,7 @@ import com.maxenonyme.highseas.config.HighSeasConfig;
 public class BoatEngineBlockEntity extends BlockEntity implements BlockEntitySubLevelActor {
 
     private static final double RUDDER_ACCEL = 0.45;
-    private static final double PROP_REACH = 1.0;
-    private static final double PROP_BAND = 1.5;
+    private static final double PROP_BAND = 1.0;
     private static final float THROTTLE_RAMP_UP = 0.018f;
     private static final float THROTTLE_RAMP_DOWN = 0.045f;
     private static final float MAX_REVERSE_THROTTLE = 0.60f;
@@ -233,9 +232,11 @@ public class BoatEngineBlockEntity extends BlockEntity implements BlockEntitySub
             setPowered(false);
             return;
         }
+
         if (burnTime > 0) {
             burnTime--;
         }
+
         if (burnTime <= 0) {
             ItemStack fuel = fuelSlot.getItem(0);
             int duration = fuel.getBurnTime(null);
@@ -377,10 +378,11 @@ public class BoatEngineBlockEntity extends BlockEntity implements BlockEntitySub
         if (surface == Double.NEGATIVE_INFINITY && level instanceof ServerLevel server) {
             surface = BoatBuoyancySystem.surfaceNear(server, propWorld.x, propWorld.y, propWorld.z);
         }
+
         if (surface == Double.NEGATIVE_INFINITY) {
             return;
         }
-        double immersion = Mth.clamp((surface - propWorld.y + PROP_REACH) / PROP_BAND, 0.0, 1.0);
+        double immersion = Mth.clamp((surface - propWorld.y + 0.5) / PROP_BAND, 0.0, 1.0);
         if (immersion <= 0.0) {
             return;
         }

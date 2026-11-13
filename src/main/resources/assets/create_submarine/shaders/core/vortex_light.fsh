@@ -2,6 +2,7 @@
 
 uniform sampler2D DepthSampler;
 uniform sampler2D OpaqueDepth;
+uniform sampler2D Boxes;
 uniform sampler3D ShadowGrid;
 uniform mat4 InvProjMat;
 uniform mat4 InvViewMat;
@@ -15,6 +16,7 @@ uniform float Pixelated;
 uniform float Shadows;
 uniform float Haze;
 uniform float Murk;
+uniform float WaterTint;
 uniform float GameTime;
 uniform float Strength;
 uniform float HaloScale;
@@ -23,6 +25,7 @@ uniform float HaloGain;
 uniform float FogStart;
 uniform float FogEnd;
 uniform float Translucent;
+uniform int BoxCount;
 
 flat in vec3 lightCenter;
 flat in vec3 lightColor;
@@ -34,30 +37,24 @@ flat in float lightSeed;
 
 out vec4 fragColor;
 
-const float BAYER[16] = float[](0.0, 8.0, 2.0, 10.0, 12.0, 4.0, 14.0, 6.0, 3.0, 11.0, 1.0, 9.0, 15.0, 7.0, 13.0, 5.0);
-
 float hash(vec3 point) {
     return fract(sin(dot(point, vec3(12.9898, 78.233, 37.719))) * 43758.5453);
 }
 
 vec3 absorb(float travel) {
-    if (Murk < 0.5)
+    if (WaterTint < 0.5)
         return vec3(1.0);
     return exp(-vec3(0.06, 0.025, 0.015) * travel);
-}
-
-float bayer(ivec2 cell) {
-    return (BAYER[(cell.x & 3) + (cell.y & 3) * 4] + 0.5) / 16.0;
 }
 
 float pixelsPerBlock(float range) {
     return ScreenSize.y / (2.0 * InvProjMat[1][1] * max(range, 0.1));
 }
 
-float steps(float value, float count, float dither) {
+float steps(float value, float count) {
     if (Pixelated < 0.5)
         return value;
-    return floor(value * count + dither) / count;
+    return floor(value * count + 0.5) / count;
 }
 
 float fogFade(float range) {
@@ -100,32 +97,81 @@ bool covered(vec4 grid, vec3 local) {
     return (int(grid.r * 255.0 + 0.5) >> bit & 1) != 0;
 }
 
-vec3 shadow(vec3 from) {
-    ivec3 source = cellOf(lightCenter);
-    ivec3 start = cellOf(from);
-    ivec3 last = start;
-    vec3 path = lightCenter - from;
+vec3 passing(vec3 from, vec3 to) {
+    vec3 start = from + CameraFract;
+    ivec3 cell = ivec3(floor(start));
+    ivec3 target = ivec3(floor(to + CameraFract));
+    vec3 path = to - from;
+    ivec3 stride = ivec3(sign(path));
+    vec3 delta = 1.0 / max(abs(path), vec3(0.00001));
+    vec3 inside = start - vec3(cell);
+    vec3 crossing = mix(inside, 1.0 - inside, step(0.0, path)) * delta;
     vec3 through = vec3(1.0);
-    int count = int(min(length(path) * 4.0, 64.0));
+    float enter = 0.0;
 
-    for (int i = 1; i < count; i++) {
-        vec3 point = from + path * (float(i) / float(count));
-        ivec3 cell = cellOf(point);
-        if (cell == source)
-            break;
-        if (cell == start)
-            continue;
+    for (int i = 0; i < 160; i++) {
+        if (cell == target)
+            return through;
 
+        float leave = min(min(crossing.x, crossing.y), min(crossing.z, 1.0));
         vec4 grid = gridAt(cell);
-        if (covered(grid, point + CameraFract - vec3(cell)))
-            return vec3(0.0);
 
-        if (cell != last && grid.a < 0.002)
+        if (i > 0 && grid.a > 0.002) {
+            for (int k = 1; k <= 3; k++) {
+                vec3 point = start + path * mix(enter, leave, float(k) * 0.25);
+                if (covered(grid, point - vec3(cell)))
+                    return vec3(0.0);
+            }
+        } else if (i > 0) {
             through *= vec3(1.0) - grid.rgb;
-        last = cell;
+        }
+
+        if (leave >= 1.0)
+            return through;
+        enter = leave;
+
+        if (crossing.x <= crossing.y && crossing.x <= crossing.z) {
+            cell.x += stride.x;
+            crossing.x += delta.x;
+        } else if (crossing.y <= crossing.z) {
+            cell.y += stride.y;
+            crossing.y += delta.y;
+        } else {
+            cell.z += stride.z;
+            crossing.z += delta.z;
+        }
     }
 
     return through;
+}
+
+bool boxed(vec3 from, vec3 to) {
+    vec3 path = to - from;
+    vec3 inverse = 1.0 / mix(path, vec3(0.00001), vec3(equal(path, vec3(0.0))));
+
+    for (int i = 0; i < 16; i++) {
+        if (i >= BoxCount)
+            break;
+
+        vec3 bottom = texelFetch(Boxes, ivec2(i, 0), 0).xyz;
+        vec3 low = (bottom - from) * inverse;
+        vec3 high = (texelFetch(Boxes, ivec2(i, 1), 0).xyz - from) * inverse;
+        vec3 near = min(low, high);
+        vec3 far = max(low, high);
+        float enter = max(max(near.x, near.y), near.z);
+        float leave = min(min(far.x, far.y), far.z);
+        bool feet = from.y < bottom.y + 0.25;
+        if (enter < leave && leave > 0.0 && enter < 1.0 && (enter > 0.0 || feet))
+            return true;
+    }
+
+    return false;
+}
+
+vec3 shadow(vec3 from) {
+    if (boxed(from, lightCenter))
+        return vec3(0.0);
+    return passing(from, lightCenter);
 }
 
 float caustic(vec3 point, float time) {
@@ -145,21 +191,15 @@ vec3 surfaceLight(vec3 world, vec3 normal, vec3 hue, float time) {
     if (dist >= lightRadius)
         return vec3(0.0);
 
-    vec3 axis = abs(normal);
-    ivec2 face = axis.y > axis.x && axis.y > axis.z ? ivec2(texel.xz)
-            : axis.x > axis.z ? ivec2(texel.zy) : ivec2(texel.xy);
-
-    float texelPixels = pixelsPerBlock(length(world)) / 16.0;
-    float dither = mix(0.5, bayer(face), clamp(texelPixels - 1.0, 0.0, 1.0));
     float falloff = 1.0 - dist / lightRadius;
-    falloff = steps(falloff * falloff, 8.0, dither);
+    falloff = steps(falloff * falloff, 8.0);
 
     float facing = dot(normal, toLight / max(dist, 0.001)) * 0.5 + 0.5;
     float strength = lightIntensity * falloff * spotOf(-toLight) * mix(0.4, 1.0, facing);
     if (strength <= 0.0)
         return vec3(0.0);
 
-    if (Murk > 0.5)
+    if (WaterTint > 0.5)
         strength *= caustic(surface + CameraFract + WorldWrap, time);
 
     vec3 through = Shadows > 0.5 ? shadow(surface + normal * 0.1) : vec3(1.0);
@@ -179,17 +219,23 @@ vec3 worldNear(vec2 frag, vec2 offset) {
     return worldAt(uv, texture(DepthSampler, uv).r);
 }
 
+bool thin(vec3 before, vec3 after, float footprint) {
+    float shortest = min(dot(before, before), dot(after, after));
+    return shortest > footprint * footprint && dot(before, after) < 0.0;
+}
+
 vec3 normalAt(vec2 frag, vec3 world) {
     vec3 left = world - worldNear(frag, vec2(-1.0, 0.0));
     vec3 right = worldNear(frag, vec2(1.0, 0.0)) - world;
     vec3 down = world - worldNear(frag, vec2(0.0, -1.0));
     vec3 up = worldNear(frag, vec2(0.0, 1.0)) - world;
 
+    float footprint = 16.0 * length(world) * InvProjMat[1][1] / ScreenSize.y;
+    if (thin(left, right, footprint) || thin(down, up, footprint))
+        return -normalize(world);
+
     vec3 across = dot(right, right) < dot(left, left) ? right : left;
     vec3 along = dot(up, up) < dot(down, down) ? up : down;
-    float footprint = 16.0 * length(world) * InvProjMat[1][1] / ScreenSize.y;
-    if (max(dot(across, across), dot(along, along)) > footprint * footprint)
-        return -normalize(world);
 
     vec3 normal = normalize(cross(across, along));
     return dot(normal, world) > 0.0 ? -normal : normal;
@@ -240,7 +286,7 @@ vec3 hazeLight(vec3 eye, vec3 ray, float limit, float spread, vec3 hue, float ti
     float edge = 1.0 - miss / reach;
     float glow = (atan((leave - along) / height) - atan((enter - along) / height)) / 3.14159 * edge * edge * edge;
     glow *= lightIntensity * Murk * spotOf(closest) * fogFade(clamp(along, enter, leave));
-    glow = steps(glow, 8.0, 0.5);
+    glow = steps(glow, 8.0);
 
     vec3 light = hot(hue, glow * 1.2 * HaloGain) * glow * 1.2 * HaloGain;
     if (Murk > 0.5)

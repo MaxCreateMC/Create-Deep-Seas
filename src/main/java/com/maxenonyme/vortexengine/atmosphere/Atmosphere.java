@@ -28,6 +28,8 @@ import net.minecraft.client.renderer.ShaderInstance;
 import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
+import net.minecraft.world.level.material.FlowingFluid;
+import net.minecraft.world.level.material.FluidState;
 import net.minecraft.world.level.material.FogType;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.client.event.RegisterShadersEvent;
@@ -94,7 +96,9 @@ public class Atmosphere {
         shafts *= VortexConfig.SUNLIGHT.get() / 100f;
         int beams = water == VortexConfig.WaterStyle.ALL_RAYS && underwater ? uploadBeams(event, eye) : 0;
         int mists = MistField.voxel() ? uploadMist(level, eye) : 0;
-        int motes = underwater ? VortexConfig.MOTES_STYLE.get().ordinal() : 0;
+        FluidState fluid = level.getFluidState(BlockPos.containing(eye));
+        boolean falling = !fluid.isSource() && fluid.hasProperty(FlowingFluid.FALLING) && fluid.getValue(FlowingFluid.FALLING);
+        int motes = underwater && !falling ? VortexConfig.MOTES_STYLE.get().ordinal() : 0;
 
         if (glow <= 0 && shafts <= 0 && mists == 0 && motes == 0 && beams == 0)
             return;
