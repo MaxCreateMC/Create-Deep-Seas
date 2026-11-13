@@ -1,5 +1,9 @@
 package com.maxenonyme.createsubmarine.submarine.mixin;
 
+import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
+import com.llamalad7.mixinextras.injector.ModifyReturnValue;
+import com.maxenonyme.createsubmarine.submarine.config.SubmarineConfig;
+import com.maxenonyme.createsubmarine.submarine.util.SteelCableHolderAccessor;
 import com.maxenonyme.createsubmarine.submarine.util.WinchAnchorSignal;
 import com.simibubi.create.foundation.blockEntity.SmartBlockEntity;
 import dev.simulated_team.simulated.content.blocks.rope.RopeStrandHolderBehavior;
@@ -44,5 +48,26 @@ public abstract class RopeWinchBlockEntityMixin implements WinchAnchorSignal {
         if (behavior == null || (behavior.getOwnedStrand() == null && behavior.getAttachedStrand() == null)) {
             createsubmarine$setAnchorGrounded(false);
         }
+    }
+
+    @ModifyExpressionValue(method = "updateRopeStrandExtension", at = @At(value = "INVOKE", target = "Lnet/createmod/catnip/config/ConfigBase$ConfigFloat;get()Ljava/lang/Object;", ordinal = 1))
+    private Object createsubmarine$steelCableRange(Object range) {
+        if (createsubmarine$holdsSteelCable())
+            return SubmarineConfig.STEEL_CABLE_MAX_LENGTH.get().doubleValue();
+        return range;
+    }
+
+    @ModifyReturnValue(method = "getMaxValue", at = @At("RETURN"))
+    private int createsubmarine$steelCableMaxValue(int range) {
+        if (createsubmarine$holdsSteelCable())
+            return SubmarineConfig.STEEL_CABLE_MAX_LENGTH.get();
+        return range;
+    }
+
+    @Unique
+    private boolean createsubmarine$holdsSteelCable() {
+        SmartBlockEntity be = (SmartBlockEntity) (Object) this;
+        RopeStrandHolderBehavior behavior = be.getBehaviour(RopeStrandHolderBehavior.TYPE);
+        return behavior != null && ((SteelCableHolderAccessor) (Object) behavior).createsubmarine$isSteelCable();
     }
 }

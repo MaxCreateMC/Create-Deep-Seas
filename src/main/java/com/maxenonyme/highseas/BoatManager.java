@@ -287,7 +287,9 @@ public class BoatManager {
         if (CompartmentTracker.realFluidState(level, cursor).is(CreateSubmarine.WATER_TAG))
             return false;
 
-        for (int y = Mth.floor(high); y >= Mth.floor(low); y--) {
+        int top = Math.min(Mth.floor(high), level.getMaxBuildHeight() - 1);
+        int bottom = Math.max(Mth.floor(low), level.getMinBuildHeight());
+        for (int y = top; y >= bottom; y--) {
             if (CompartmentTracker.realFluidState(level, cursor.setY(y)).is(CreateSubmarine.WATER_TAG))
                 return true;
         }

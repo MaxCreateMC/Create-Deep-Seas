@@ -1,5 +1,13 @@
 # Changelog
 
+## [3.4.8]
+
+### Bug Fixes
+- Fixed servers freezing for seconds when a ship ended up at an absurd position (#145)
+- Fixed the Boat Engine rocking the ship back and forth since 3.4.7 (#144)
+- Fixed the Steel Cable stopping at the Simulated rope length on a Rope Winch (#147)
+- Fixed the Decompression Chamber leaving slabs, stairs and other blocks waterlogged after draining
+
 ## [3.4.7]
 
 ### Changes
