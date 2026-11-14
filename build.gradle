@@ -58,9 +58,6 @@ repositories {
         name "CaffeineMC"
         url "https://maven.caffeinemc.net/releases" // or /snapshots
     }
-    maven {
-        url "https://maven.sinytra.org"
-    }
 }
 
 
@@ -128,7 +125,6 @@ dependencies {
     compileOnly(name: 'sable_rapier-neoforge-1.21.1-2.0.3')
     compileOnly "maven.modrinth:T9PomCSv:1L6XJqnY"
     compileOnly(name: 'sodium_core-mc1.21.1-0.8.12-beta.2-neoforge')
-    compileOnly "maven.modrinth:sodium:mc1.21.1-0.8.12-beta.2-neoforge"
 
     jarJar(api("dev.ryanhcode.sable-companion:sable-companion-common-${minecraft_version}:[${sable_companion_version},)")) {
         version {

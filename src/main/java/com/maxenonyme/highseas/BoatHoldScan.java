@@ -495,7 +495,8 @@ class BoatHoldScan {
                     continue;
                 if (group.contains(neighbour))
                     continue;
-                if (!neighbourShape.opens(direction.getOpposite()))
+                HullSeal.Shape fromShape = shape != null ? shape : HullSeal.OPEN;
+                if (!HullSeal.connects(fromShape, direction, neighbourShape))
                     continue;
 
                 group.add(neighbour);

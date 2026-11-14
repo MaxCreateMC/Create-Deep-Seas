@@ -158,8 +158,11 @@ public abstract class EntityWaterPhysicsMixin {
 
         Pose currentPose = entityData.get(DATA_POSE);
         Vec3 eyePos = new Vec3(x, eyeY, z);
+
         if (currentPose == Pose.SLEEPING) {
-            eyePos = new Vec3(x, eyeY + 1, z);
+            SubLevelAccess ship = SableCompanion.INSTANCE.getContaining(level, eyePos);
+            Vec3 sleepingOffset = ship == null ? new Vec3(x,y+1,z) : ship.logicalPose().transformNormal(new Vec3(0, 1, 0));
+            eyePos = eyePos.add(sleepingOffset);
         }
 
         boolean inside = CompartmentTracker.isInSealedExact(level, eyePos);
