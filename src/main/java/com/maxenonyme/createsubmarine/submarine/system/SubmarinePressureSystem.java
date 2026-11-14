@@ -1,6 +1,7 @@
 package com.maxenonyme.createsubmarine.submarine.system;
 
 import com.maxenonyme.createsubmarine.CreateSubmarine;
+import com.maxenonyme.createsubmarine.submarine.block.entity.UnderwaterMineBlockEntity;
 import com.maxenonyme.createsubmarine.submarine.config.HullStrengthConfig;
 import com.maxenonyme.createsubmarine.submarine.compartment.CompartmentDetector;
 import com.maxenonyme.createsubmarine.submarine.compartment.CompartmentTracker;
@@ -62,6 +63,7 @@ import com.maxenonyme.createsubmarine.submarine.network.ImplosionFxPayload;
 
 public class SubmarinePressureSystem {
     private static final int TICK_INTERVAL = 20;
+    private static final int MAX_WATER_SCAN = 200;
     private static final float OVERPRESSURE_RAMP = 20f;
     private static final float OVERPRESSURE_CAP = 3f;
     private static final int IMPLODE_MARGIN = 5;

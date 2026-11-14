@@ -19,16 +19,7 @@ import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemp
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.IdentityHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -214,6 +205,7 @@ class BoatHoldScan {
         byte[] wall = new byte[dx * dy * dz];
         boolean[] air = new boolean[wall.length];
         Set<BlockPos> solid = new HashSet<>();
+        Map<BlockPos, HullSeal.Shape> partial = new HashMap<>();
         int scanned = 0;
 
         for (int iy = 0; iy < dy; iy++) {
@@ -229,13 +221,23 @@ class BoatHoldScan {
 
                     PalettedContainer<BlockState> states = sections.get(section);
                     int i = (iy * dz + iz) * dx + ix;
+                    BlockState state = states == null ? null : states.get(x & 15, y & 15, z & 15);
                     byte seal = glued != null && glued[i] ? SOLID
-                            : states == null ? 0 : seals.get(states.get(x & 15, y & 15, z & 15));
+                            : state == null ? 0 : seals.get(state);
                     if (seal == 0) {
                         air[i] = true;
                     } else {
+                        BlockPos position = new BlockPos(x, y, z);
                         wall[i] = seal;
-                        solid.add(new BlockPos(x, y, z));
+                        solid.add(position);
+
+                        if (state != null && !(glued != null && glued[i])){
+                            HullSeal.Shape shape = HullSeal.of(state);
+                            if (HullSeal.partial(shape)) {
+                                partial.put(position, shape);
+                            }
+                        }
+
                     }
                 }
             }
@@ -257,6 +259,7 @@ class BoatHoldScan {
             }
 
             Set<BlockPos> group = brim(hold, solid);
+            admit(group, partial);
 
             Set<BlockPos> skin = new HashSet<>();
 
@@ -473,5 +476,34 @@ class BoatHoldScan {
 
         d = Integer.compare(a.getY(), b.getY());
         return d != 0 ? d : Integer.compare(a.getZ(), b.getZ());
+    }
+
+    private static void admit(Set<BlockPos> group, Map<BlockPos, HullSeal.Shape> partial) {
+        ArrayDeque<BlockPos> queue = new ArrayDeque<>(group);
+        while (!queue.isEmpty()) {
+            BlockPos current = queue.poll();
+            HullSeal.Shape shape = partial.get(current);
+
+            for (Direction direction: Direction.values()) {
+                if (shape != null && !shape.opens(direction))
+                    continue;
+
+                BlockPos neighbour = current.relative(direction);
+                HullSeal.Shape neighbourShape = partial.get(neighbour);
+
+                if (neighbourShape == null)
+                    continue;
+                if (group.contains(neighbour))
+                    continue;
+                HullSeal.Shape fromShape = shape != null ? shape : HullSeal.OPEN;
+                if (!HullSeal.connects(fromShape, direction, neighbourShape))
+                    continue;
+
+                group.add(neighbour);
+                queue.add(neighbour);
+
+            }
+
+        }
     }
 }

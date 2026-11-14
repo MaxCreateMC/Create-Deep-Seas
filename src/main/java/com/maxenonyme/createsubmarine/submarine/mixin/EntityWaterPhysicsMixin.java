@@ -7,8 +7,14 @@ import dev.ryanhcode.sable.companion.SableCompanion;
 import dev.ryanhcode.sable.companion.SubLevelAccess;
 import dev.ryanhcode.sable.sublevel.SubLevel;
 import net.minecraft.core.BlockPos;
+import net.minecraft.network.syncher.EntityDataAccessor;
+import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.tags.TagKey;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.Pose;
+import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -45,6 +51,14 @@ public abstract class EntityWaterPhysicsMixin {
     @org.spongepowered.asm.mixin.Shadow(remap = false)
     @org.spongepowered.asm.mixin.Final
     private it.unimi.dsi.fastutil.objects.Object2DoubleMap<FluidType> forgeFluidTypeHeight;
+
+    @Shadow
+    @Final
+    protected SynchedEntityData entityData;
+
+    @Shadow
+    @Final
+    protected static EntityDataAccessor<Pose> DATA_POSE;
 
     @Inject(method = "updateInWaterStateAndDoFluidPushing", at = @At("HEAD"), cancellable = true)
     private void createsubmarine$cancelWaterPushing(CallbackInfoReturnable<Boolean> cir) {
@@ -142,7 +156,15 @@ public abstract class EntityWaterPhysicsMixin {
             return createsubmarine$cachedInside;
         }
 
+        Pose currentPose = entityData.get(DATA_POSE);
         Vec3 eyePos = new Vec3(x, eyeY, z);
+
+        if (currentPose == Pose.SLEEPING) {
+            SubLevelAccess ship = SableCompanion.INSTANCE.getContaining(level, eyePos);
+            Vec3 sleepingOffset = ship == null ? new Vec3(0,1,0) : ship.logicalPose().transformNormal(new Vec3(0, 1, 0));
+            eyePos = eyePos.add(sleepingOffset);
+        }
+
         boolean inside = CompartmentTracker.isInSealedExact(level, eyePos);
         if (!inside) {
             inside = CompartmentTracker.isInSealedExact(level, entity.position());
@@ -154,12 +176,12 @@ public abstract class EntityWaterPhysicsMixin {
                 Vector3d localPos = new Vector3d(x, eyeY, z);
                 ship.logicalPose().transformPositionInverse(localPos);
                 BlockPos localBlockPos = BlockPos.containing(localPos.x, localPos.y, localPos.z);
-                
+
                 Level subLevel = SubLevelRegistry.getLevel(ship.getUniqueId());
                 if (subLevel == null && ship instanceof SubLevel sl) {
                     subLevel = sl.getLevel();
                 }
-                
+
                 if (subLevel != null) {
                     FluidState fs = subLevel.getFluidState(localBlockPos);
                     if (fs.is(CreateSubmarine.WATER_TAG)) {
