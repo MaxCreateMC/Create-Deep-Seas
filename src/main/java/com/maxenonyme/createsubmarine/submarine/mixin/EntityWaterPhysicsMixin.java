@@ -161,7 +161,7 @@ public abstract class EntityWaterPhysicsMixin {
 
         if (currentPose == Pose.SLEEPING) {
             SubLevelAccess ship = SableCompanion.INSTANCE.getContaining(level, eyePos);
-            Vec3 sleepingOffset = ship == null ? new Vec3(x,y+1,z) : ship.logicalPose().transformNormal(new Vec3(0, 1, 0));
+            Vec3 sleepingOffset = ship == null ? new Vec3(0,1,0) : ship.logicalPose().transformNormal(new Vec3(0, 1, 0));
             eyePos = eyePos.add(sleepingOffset);
         }
 
