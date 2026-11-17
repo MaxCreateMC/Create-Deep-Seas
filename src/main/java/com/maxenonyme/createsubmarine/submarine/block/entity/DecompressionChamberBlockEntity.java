@@ -4,6 +4,7 @@ import com.maxenonyme.createsubmarine.CreateSubmarine;
 import com.maxenonyme.createsubmarine.submarine.block.DecompressionChamberBlock;
 import com.maxenonyme.createsubmarine.submarine.compartment.CompartmentDetector;
 import com.maxenonyme.createsubmarine.submarine.compartment.CompartmentTracker;
+import com.maxenonyme.createsubmarine.submarine.compartment.HullSeal;
 import com.maxenonyme.createsubmarine.submarine.config.SubmarineConfig;
 import com.maxenonyme.createsubmarine.submarine.system.SubmarinePressureSystem;
 import com.maxenonyme.createsubmarine.submarine.system.SubmarineSinkingSystem;
@@ -32,6 +33,7 @@ import net.minecraft.world.level.material.FluidState;
 import net.minecraft.world.level.material.Fluids;
 import org.joml.Vector3d;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -44,12 +46,16 @@ import java.util.concurrent.ConcurrentHashMap;
 public class DecompressionChamberBlockEntity extends BlockEntity {
 
     private enum Mode {
-        NONE, CHAMBER, OCEAN
+        NONE, CHAMBER, ROOM, OCEAN
     }
+
+    // shortcut: rooms over 8192 blocks are ignored, raise the constant if a real room exceeds it.
+    private static final int VANILLA_ROOM_CAP = 8192;
 
     private Mode mode = Mode.NONE;
 
     private CompartmentDetector.Component cachedCompartment;
+    private Set<BlockPos> vanillaRoom;
     private UUID cachedSubId;
     private int pendingFill;
     private int pendingDrain;
@@ -70,6 +76,7 @@ public class DecompressionChamberBlockEntity extends BlockEntity {
                 CHAMBER_WATER_BLOCKS.remove(globalPos);
             }
         }
+        forgetVanillaRoom();
     }
 
     public void tick() {
@@ -96,14 +103,29 @@ public class DecompressionChamberBlockEntity extends BlockEntity {
         CompartmentDetector.Component comp = id == null ? null : findChamberCompartment(id);
         if (comp != null) {
             mode = Mode.CHAMBER;
+            forgetVanillaRoom();
             cachedCompartment = comp;
             cachedSubId = id;
+        } else if (id != null) {
+            if (mode == Mode.CHAMBER)
+                handleChamberLost();
+            cachedCompartment = null;
+            cachedSubId = null;
+            forgetVanillaRoom();
+            mode = isAnyHolesFaceSubmerged() ? Mode.OCEAN : Mode.NONE;
         } else {
             if (mode == Mode.CHAMBER)
                 handleChamberLost();
             cachedCompartment = null;
             cachedSubId = null;
-            mode = isAnyHolesFaceSubmerged() ? Mode.OCEAN : Mode.NONE;
+            Set<BlockPos> room = findVanillaRoom();
+            if (room != null) {
+                mode = Mode.ROOM;
+                swapVanillaRoom(room);
+            } else {
+                forgetVanillaRoom();
+                mode = isAnyHolesFaceSubmerged() ? Mode.OCEAN : Mode.NONE;
+            }
         }
 
         if (oldMode != mode && level != null && !level.isClientSide) {
@@ -150,6 +172,92 @@ public class DecompressionChamberBlockEntity extends BlockEntity {
             }
         }
         return null;
+    }
+
+    private Set<BlockPos> findVanillaRoom() {
+        Direction front = getBlockState().getValue(DecompressionChamberBlock.FACING);
+        Set<BlockPos> room = floodVanilla(worldPosition.relative(front));
+        if (room != null)
+            return room;
+        for (Direction dir : getHolesFaces()) {
+            if (dir == front)
+                continue;
+            room = floodVanilla(worldPosition.relative(dir));
+            if (room != null)
+                return room;
+        }
+        return null;
+    }
+
+    private Set<BlockPos> floodVanilla(BlockPos start) {
+        if (!insideWorld(start))
+            return null;
+        HullSeal.Shape startShape = HullSeal.of(level.getBlockState(start));
+        if (!startShape.passable())
+            return null;
+
+        Set<BlockPos> inside = new HashSet<>();
+        ArrayDeque<BlockPos> queue = new ArrayDeque<>();
+        BlockPos origin = start.immutable();
+        inside.add(origin);
+        queue.add(origin);
+
+        while (!queue.isEmpty()) {
+            BlockPos current = queue.poll();
+            HullSeal.Shape shape = HullSeal.of(level.getBlockState(current));
+            for (Direction dir : Direction.values()) {
+                if (!shape.opens(dir))
+                    continue;
+                BlockPos next = current.relative(dir);
+                if (inside.contains(next))
+                    continue;
+                if (!insideWorld(next))
+                    return null;
+                HullSeal.Shape nextShape = HullSeal.of(level.getBlockState(next));
+                if (!nextShape.passable() || !HullSeal.connects(shape, dir, nextShape))
+                    continue;
+                if (inside.size() >= VANILLA_ROOM_CAP)
+                    return null;
+                BlockPos cell = next.immutable();
+                inside.add(cell);
+                queue.add(cell);
+            }
+        }
+        inside.removeIf(pos -> {
+            BlockState state = level.getBlockState(pos);
+            return !state.isAir() && !(state.getBlock() instanceof LiquidBlock);
+        });
+        return inside.isEmpty() ? null : inside;
+    }
+
+    private boolean insideWorld(BlockPos pos) {
+        return level.isLoaded(pos)
+                && pos.getY() >= level.getMinBuildHeight()
+                && pos.getY() < level.getMaxBuildHeight();
+    }
+
+    private void swapVanillaRoom(Set<BlockPos> room) {
+        if (vanillaRoom != null) {
+            for (BlockPos p : vanillaRoom) {
+                if (!room.contains(p))
+                    CHAMBER_WATER_BLOCKS.remove(GlobalPos.of(level.dimension(), p));
+            }
+        }
+        vanillaRoom = room;
+    }
+
+    private void forgetVanillaRoom() {
+        if (vanillaRoom == null || level == null)
+            return;
+        for (BlockPos p : vanillaRoom)
+            CHAMBER_WATER_BLOCKS.remove(GlobalPos.of(level.dimension(), p));
+        vanillaRoom = null;
+    }
+
+    private Set<BlockPos> chamberCells() {
+        if (cachedCompartment != null)
+            return cachedCompartment.internal();
+        return vanillaRoom;
     }
 
     private boolean checkChamberBreach() {
@@ -200,8 +308,11 @@ public class DecompressionChamberBlockEntity extends BlockEntity {
         return null;
     }
 
-    private boolean chamberHasAir(CompartmentDetector.Component comp) {
-        for (BlockPos p : comp.internal()) {
+    private boolean chamberHasAir() {
+        Set<BlockPos> cells = chamberCells();
+        if (cells == null)
+            return false;
+        for (BlockPos p : cells) {
             if (isEmptyCell(p))
                 return true;
         }
@@ -261,7 +372,7 @@ public class DecompressionChamberBlockEntity extends BlockEntity {
     }
 
     private void processChamber() {
-        if (cachedCompartment == null)
+        if (chamberCells() == null)
             return;
 
         int water = chamberWaterVolume();
@@ -306,7 +417,7 @@ public class DecompressionChamberBlockEntity extends BlockEntity {
             return;
 
         boolean filling = lastFlowDir > 0;
-        boolean dripping = filling && chamberHasAir(cachedCompartment);
+        boolean dripping = filling && chamberHasAir();
 
         BlockState myState = getBlockState();
         Direction frontFace = myState.getValue(DecompressionChamberBlock.FACING);
@@ -349,7 +460,9 @@ public class DecompressionChamberBlockEntity extends BlockEntity {
     }
 
     private Set<BlockPos> getReachableBlocks() {
-        Set<BlockPos> internal = cachedCompartment.internal();
+        Set<BlockPos> internal = chamberCells();
+        if (internal == null)
+            return Set.of();
         Queue<BlockPos> queue = new LinkedList<>();
         Set<BlockPos> visited = new HashSet<>();
 
@@ -515,10 +628,11 @@ public class DecompressionChamberBlockEntity extends BlockEntity {
     }
 
     private int chamberWaterVolume() {
-        if (cachedCompartment == null)
+        Set<BlockPos> cells = chamberCells();
+        if (cells == null)
             return 0;
         int total = 0;
-        for (BlockPos p : cachedCompartment.internal()) {
+        for (BlockPos p : cells) {
             int lvl = getWaterLevel(p);
             if (lvl > 0)
                 total += lvl * 125;
@@ -527,10 +641,11 @@ public class DecompressionChamberBlockEntity extends BlockEntity {
     }
 
     private int chamberCapacity() {
-        if (cachedCompartment == null)
+        Set<BlockPos> cells = chamberCells();
+        if (cells == null)
             return 0;
         int count = 0;
-        for (BlockPos p : cachedCompartment.internal()) {
+        for (BlockPos p : cells) {
             if (getWaterLevel(p) >= 0)
                 count++;
         }
@@ -564,7 +679,7 @@ public class DecompressionChamberBlockEntity extends BlockEntity {
         if (mode == Mode.NONE)
             detectMode();
         return switch (mode) {
-            case CHAMBER -> chamber;
+            case CHAMBER, ROOM -> chamber;
             case OCEAN -> ocean;
             default -> EmptyFluidHandler.INSTANCE;
         };

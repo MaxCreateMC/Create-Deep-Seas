@@ -496,6 +496,7 @@ public class SubmarinePressureSystem {
     public record LiquidColumn(int surfaceY, double density) {
     }
 
+    private static final int MAX_WATER_SCAN = 400;
     private static final LiquidColumn DRY = new LiquidColumn(Integer.MIN_VALUE, 1.0);
 
     public static int measureSurfaceY(Level level, Vector3dc subCenter) {
