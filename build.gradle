@@ -178,7 +178,7 @@ idea {
     }
 }
 
-def modrinthMods = file("C:/Users/maxen/AppData/Roaming/ModrinthApp/profiles/Create_ Deep Seas (High Seas Update)/mods")
+def modrinthMods = new File("C:/Users/maxen/AppData/Roaming/ModrinthApp/profiles/Create_ Deep Seas (High Seas Update)/mods")
 
 tasks.register("copyToModrinth", Copy) {
     onlyIf { modrinthMods.directory }
