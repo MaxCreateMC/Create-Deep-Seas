@@ -32,7 +32,7 @@ public class DiverPressure {
     private record TagPressure(TagKey<Item> tag, double pressure) {
     }
 
-    private static final Map<Item, Double> CACHE = new ConcurrentHashMap<>();
+    private static final Map<ItemStack, Double> CACHE = new ConcurrentHashMap<>();
     private static volatile List<? extends String> source;
     private static volatile Map<ResourceLocation, Double> byId = Map.of();
     private static volatile List<TagPressure> byTag = List.of();
@@ -77,6 +77,13 @@ public class DiverPressure {
         source = entries;
     }
 
+    public static double of(ItemStack item) {
+        if (item.isEmpty())
+            return 0.0;
+        refresh();
+        return CACHE.computeIfAbsent(item, DiverPressure::resolve);
+    }
+
     private static double resolve(ItemStack item) {
         // Also shamelessly copied from the LiquidDensity class.
         Double direct = byId.get(BuiltInRegistries.ITEM.getKey(item.getItem()));
@@ -105,7 +112,7 @@ public class DiverPressure {
         double depth = player.isInWater() ? depthOf(player) : 0;
         double limit = depthLimitOf(player);
         think(player, depth >= limit * 0.9);
-        if (depth <= 0)
+        if (depth < 0)
             return;
 
         if (limit > SubmarineConfig.BASE_DEPTH_LIMIT.get()) // This was using the copper armor check, so I made it use any.
@@ -148,7 +155,7 @@ public class DiverPressure {
                 missingSlot = true;
                 break;
             }
-            limit += resolve(armorStack);
+            limit += of(armorStack);
         }
         if (missingSlot) {
             return SubmarineConfig.BASE_DEPTH_LIMIT.get();
