@@ -44,6 +44,9 @@ public class SubmarineConfig {
         public static final ModConfigSpec.ConfigValue<List<? extends String>> LIQUID_DENSITIES;
         public static final ModConfigSpec.BooleanValue LAVA_BURNS_HULL;
         public static final ModConfigSpec.BooleanValue DIVER_PRESSURE;
+        public static final ModConfigSpec.DoubleValue BASE_DEPTH_LIMIT;
+        public static final ModConfigSpec.DoubleValue LETHAL_MARGIN;
+        public static final ModConfigSpec.ConfigValue<List<? extends String>> DEPTH_VALUES;
         public static final ModConfigSpec.BooleanValue EXPERIMENTAL_ABYSS_WORLDGEN;
 
         public enum PressureModel implements TranslatableEnum {
@@ -161,8 +164,32 @@ public class SubmarineConfig {
                                 .define("lavaBurnsHull", true);
                 DIVER_PRESSURE = server
                                 .comment("Deep water hurts and finally crushes players swimming past their depth limit",
-                                                "(120 m, or 280 m in the full Copper Diving Suit).")
+                                                "Limits are defined using baseDepthLimit and depthValues.")
                                 .define("diverPressure", true);
+                BASE_DEPTH_LIMIT = server
+                                .comment("The maximum depth a player without any armor can go before starting to get crushed.")
+                                .defineInRange("baseDepthLimit", 120.0, 0.0, 1024.0);
+                LETHAL_MARGIN = server
+                        .comment("The maximum depth a player can go beyond their depth limit.")
+                        .defineInRange("lethalMargin", 60.0, 0.0, 1024.0);
+                DEPTH_VALUES = server
+                                .comment("The depth an armor piece contributes to pressure immunity, as \"item=density\" or \"#tag=density\".",
+                                                "No pressure immunity if an armor slot doesn't contain an item in this list.")
+                                .defineListAllowEmpty("depthValues", List.of(
+                                                                "create:copper_diving_helmet=40.0", "create_submarine:diving_chestplate=40.0", "create_submarine:diving_leggings=40.0", "create:copper_diving_boots=40.0"
+                                                ), // I would personally recommend changing these values so the chestplate and leggings contribute more.
+                                                () -> "minecraft:iron_helmet=0.0", o -> {
+                                                        if (!(o instanceof String str))
+                                                                return false;
+                                                        int eq = str.indexOf('=');
+                                                        if (eq <= 0)
+                                                                return false;
+                                                        try {
+                                                                return Double.isFinite(Double.parseDouble(str.substring(eq + 1).trim()));
+                                                        } catch (NumberFormatException e) {
+                                                                return false;
+                                                        }
+                                                });
                 server.pop();
 
                 server.push("mechanics");
