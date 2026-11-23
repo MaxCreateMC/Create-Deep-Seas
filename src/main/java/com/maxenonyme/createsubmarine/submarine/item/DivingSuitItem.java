@@ -62,7 +62,7 @@ public class DivingSuitItem extends ArmorItem {
         if (!(entity instanceof Player player) || !player.getItemBySlot(EquipmentSlot.CHEST)
                 .is(CreateSubmarine.DIVING_CHESTPLATE.get()))
             return List.of();
-        if (copperBacktank == null) { // Why didn't this already account for netherite backtanks?
+        if (copperBacktank == null || netheriteBacktank == null) { // Why didn't this already account for netherite backtanks?
             copperBacktank = BuiltInRegistries.ITEM
                     .get(ResourceLocation.fromNamespaceAndPath("create", "copper_backtank"));
             netheriteBacktank = BuiltInRegistries.ITEM

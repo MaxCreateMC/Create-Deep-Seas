@@ -58,7 +58,7 @@ public class DiverPressure {
                 CreateSubmarine.LOGGER.warn("Ignoring armor pressure '{}': not a number", entry);
                 continue;
             }
-            if (density <= 0)
+            if (!Double.isFinite(density) || density <= 0)
                 continue;
             boolean tag = key.startsWith("#");
             ResourceLocation id = ResourceLocation.tryParse(tag ? key.substring(1) : key);
