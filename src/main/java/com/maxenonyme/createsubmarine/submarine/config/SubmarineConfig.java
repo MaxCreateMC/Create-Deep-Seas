@@ -178,7 +178,18 @@ public class SubmarineConfig {
                                 .defineListAllowEmpty("depthValues", List.of(
                                                                 "create:copper_diving_helmet=40.0", "create_submarine:diving_chestplate=40.0", "create_submarine:diving_leggings=40.0", "create:copper_diving_boots=40.0"
                                                 ), // I would personally recommend changing these values so the chestplate and leggings contribute more.
-                                                () -> "minecraft:iron_helmet=0.0", o -> o instanceof String str && str.contains("="));
+                                                () -> "minecraft:iron_helmet=0.0", o -> {
+                                                        if (!(o instanceof String str))
+                                                                return false;
+                                                        int eq = str.lastIndexOf('=');
+                                                        if (eq <= 0)
+                                                                return false;
+                                                        try {
+                                                                return Double.isFinite(Double.parseDouble(str.substring(eq + 1).trim()));
+                                                        } catch (NumberFormatException e) {
+                                                                return false;
+                                                        }
+                                                });
                 server.pop();
 
                 server.push("mechanics");
