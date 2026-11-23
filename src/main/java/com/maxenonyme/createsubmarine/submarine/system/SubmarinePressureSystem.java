@@ -70,6 +70,8 @@ public class SubmarinePressureSystem {
     private static int tickCounter = 0;
     private static final Random RAND = new Random();
 
+    private static final int MAX_WATER_SCAN = 200; // Unsure why I needed to add this...
+
     private static final Map<UUID, Set<BlockPos>> BREACHED_PLOT = new ConcurrentHashMap<>();
     private static final Map<UUID, List<CompartmentDetector.Component>> KNOWN_SEALED = new ConcurrentHashMap<>();
     private static final Map<UUID, Integer> CACHED_WATER_DEPTH = new ConcurrentHashMap<>();

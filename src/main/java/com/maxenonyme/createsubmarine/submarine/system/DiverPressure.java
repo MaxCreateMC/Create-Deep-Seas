@@ -10,28 +10,89 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.tags.TagKey;
 import net.minecraft.util.Mth;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.damagesource.DamageType;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
-import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.event.tick.PlayerTickEvent;
 import net.neoforged.neoforge.network.PacketDistributor;
 import org.joml.Vector3d;
 
-public class DiverPressure {
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
-    private static final int LETHAL_MARGIN = 60;
+public class DiverPressure {
+    private record TagPressure(TagKey<Item> tag, double pressure) {
+    }
+
+    private static final Map<Item, Double> CACHE = new ConcurrentHashMap<>();
+    private static volatile List<? extends String> source;
+    private static volatile Map<ResourceLocation, Double> byId = Map.of();
+    private static volatile List<TagPressure> byTag = List.of();
+
+    private static void refresh() {
+        // Shamelessly copied from the LiquidDensity class.
+        if (!SubmarineConfig.SERVER_SPEC.isLoaded())
+            return;
+        List<? extends String> entries = SubmarineConfig.DEPTH_VALUES.get();
+        if (entries == source)
+            return;
+        Map<ResourceLocation, Double> ids = new HashMap<>();
+        List<TagPressure> tags = new ArrayList<>();
+        for (String entry : entries) {
+            int eq = entry.lastIndexOf('=');
+            if (eq <= 0)
+                continue;
+            String key = entry.substring(0, eq).trim();
+            double density;
+            try {
+                density = Double.parseDouble(entry.substring(eq + 1).trim());
+            } catch (NumberFormatException e) {
+                CreateSubmarine.LOGGER.warn("Ignoring armor pressure '{}': not a number", entry);
+                continue;
+            }
+            if (density <= 0)
+                continue;
+            boolean tag = key.startsWith("#");
+            ResourceLocation id = ResourceLocation.tryParse(tag ? key.substring(1) : key);
+            if (id == null) {
+                CreateSubmarine.LOGGER.warn("Ignoring armor pressure '{}': bad id", entry);
+                continue;
+            }
+            if (tag)
+                tags.add(new TagPressure(TagKey.create(Registries.ITEM, id), density));
+            else
+                ids.put(id, density);
+        }
+        byId = ids;
+        byTag = tags;
+        CACHE.clear();
+        source = entries;
+    }
+
+    private static double resolve(ItemStack item) {
+        // Also shamelessly copied from the LiquidDensity class.
+        Double direct = byId.get(BuiltInRegistries.ITEM.getKey(item.getItem()));
+        if (direct != null)
+            return direct;
+        for (TagPressure t : byTag) {
+            if (item.is(t.tag()))
+                return t.pressure();
+        }
+        return 0.0;
+    }
 
     private static final ResourceKey<DamageType> PRESSURE = ResourceKey.create(Registries.DAMAGE_TYPE,
             ResourceLocation.fromNamespaceAndPath(CreateSubmarine.MOD_ID, "pressure"));
     private static final ResourceKey<DamageType> CRUSHED = ResourceKey.create(Registries.DAMAGE_TYPE,
             ResourceLocation.fromNamespaceAndPath(CreateSubmarine.MOD_ID, "crushed"));
-
-    private static Item helmet;
-    private static Item boots;
 
     public static void onPlayerTick(PlayerTickEvent.Post event) {
         if (!(event.getEntity() instanceof ServerPlayer player) || player.tickCount % 5 != 0)
@@ -39,16 +100,17 @@ public class DiverPressure {
         if (player.isSpectator())
             return;
 
+        refresh();
+
         double depth = player.isInWater() ? depthOf(player) : 0;
-        boolean suited = wearsCopperSuit(player);
-        int limit = suited ? 280 : 120;
+        double limit = depthLimitOf(player);
         think(player, depth >= limit * 0.9);
         if (depth <= 0)
             return;
 
-        if (suited)
+        if (limit > SubmarineConfig.BASE_DEPTH_LIMIT.get()) // This was using the copper armor check, so I made it use any.
             PacketDistributor.sendToPlayer(player,
-                    new ImplosionFxPayload(ImplosionFxPayload.DEPTH, (float) depth, limit));
+                    new ImplosionFxPayload(ImplosionFxPayload.DEPTH, (float) depth, (int) limit));
         if (player.isCreative() || !SubmarineConfig.diverPressure())
             return;
         double over = depth - limit;
@@ -59,11 +121,11 @@ public class DiverPressure {
                 new ImplosionFxPayload(ImplosionFxPayload.SQUEEZE, 1f, 15));
         if (over >= 10)
             player.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN, 20, 0, true, false, true));
-        if (over >= LETHAL_MARGIN) {
+        if (over >= SubmarineConfig.LETHAL_MARGIN.get()) {
             player.hurt(source(player, CRUSHED), Float.MAX_VALUE);
             return;
         }
-        int interval = (int) Mth.lerp(over / LETHAL_MARGIN, 20, 10) / 5 * 5;
+        int interval = (int) Mth.lerp(over / SubmarineConfig.LETHAL_MARGIN.get(), 20, 10) / 5 * 5;
         if (player.tickCount % interval != 0)
             return;
         player.hurt(source(player, PRESSURE), 0.5f + (float) over / 12);
@@ -78,6 +140,22 @@ public class DiverPressure {
         return Math.max(0, (column.surfaceY() + 1 - player.getEyeY()) * column.density());
     }
 
+    private static double depthLimitOf(ServerPlayer player) {
+        double limit = SubmarineConfig.BASE_DEPTH_LIMIT.get();
+        boolean missingSlot = false;
+        for (ItemStack armorStack : player.getArmorSlots()) {
+            if (armorStack.isEmpty()) {
+                missingSlot = true;
+                break;
+            }
+            limit += resolve(armorStack);
+        }
+        if (missingSlot) {
+            return SubmarineConfig.BASE_DEPTH_LIMIT.get();
+        }
+        return limit;
+    }
+
     private static void think(ServerPlayer player, boolean deep) {
         CompoundTag data = player.getPersistentData();
         if (data.getBoolean("PressureDeep") == deep)
@@ -90,18 +168,6 @@ public class DiverPressure {
         data.putLong("PressureThought", now);
         PacketDistributor.sendToPlayer(player,
                 new ImplosionFxPayload(ImplosionFxPayload.THOUGHT, 0f, player.getRandom().nextInt(6)));
-    }
-
-    private static boolean wearsCopperSuit(ServerPlayer player) {
-        if (helmet == null) {
-            helmet = BuiltInRegistries.ITEM
-                    .get(ResourceLocation.fromNamespaceAndPath("create", "copper_diving_helmet"));
-            boots = BuiltInRegistries.ITEM.get(ResourceLocation.fromNamespaceAndPath("create", "copper_diving_boots"));
-        }
-        return player.getItemBySlot(EquipmentSlot.HEAD).is(helmet)
-                && player.getItemBySlot(EquipmentSlot.CHEST).is(CreateSubmarine.DIVING_CHESTPLATE.get())
-                && player.getItemBySlot(EquipmentSlot.LEGS).is(CreateSubmarine.DIVING_LEGGINGS.get())
-                && player.getItemBySlot(EquipmentSlot.FEET).is(boots);
     }
 
     private static DamageSource source(ServerPlayer player, ResourceKey<DamageType> type) {

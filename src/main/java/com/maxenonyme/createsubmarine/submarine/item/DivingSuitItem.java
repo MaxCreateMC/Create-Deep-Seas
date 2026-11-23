@@ -23,7 +23,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class DivingSuitItem extends ArmorItem {
-    private static Item backtank;
+    private static Item copperBacktank;
+    private static Item netheriteBacktank;
 
     private final ResourceLocation texture;
 
@@ -61,15 +62,18 @@ public class DivingSuitItem extends ArmorItem {
         if (!(entity instanceof Player player) || !player.getItemBySlot(EquipmentSlot.CHEST)
                 .is(CreateSubmarine.DIVING_CHESTPLATE.get()))
             return List.of();
-        if (backtank == null)
-            backtank = BuiltInRegistries.ITEM
+        if (copperBacktank == null) { // Why didn't this already account for netherite backtanks?
+            copperBacktank = BuiltInRegistries.ITEM
                     .get(ResourceLocation.fromNamespaceAndPath("create", "copper_backtank"));
+            netheriteBacktank = BuiltInRegistries.ITEM
+                    .get(ResourceLocation.fromNamespaceAndPath("create", "netherite_backtank"));
+        }
         List<ItemStack> carried = new ArrayList<>();
         for (ItemStack stack : player.getInventory().items) {
-            if (stack.is(backtank))
+            if (stack.is(copperBacktank) || stack.is(netheriteBacktank))
                 carried.add(stack);
         }
-        if (player.getOffhandItem().is(backtank))
+        if (player.getOffhandItem().is(copperBacktank) || player.getOffhandItem().is(netheriteBacktank))
             carried.add(player.getOffhandItem());
         return carried;
     }
