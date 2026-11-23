@@ -181,7 +181,7 @@ public class SubmarineConfig {
                                                 () -> "minecraft:iron_helmet=0.0", o -> {
                                                         if (!(o instanceof String str))
                                                                 return false;
-                                                        int eq = str.lastIndexOf('=');
+                                                        int eq = str.indexOf('=');
                                                         if (eq <= 0)
                                                                 return false;
                                                         try {

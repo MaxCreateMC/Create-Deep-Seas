@@ -58,7 +58,7 @@ public class DiverPressure {
                 CreateSubmarine.LOGGER.warn("Ignoring armor pressure '{}': not a number", entry);
                 continue;
             }
-            if (!Double.isFinite(density) || density <= 0)
+            if (!Double.isFinite(density) || density < 0)
                 continue;
             boolean tag = key.startsWith("#");
             ResourceLocation id = ResourceLocation.tryParse(tag ? key.substring(1) : key);
@@ -117,7 +117,7 @@ public class DiverPressure {
 
         if (limit > SubmarineConfig.BASE_DEPTH_LIMIT.get()) // This was using the copper armor check, so I made it use any.
             PacketDistributor.sendToPlayer(player,
-                    new ImplosionFxPayload(ImplosionFxPayload.DEPTH, (float) depth, (int) limit));
+                    new ImplosionFxPayload(ImplosionFxPayload.DEPTH, (float) depth, (int) limit)); // This seems to affect too much so I left it as an int.
         if (player.isCreative() || !SubmarineConfig.diverPressure())
             return;
         double over = depth - limit;
